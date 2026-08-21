@@ -111,6 +111,19 @@ def shop(req: ShopRequest):
         d = r.dict()
         d["exposure"] = json.loads(exposure.model_dump_json())
         d["catalog_version"] = a.catalog.version()
+        if d.get("intent") is None:
+            # Abstaining is correct. Abstaining silently is not: the human has
+            # no way to tell "I refuse" from "I am broken". Say what is on the
+            # shelves so the next sentence can succeed.
+            d["stocked"] = [
+                {"category": row["category"], "n": row["n"],
+                 "from_paise": row["lo"], "to_paise": row["hi"],
+                 "restricted": bool(row["r"])}
+                for row in a.db.execute(
+                    "SELECT category, COUNT(*) n, MIN(price_paise) lo,"
+                    " MAX(price_paise) hi, MAX(restricted IS NOT NULL) r"
+                    " FROM products WHERE active=1 AND inventory>0"
+                    " GROUP BY category ORDER BY n DESC")]
         if r.intent is not None and r.cart is not None:
             # Kept in memory so the property line can re-decide the SAME basket
             # under a different authority without re-running the agent.

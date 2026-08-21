@@ -316,3 +316,44 @@ having.
 test, and that is the honest summary: the suite covers what the application does
 once a request reaches it, and nothing at all about whether a request can.
 
+---
+
+## 2026-08-21 19:50 — "buy a helicopter under 500000" bought a yoga mat
+
+**What I saw.** Widening the catalog from six categories to fourteen, I typed
+nonsense to check the abstain path: *buy a helicopter under 500000*. It did not
+abstain. It returned an AUTO verdict on a **Kinetic Yoga Mat 6mm**.
+
+**What I thought it was.** A gap in the category vocabulary — a missing word.
+
+**What it actually was.** The abstain condition read
+`if category is None and ceiling is None`. Both had to be missing. An utterance
+with an unrecognised noun *and a perfectly clear budget* satisfied only half of
+it, so the compiler built an envelope with `category=None`, and a category of
+None means the catalog search applies no category filter at all. It then ranked
+the entire shop and returned the best-value item under ₹5,00,000.
+
+This is the worst input the system can receive and it was the one input that
+walked straight past the boundary. Every clause downstream did its job perfectly
+on a cart that should never have existed: the ceiling held, drift scored low
+because the envelope had nothing to drift *from*, and the money was authorised.
+A boundary that only works once the request is already understood is not a
+boundary.
+
+The mistake underneath is a sentence I would have said out loud if asked: *an
+amount is a limit, not a reason.* The code did not believe that. It treated a
+stated budget as evidence of intent to buy, when a budget only ever constrains
+what may be spent once there is something to buy.
+
+**How I got out.** The condition is now `if category is None and not terms` —
+no recognised category and no product noun means abstain, whatever the budget.
+Two regression tests: one asserts that three ungroundable utterances with large
+budgets produce no envelope, no selection and no payment; the other asserts that
+regulated goods never reach AUTO.
+
+**What it changed.** I had 97 passing tests and none of them typed a word the
+catalog does not sell. The suite tested the paths I had thought of, on inputs I
+had chosen, and the input distribution of a demo is *whatever a stranger types*.
+The abstain path had been treated as an edge case; it is the common case, and it
+is the only path where the system is reasoning about its own ignorance.
+

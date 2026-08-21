@@ -144,3 +144,44 @@ def test_every_executed_payment_has_a_full_clause_chain(app):
         pol = json.loads(row["policy"])
         if row["verdict"] == "AUTO":
             assert pol["failed"] == [], f"AUTO with failed clauses: {pol['failed']}"
+
+
+# --- regulated goods and ungroundable nouns --------------------------------
+
+def test_an_agent_may_not_buy_regulated_goods_on_its_own():
+    """Alcohol and pharmacy lines are not a risk trade-off. No ceiling, however
+    generous, makes them an autonomous purchase."""
+    from remit.assembly import build, utcnow
+
+    app = build(now=utcnow())
+    now = utcnow()
+    for utterance in ("buy whisky under 5000", "buy paracetamol under 100"):
+        r = app.journey.run(utterance=utterance, user_id="usr_t", now=now,
+                            accept_offers="in_envelope", human_confirms=None)
+        d = r.dict()
+        auth = d["authorization"]
+        assert auth is not None, utterance
+        assert auth["verdict"] != "AUTO", f"{utterance} was bought unasked"
+        assert "RESTRICT-001" in auth["failed"], (utterance, auth["failed"])
+        assert d["payment_state"] != "SUCCESS"
+
+
+def test_an_unrecognised_noun_with_a_budget_does_not_buy_something_else():
+    """The dangerous input: a clear amount attached to a thing we do not sell.
+
+    This used to skip the category filter entirely and return a yoga mat for
+    "buy a helicopter under 500000". A stated budget is a limit, never a reason.
+    """
+    from remit.assembly import build, utcnow
+
+    app = build(now=utcnow())
+    now = utcnow()
+    for utterance in ("buy a helicopter under 500000",
+                      "get me a unicorn under 5000",
+                      "buy petrol under 1000"):
+        r = app.journey.run(utterance=utterance, user_id="usr_t", now=now,
+                            accept_offers="in_envelope", human_confirms=None)
+        d = r.dict()
+        assert d["intent"] is None, f"{utterance} produced an envelope"
+        assert d["selected"] is None, (utterance, d["selected"])
+        assert d["payment_state"] not in ("CREATED", "AUTHORIZED", "SUCCESS")

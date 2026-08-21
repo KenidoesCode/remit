@@ -28,6 +28,9 @@ CREATE TABLE IF NOT EXISTS products (
   rating REAL NOT NULL, reviews INTEGER NOT NULL,
   inventory INTEGER NOT NULL, attributes TEXT NOT NULL,  -- json list
   premium INTEGER NOT NULL DEFAULT 0, ship_days INTEGER NOT NULL DEFAULT 3,
+  -- NULL for ordinary goods. 'age' and 'pharmacy' mark things an autonomous
+  -- agent must never buy on its own, whatever the amount. See RESTRICT-001.
+  restricted TEXT,
   catalog_version INTEGER NOT NULL, active INTEGER NOT NULL DEFAULT 1);
 CREATE INDEX IF NOT EXISTS idx_products_cat ON products(category, active);
 

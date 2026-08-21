@@ -31,6 +31,7 @@ class Product(BaseModel):
     attributes: list[str]
     premium: bool
     ship_days: int
+    restricted: str | None = None   # 'age' | 'pharmacy' | None. See RESTRICT-001.
     catalog_version: int
 
     @property

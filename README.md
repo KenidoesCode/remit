@@ -31,19 +31,19 @@ by hand.
 
 | arm | revenue | vs baseline | AOV | unauthorised | asked a human |
 |---|---:|---:|---:|---:|---:|
-| no revenue engine, no integrity layer | ₹858,547.92 | — | ₹1,792.37 | **₹85,726.00** | 124 |
-| revenue engine ON, no integrity layer | ₹1,242,727.92 | ₹384,180.00 | ₹2,594.42 | **₹154,477.00** | 141 |
-| full REMIT, human approves at step-up | ₹1,155,407.92 | ₹296,860.00 | ₹2,686.99 | **₹0.00** | 314 |
-| full REMIT, human declines every step-up | ₹329,159.00 | -₹529,388.92 | ₹2,766.04 | **₹0.00** | 314 |
+| no revenue engine, no integrity layer | ₹809,247.26 | — | ₹1,904.11 | **₹357,574.26** | 0 |
+| revenue engine ON, no integrity layer | ₹1,133,071.26 | ₹323,824.00 | ₹2,666.05 | **₹510,910.26** | 0 |
+| full REMIT, human approves at step-up | ₹1,046,407.26 | ₹237,160.00 | ₹2,768.27 | **₹0.00** | 261 |
+| full REMIT, human declines every step-up | ₹329,159.00 | -₹480,088.26 | ₹2,766.04 | **₹0.00** | 261 |
 
 **Let an agent optimise merchant revenue with no authorisation boundary and it
-earns ₹384,180.00 more than a plain checkout — while moving
-₹154,477.00 across 63 transactions the human never
+earns ₹323,824.00 more than a plain checkout — while moving
+₹510,910.26 across 167 transactions the human never
 authorised.**
 
-**REMIT keeps 77.3% of that revenue upside and removes 100% of the
+**REMIT keeps 73.2% of that revenue upside and removes 100% of the
 unauthorised movement.** Its average order value is also *higher*
-(₹2,686.99 vs ₹2,594.42), because it only attaches what fits inside the line.
+(₹2,768.27 vs ₹2,666.05), because it only attaches what fits inside the line.
 
 ---
 

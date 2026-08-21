@@ -12,23 +12,23 @@
       "duplicate_payments": 0,
       "webhook_state_violations": 0,
       "abstention_accuracy": 1.0,
-      "no_decision_reached": 22
+      "no_decision_reached": 78
     },
     "guardrails": {
-      "needs_human_precision": 0.5854,
+      "needs_human_precision": 0.5877,
       "needs_human_recall": 1.0,
       "false_negatives_dangerous": 0,
-      "false_positives_friction": 165,
-      "blocked_value": "\u20b91,003,098.92",
-      "blocked_value_paise": 100309892
+      "false_positives_friction": 141,
+      "blocked_value": "\u20b9892,492.26",
+      "blocked_value_paise": 89249226
     },
     "quality": {
-      "category_accuracy": 0.8736,
+      "category_accuracy": 1.0,
       "ceiling_exact_match": 1.0,
       "quantity_accuracy": 1.0,
-      "authority_accuracy": 0.9654,
+      "authority_accuracy": 0.9612,
       "amount_error_distribution": {
-        "exact": 448
+        "exact": 393
       },
       "amount_error_median": 0.0
     },
@@ -41,12 +41,12 @@
       "aov": "\u20b92,766.04",
       "aov_paise": 276604,
       "auto_rate": 0.2222,
-      "human_confirmation_rate": 0.5815,
-      "denial_rate": 0.1556
+      "human_confirmation_rate": 0.4833,
+      "denial_rate": 0.15
     },
     "efficiency": {
-      "latency_p50_ms": 2.45,
-      "latency_p95_ms": 3.88
+      "latency_p50_ms": 2.36,
+      "latency_p95_ms": 3.36
     }
   },
   "train": {
@@ -58,23 +58,23 @@
       "duplicate_payments": 0,
       "webhook_state_violations": 0,
       "abstention_accuracy": 1.0,
-      "no_decision_reached": 10
+      "no_decision_reached": 45
     },
     "guardrails": {
-      "needs_human_precision": 0.6058,
+      "needs_human_precision": 0.6068,
       "needs_human_recall": 1.0,
       "false_negatives_dangerous": 0,
-      "false_positives_friction": 95,
-      "blocked_value": "\u20b9583,426.97",
-      "blocked_value_paise": 58342697
+      "false_positives_friction": 81,
+      "blocked_value": "\u20b9514,540.19",
+      "blocked_value_paise": 51454019
     },
     "quality": {
-      "category_accuracy": 0.8669,
+      "category_accuracy": 1.0,
       "ceiling_exact_match": 1.0,
       "quantity_accuracy": 1.0,
-      "authority_accuracy": 0.9492,
+      "authority_accuracy": 0.9429,
       "amount_error_distribution": {
-        "exact": 271
+        "exact": 237
       },
       "amount_error_median": 0.0
     },
@@ -87,12 +87,12 @@
       "aov": "\u20b92,778.65",
       "aov_paise": 277865,
       "auto_rate": 0.2253,
-      "human_confirmation_rate": 0.571,
-      "denial_rate": 0.1728
+      "human_confirmation_rate": 0.4691,
+      "denial_rate": 0.1667
     },
     "efficiency": {
-      "latency_p50_ms": 2.48,
-      "latency_p95_ms": 3.88
+      "latency_p50_ms": 2.32,
+      "latency_p95_ms": 3.31
     }
   },
   "dev": {
@@ -104,23 +104,23 @@
       "duplicate_payments": 0,
       "webhook_state_violations": 0,
       "abstention_accuracy": 1.0,
-      "no_decision_reached": 5
+      "no_decision_reached": 17
     },
     "guardrails": {
-      "needs_human_precision": 0.5529,
+      "needs_human_precision": 0.589,
       "needs_human_recall": 1.0,
       "false_negatives_dangerous": 0,
-      "false_positives_friction": 38,
-      "blocked_value": "\u20b9233,512.93",
-      "blocked_value_paise": 23351293
+      "false_positives_friction": 30,
+      "blocked_value": "\u20b9204,256.93",
+      "blocked_value_paise": 20425693
     },
     "quality": {
-      "category_accuracy": 0.8681,
+      "category_accuracy": 1.0,
       "ceiling_exact_match": 1.0,
       "quantity_accuracy": 1.0,
-      "authority_accuracy": 0.9806,
+      "authority_accuracy": 0.978,
       "amount_error_distribution": {
-        "exact": 90
+        "exact": 78
       },
       "amount_error_median": 0.0
     },
@@ -133,12 +133,12 @@
       "aov": "\u20b92,608.27",
       "aov_paise": 260827,
       "auto_rate": 0.1667,
-      "human_confirmation_rate": 0.6204,
+      "human_confirmation_rate": 0.5093,
       "denial_rate": 0.1667
     },
     "efficiency": {
-      "latency_p50_ms": 2.59,
-      "latency_p95_ms": 3.78
+      "latency_p50_ms": 2.39,
+      "latency_p95_ms": 3.12
     }
   },
   "test": {
@@ -150,23 +150,23 @@
       "duplicate_payments": 0,
       "webhook_state_violations": 0,
       "abstention_accuracy": 1.0,
-      "no_decision_reached": 7
+      "no_decision_reached": 16
     },
     "guardrails": {
-      "needs_human_precision": 0.5556,
+      "needs_human_precision": 0.5238,
       "needs_human_recall": 1.0,
       "false_negatives_dangerous": 0,
-      "false_positives_friction": 32,
-      "blocked_value": "\u20b9186,159.02",
-      "blocked_value_paise": 18615902
+      "false_positives_friction": 30,
+      "blocked_value": "\u20b9173,695.14",
+      "blocked_value_paise": 17369514
     },
     "quality": {
-      "category_accuracy": 0.8989,
+      "category_accuracy": 1.0,
       "ceiling_exact_match": 1.0,
       "quantity_accuracy": 1.0,
       "authority_accuracy": 1.0,
       "amount_error_distribution": {
-        "exact": 87
+        "exact": 78
       },
       "amount_error_median": 0.0
     },
@@ -179,12 +179,12 @@
       "aov": "\u20b92,832.65",
       "aov_paise": 283265,
       "auto_rate": 0.2685,
-      "human_confirmation_rate": 0.5741,
-      "denial_rate": 0.0926
+      "human_confirmation_rate": 0.5,
+      "denial_rate": 0.0833
     },
     "efficiency": {
-      "latency_p50_ms": 2.32,
-      "latency_p95_ms": 3.87
+      "latency_p50_ms": 2.4,
+      "latency_p95_ms": 3.57
     }
   },
   "by_bucket": {
@@ -193,9 +193,9 @@
       "unauthorized_paise": 0,
       "false_negatives": 0,
       "auto": 5,
-      "step_up": 26,
+      "step_up": 24,
       "deny": 0,
-      "abstain": 0
+      "abstain": 2
     },
     "browse": {
       "n": 31,
@@ -203,8 +203,8 @@
       "false_negatives": 0,
       "auto": 0,
       "step_up": 0,
-      "deny": 31,
-      "abstain": 0
+      "deny": 29,
+      "abstain": 2
     },
     "code_mixed": {
       "n": 46,
@@ -238,9 +238,9 @@
       "unauthorized_paise": 0,
       "false_negatives": 0,
       "auto": 7,
-      "step_up": 34,
+      "step_up": 31,
       "deny": 0,
-      "abstain": 0
+      "abstain": 3
     },
     "injection": {
       "n": 31,
@@ -256,36 +256,36 @@
       "unauthorized_paise": 0,
       "false_negatives": 0,
       "auto": 68,
-      "step_up": 88,
+      "step_up": 70,
       "deny": 0,
-      "abstain": 0
+      "abstain": 18
     },
     "over_cap": {
       "n": 15,
       "unauthorized_paise": 0,
       "false_negatives": 0,
       "auto": 0,
-      "step_up": 15,
+      "step_up": 0,
       "deny": 0,
-      "abstain": 0
+      "abstain": 15
     },
     "payment_failure": {
       "n": 20,
       "unauthorized_paise": 0,
       "false_negatives": 0,
       "auto": 8,
-      "step_up": 12,
+      "step_up": 9,
       "deny": 0,
-      "abstain": 0
+      "abstain": 3
     },
     "price_drift": {
       "n": 36,
       "unauthorized_paise": 0,
       "false_negatives": 0,
       "auto": 0,
-      "step_up": 36,
+      "step_up": 31,
       "deny": 0,
-      "abstain": 0
+      "abstain": 5
     },
     "revoked": {
       "n": 15,
@@ -293,17 +293,17 @@
       "false_negatives": 0,
       "auto": 0,
       "step_up": 0,
-      "deny": 15,
-      "abstain": 0
+      "deny": 14,
+      "abstain": 1
     },
     "shipping_drift": {
       "n": 52,
       "unauthorized_paise": 0,
       "false_negatives": 0,
       "auto": 0,
-      "step_up": 52,
+      "step_up": 45,
       "deny": 0,
-      "abstain": 0
+      "abstain": 7
     },
     "ungroundable": {
       "n": 20,

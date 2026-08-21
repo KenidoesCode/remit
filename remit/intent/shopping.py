@@ -38,7 +38,34 @@ CATEGORY_WORDS = {
                            "packing cube", "suitcase"],
     "home office": ["desk", "chair", "monitor stand", "lamp", "office", "footrest"],
     "personal care": ["shampoo", "sunscreen", "trimmer", "moisturis", "moisturiz",
-                      "deodorant", "face wash"],
+                      "deodorant", "face wash", "condom", "contracept",
+                      "sanitary pad", "tampon", "razor", "shaving", "toothpaste",
+                      "toothbrush", "soap", "handwash", "hand wash"],
+    # Everyday shelves. Matching is substring, and later entries win, so the
+    # words here are deliberately specific: "oil" is inside "toilet", "rice" is
+    # inside "price", "pen" is inside "expensive". Each of those was a real
+    # mis-categorisation before the leading spaces and qualifiers went in.
+    "groceries": ["chips", "namkeen", "biscuit", "cookie", "noodle", "maggi",
+                  "chocolate", "basmati", " rice", "atta", "flour", "toor dal",
+                  "cooking oil", "groundnut oil", "sugar", " salt", "pasta",
+                  "corn flakes", "cereal", "peanut", "nachos", "snack"],
+    "beverages": ["juice", "cola", "soft drink", "soda", "energy drink",
+                  "coffee", "green tea", "tea bags", "assam tea", "chai",
+                  "mineral water", "drinking water", "coconut water"],
+    "household": ["detergent", "dishwash", "dish wash", "floor cleaner",
+                  "toilet cleaner", "garbage bag", "trash bag", "tissue",
+                  "toilet paper", "mop", "scrub pad"],
+    "baby care": ["diaper", "nappy", "nappies", "baby wipe", "baby lotion",
+                  "baby shampoo", "baby "],
+    "stationery": ["notebook", "journal", "gel pen", "ballpoint", "pens",
+                   "highlighter", "marker", "sticky note", "document file"],
+    "pet supplies": ["dog food", "puppy food", "cat food", "cat litter",
+                     "pet shampoo", "pet food", " pet "],
+    "otc medicine": ["paracetamol", "antacid", "cough syrup", "thermometer",
+                     "first aid", "bandage", " ors ", "medicine", "tablet strip",
+                     "pharmacy", "chemist"],
+    "alcohol": ["beer", "whisky", "whiskey", "single malt", "wine", "vodka",
+                "dark rum", "liquor", "booze", "daru", "scotch"],
 }
 OBJECTIVES = {
     "best_value": ["best value", "value for money", "good value", "worth"],
@@ -144,6 +171,21 @@ class RuleCompiler:
             "notes": notes, "raw_confidence": round(conf, 4),
             "compiler": "rule",
         }
+        # Abstain when there is nothing to shop FOR.
+        #
+        # The old condition also required a missing amount, which meant
+        # "buy a helicopter under 500000" -- no category, no product term, a
+        # perfectly clear budget -- fell through into a catalog-wide search and
+        # came back with a yoga mat. An unrecognised noun plus a large number is
+        # the single most dangerous input this system can receive, and it was
+        # the one input that skipped the boundary entirely. FAILURES.md #13.
+        #
+        # A stated amount is not a reason to buy something. It is only a limit
+        # on what may be spent once there is a thing to buy.
+        if category is None and not terms:
+            notes.append("nothing in the utterance names something this catalog sells")
+            return None, telemetry | {"abstained": True,
+                                      "reason": "no groundable product"}
         if category is None and ceiling is None:
             return None, telemetry | {"abstained": True}
 

@@ -176,6 +176,20 @@ def authorize(*, env: IntentEnvelope, cart: Cart, totals: Totals,
     check("STOCK-001", not oos, f"out of stock: {oos}" if oos else "all in stock",
           hard=True)
 
+    # Regulated goods. Age-restricted items and pharmacy lines are never an
+    # autonomous purchase, at any price, under any ceiling. This is not a risk
+    # judgement that trades off against the cost of asking -- it is a category
+    # of thing an agent may not decide alone, so it is a soft failure that
+    # forces the human into the loop rather than a number that can be tuned
+    # until it stops firing.
+    restricted = [(l.product_id, l.restricted) for l in cart.lines
+                  if getattr(l, "restricted", None)]
+    check("RESTRICT-001", (not integrity) or not restricted,
+          ("requires a person: " + ", ".join(f"{pid} ({kind})"
+                                             for pid, kind in restricted))
+          if restricted else "nothing age-restricted or pharmacy in this cart",
+          hard=False)
+
     if not L.get("allow_agent_added_over_ceiling", False) and ceiling is not None:
         agent_added = [l for l in cart.lines
                        if l.origin in ("upsell", "cross_sell") and l.accepted_by == "agent"]
@@ -212,6 +226,8 @@ def authorize(*, env: IntentEnvelope, cart: Cart, totals: Totals,
                     if failed[0].clause_id.startswith("DRIFT")
                     else "we are not confident enough to do this unasked"
                     if failed[0].clause_id.startswith(("CONF", "RISK"))
+                    else "this is not something an agent buys on its own"
+                    if failed[0].clause_id == "RESTRICT-001"
                     else "the agent added something that goes past your limit"
                     if failed[0].clause_id == "AGENT-001"
                     else "this needs your confirmation")

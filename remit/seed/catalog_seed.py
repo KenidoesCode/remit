@@ -19,6 +19,10 @@ MERCHANTS = [
     ("mch_wayfarer",    "Wayfarer Goods", 4.2, 350000, 11900, "medium"),
     ("mch_deskhaus",    "Deskhaus", 4.6, 500000, 14900, "low"),
     ("mch_lumenlab",    "Lumen Lab", 4.1, 150000, 4900, "low"),
+    ("mch_dailymart",   "Daily Mart", 4.0, 49900, 3900, "low"),
+    ("mch_freshcart",   "Freshcart Grocers", 4.2, 39900, 2900, "low"),
+    ("mch_medipoint",   "Medipoint Pharmacy", 4.5, 29900, 3900, "medium"),
+    ("mch_cellar",      "The Cellar", 4.3, 250000, 14900, "high"),
 ]
 
 # (category, merchant, [(name, price_rupees, mrp, margin_bps, premium, attrs)])
@@ -102,8 +106,119 @@ CATALOG: list[tuple[str, str, list[tuple]]] = [
         ("Lumen Lab Trimmer T2",          1899, 2599, 3800, False, ["trimmer","cordless"]),
         ("Lumen Lab Anti-Chafe Stick",     549,  799, 5400, False, ["anti-chafe","running"]),
     ]),
+    # ---------------------------------------------------------------- everyday
+    # A catalog with six categories abstains on almost anything a real person
+    # types. Breadth here is not decoration: an agent that answers "I do not
+    # stock that" to "buy chips" has not been tested against its actual input
+    # distribution. Prices are Indian retail, roughly, in rupees.
+    ("groceries", "mch_freshcart", [
+        ("Freshcart Salted Potato Chips 150g",  60,   80, 3400, False, ["chips","snack","salted"]),
+        ("Freshcart Masala Chips 150g",         65,   85, 3400, False, ["chips","snack","masala"]),
+        ("Freshcart Cream & Onion Chips 150g",  65,   85, 3400, False, ["chips","snack"]),
+        ("Freshcart Nachos 200g",              120,  150, 3600, False, ["chips","nachos","snack"]),
+        ("Freshcart Salted Peanuts 500g",      140,  180, 3200, False, ["namkeen","snack"]),
+        ("Freshcart Mixture Namkeen 400g",     110,  140, 3300, False, ["namkeen","snack"]),
+        ("Freshcart Digestive Biscuits 250g",   85,  110, 3000, False, ["biscuit","snack"]),
+        ("Freshcart Choco Cream Biscuits",      45,   60, 3100, False, ["biscuit","snack"]),
+        ("Freshcart Instant Noodles (8 pack)",  120, 160, 2800, False, ["noodles","instant"]),
+        ("Freshcart Dark Chocolate 90g",       180,  220, 3800, True,  ["premium","chocolate"]),
+        ("Freshcart Milk Chocolate 90g",       110,  140, 3400, False, ["chocolate"]),
+        ("Freshcart Basmati Rice 5kg",         690,  850, 2200, False, ["rice","staple"]),
+        ("Freshcart Atta Whole Wheat 5kg",     280,  340, 2000, False, ["atta","flour","staple"]),
+        ("Freshcart Toor Dal 1kg",             180,  220, 2100, False, ["dal","staple"]),
+        ("Freshcart Sunflower Cooking Oil 1L", 165,  199, 1900, False, ["cooking oil","staple"]),
+        ("Freshcart Cold Pressed Groundnut Oil 1L", 420, 520, 2900, True, ["premium","cooking oil"]),
+        ("Freshcart Sugar 1kg",                 55,   70, 1600, False, ["sugar","staple"]),
+        ("Freshcart Iodised Salt 1kg",          28,   35, 1500, False, ["salt","staple"]),
+        ("Freshcart Penne Pasta 500g",         120,  150, 3000, False, ["pasta"]),
+        ("Freshcart Corn Flakes 475g",         290,  360, 3200, False, ["cereal","breakfast"]),
+    ]),
+    ("beverages", "mch_freshcart", [
+        ("Freshcart Orange Juice 1L",          130,  160, 3000, False, ["juice","orange"]),
+        ("Freshcart Mixed Fruit Juice 1L",     120,  150, 3000, False, ["juice"]),
+        ("Freshcart Apple Juice 1L",           140,  170, 3100, False, ["juice","apple"]),
+        ("Freshcart Cold Pressed Juice 500ml", 220,  260, 3900, True,  ["premium","juice"]),
+        ("Freshcart Tender Coconut Water 200ml",45,   60, 3400, False, ["coconut water"]),
+        ("Daily Mart Cola 750ml",               45,   55, 2700, False, ["cola","soft drink"]),
+        ("Daily Mart Lemon Soda 750ml",         45,   55, 2700, False, ["soda","soft drink"]),
+        ("Daily Mart Mineral Water 1L (6 pack)",120, 150, 2400, False, ["drinking water"]),
+        ("Daily Mart Energy Drink 250ml",       125, 150, 3600, False, ["energy drink"]),
+        ("Freshcart Filter Coffee 500g",       420,  520, 3500, True,  ["premium","coffee"]),
+        ("Freshcart Instant Coffee 100g",      280,  340, 3300, False, ["coffee"]),
+        ("Freshcart Assam Tea 500g",           260,  320, 3100, False, ["tea"]),
+        ("Freshcart Green Tea (50 bags)",      240,  300, 3400, False, ["tea","green tea"]),
+    ]),
+    ("household", "mch_dailymart", [
+        ("Daily Mart Detergent Powder 2kg",    290,  360, 2600, False, ["detergent","laundry"]),
+        ("Daily Mart Liquid Detergent 1L",     240,  300, 2900, False, ["detergent","laundry"]),
+        ("Daily Mart Dishwash Gel 750ml",      145,  180, 2800, False, ["dishwash"]),
+        ("Daily Mart Floor Cleaner 1L",        185,  230, 2700, False, ["floor cleaner"]),
+        ("Daily Mart Toilet Cleaner 500ml",    110,  140, 3000, False, ["toilet cleaner"]),
+        ("Daily Mart Garbage Bags (90 pcs)",   190,  240, 3300, False, ["garbage bag"]),
+        ("Daily Mart Facial Tissue (200 pulls)",95, 120, 3100, False, ["tissue"]),
+        ("Daily Mart Toilet Paper (8 rolls)",  260,  320, 3000, False, ["toilet paper"]),
+        ("Daily Mart Microfibre Mop",          540,  680, 3700, False, ["mop","cleaning"]),
+        ("Daily Mart Scrub Pads (6 pcs)",       70,   90, 3400, False, ["scrub","cleaning"]),
+    ]),
+    ("personal care", "mch_dailymart", [
+        ("Daily Mart Condoms (10 pack)",       210,  260, 4200, False, ["condom","contraceptive"]),
+        ("Daily Mart Ultra Thin Condoms (12)", 320,  390, 4400, True,  ["premium","condom","contraceptive"]),
+        ("Daily Mart Sanitary Pads XL (30)",   285,  350, 3600, False, ["sanitary pad","feminine hygiene"]),
+        ("Daily Mart Tampons (16 pcs)",        330,  400, 3800, False, ["tampon","feminine hygiene"]),
+        ("Daily Mart Twin Blade Razor (5)",    180,  220, 3900, False, ["razor","shaving"]),
+        ("Daily Mart Shaving Foam 200ml",      190,  240, 3700, False, ["shaving"]),
+        ("Daily Mart Toothpaste 200g",         115,  145, 3200, False, ["toothpaste","oral care"]),
+        ("Daily Mart Toothbrush (4 pack)",     140,  180, 3800, False, ["toothbrush","oral care"]),
+        ("Daily Mart Bath Soap (4 pack)",      160,  200, 3300, False, ["soap"]),
+        ("Daily Mart Handwash Refill 750ml",   170,  210, 3400, False, ["handwash"]),
+    ]),
+    ("baby care", "mch_dailymart", [
+        ("Daily Mart Baby Diapers M (56)",     780,  950, 2900, False, ["diaper","baby"]),
+        ("Daily Mart Baby Diapers L (48)",     820, 1000, 2900, False, ["diaper","baby"]),
+        ("Daily Mart Baby Wipes (72 x 3)",     380,  460, 3200, False, ["baby wipes","baby"]),
+        ("Daily Mart Baby Lotion 400ml",       320,  390, 3500, False, ["baby lotion","baby"]),
+        ("Daily Mart Baby Shampoo 400ml",      330,  400, 3500, False, ["baby shampoo","baby"]),
+    ]),
+    ("stationery", "mch_deskhaus", [
+        ("Deskhaus Ruled Notebook A5 (200 pg)", 120, 150, 4000, False, ["notebook"]),
+        ("Deskhaus Dotted Journal A5",          390, 480, 4600, True,  ["premium","notebook","journal"]),
+        ("Deskhaus Gel Pens Black (10)",        180, 230, 4400, False, ["pen"]),
+        ("Deskhaus Ballpoint Pens (20)",        160, 200, 4200, False, ["pen"]),
+        ("Deskhaus Highlighters (6)",           190, 240, 4300, False, ["highlighter","marker"]),
+        ("Deskhaus Sticky Notes (500)",         210, 260, 4500, False, ["sticky note"]),
+        ("Deskhaus Document Files (10)",        240, 300, 4100, False, ["file","folder"]),
+        ("Deskhaus Whiteboard Markers (8)",     260, 320, 4300, False, ["marker","whiteboard"]),
+    ]),
+    ("pet supplies", "mch_dailymart", [
+        ("Daily Mart Adult Dog Food 3kg",      980, 1200, 3000, False, ["dog food","pet"]),
+        ("Daily Mart Puppy Food 1.2kg",        560,  700, 3100, False, ["dog food","pet"]),
+        ("Daily Mart Cat Food Tuna 1.2kg",     640,  800, 3200, False, ["cat food","pet"]),
+        ("Daily Mart Cat Litter 5kg",          520,  650, 3300, False, ["cat litter","pet"]),
+        ("Daily Mart Pet Shampoo 400ml",       290,  360, 3600, False, ["pet shampoo","pet"]),
+    ]),
+    # ---------------------------------------------------------- regulated
+    # Stocked deliberately. The interesting behaviour is not that REMIT can buy
+    # these; it is that it will not, on its own, at any price. RESTRICT-001.
+    ("otc medicine", "mch_medipoint", [
+        ("Medipoint Paracetamol 500mg (15)",    32,   40, 2600, False, ["medicine","fever","restricted:pharmacy"]),
+        ("Medipoint Antacid Tablets (20)",      68,   85, 2800, False, ["medicine","acidity","restricted:pharmacy"]),
+        ("Medipoint ORS Sachets (10)",          95,  120, 2700, False, ["medicine","hydration","restricted:pharmacy"]),
+        ("Medipoint Cough Syrup 100ml",        128,  160, 3000, False, ["medicine","cough","restricted:pharmacy"]),
+        ("Medipoint Digital Thermometer",      340,  420, 3600, False, ["thermometer","first aid"]),
+        ("Medipoint First Aid Kit",            640,  800, 3800, False, ["first aid","bandage"]),
+        ("Medipoint Adhesive Bandages (40)",    95,  120, 3400, False, ["bandage","first aid"]),
+    ]),
+    ("alcohol", "mch_cellar", [
+        ("The Cellar Lager Beer 650ml",        160,  190, 2400, False, ["beer","liquor","restricted:age"]),
+        ("The Cellar Wheat Beer 500ml",        220,  260, 2600, True,  ["premium","beer","liquor","restricted:age"]),
+        ("The Cellar Blended Whisky 750ml",   1450, 1750, 2900, False, ["whisky","liquor","restricted:age"]),
+        ("The Cellar Single Malt 700ml",      4900, 5900, 3400, True,  ["premium","whisky","liquor","restricted:age"]),
+        ("The Cellar Red Wine 750ml",          950, 1150, 3100, False, ["wine","liquor","restricted:age"]),
+        ("The Cellar White Wine 750ml",        890, 1090, 3100, False, ["wine","liquor","restricted:age"]),
+        ("The Cellar Vodka 750ml",            1180, 1420, 3000, False, ["vodka","liquor","restricted:age"]),
+        ("The Cellar Dark Rum 750ml",          980, 1180, 2900, False, ["rum","liquor","restricted:age"]),
+    ]),
 ]
-
 # (from, to, kind, reason, strength)
 RELATIONS = [
     ("Strideworks Velocity 4", "Kinetic Grip Socks (3 pack)", "cross_sell",
@@ -168,14 +283,19 @@ def seed(db: sqlite3.Connection, now: datetime, rng_seed: int = 20260821) -> dic
             reviews = rng.randint(40, 3200)
             inv = rng.randint(3, 90)
             ship_days = rng.choice([1, 2, 2, 3, 3, 4, 5])
+            # "restricted:age" / "restricted:pharmacy" ride in the attribute
+            # list so the catalog literal keeps one shape. The column is what
+            # the policy engine reads.
+            restricted = next((a.split(":", 1)[1] for a in attrs
+                               if a.startswith("restricted:")), None)
             db.execute(
                 "INSERT OR REPLACE INTO products (product_id, merchant_id, name,"
                 " category, subcategory, price_paise, mrp_paise, margin_bps, rating,"
-                " reviews, inventory, attributes, premium, ship_days, catalog_version,"
-                " active) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1)",
+                " reviews, inventory, attributes, premium, ship_days, restricted,"
+                " catalog_version, active) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1)",
                 (pid, merchant_id, name, category, None, price * 100, mrp * 100,
                  margin, rating, reviews, inv, json.dumps(attrs), int(premium),
-                 ship_days, v))
+                 ship_days, restricted, v))
             n += 1
 
     # Colourways. Real commerce catalogs are mostly variants, and a search that
@@ -194,13 +314,13 @@ def seed(db: sqlite3.Connection, now: datetime, rng_seed: int = 20260821) -> dic
             db.execute(
                 "INSERT OR REPLACE INTO products (product_id, merchant_id, name,"
                 " category, subcategory, price_paise, mrp_paise, margin_bps, rating,"
-                " reviews, inventory, attributes, premium, ship_days, catalog_version,"
-                " active) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1)",
+                " reviews, inventory, attributes, premium, ship_days, restricted,"
+                " catalog_version, active) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1)",
                 (pid, row["merchant_id"], f"{base} - {c}", row["category"], c,
                  row["price_paise"], row["mrp_paise"], row["margin_bps"],
                  round(max(3.6, row["rating"] - rng.uniform(0, 0.4)), 1),
                  rng.randint(20, 900), rng.randint(0, 40), row["attributes"],
-                 row["premium"], rng.choice([2, 3, 4]), v))
+                 row["premium"], rng.choice([2, 3, 4]), row["restricted"], v))
             n += 1
 
     for src, dst, kind, reason, strength in RELATIONS:
@@ -250,6 +370,29 @@ def seed(db: sqlite3.Connection, now: datetime, rng_seed: int = 20260821) -> dic
         ],
         "personal care": [
             ("Lumen Lab Body Wash", "cross_sell", "commonly bought together", 0.37),
+        ],
+        "groceries": [
+            ("Daily Mart Cola 750ml", "cross_sell", "the usual pairing with a snack run", 0.52),
+            ("Freshcart Salted Peanuts 500g", "cross_sell", "goes in the same basket", 0.41),
+        ],
+        "beverages": [
+            ("Freshcart Salted Potato Chips 150g", "cross_sell", "bought together nine times in ten", 0.58),
+            ("Freshcart Digestive Biscuits 250g", "cross_sell", "for the same shelf", 0.36),
+        ],
+        "household": [
+            ("Daily Mart Scrub Pads (6 pcs)", "cross_sell", "replaced at the same rate", 0.47),
+        ],
+        "baby care": [
+            ("Daily Mart Baby Wipes (72 x 3)", "cross_sell", "runs out alongside the nappies", 0.69),
+        ],
+        "stationery": [
+            ("Deskhaus Gel Pens Black (10)", "cross_sell", "pairs with a new notebook", 0.55),
+        ],
+        "pet supplies": [
+            ("Daily Mart Pet Shampoo 400ml", "cross_sell", "same aisle, same trip", 0.38),
+        ],
+        "otc medicine": [
+            ("Medipoint ORS Sachets (10)", "cross_sell", "commonly needed alongside", 0.42),
         ],
     }
     name_to_id = {r["name"]: r["product_id"] for r in db.execute(

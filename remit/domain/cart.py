@@ -28,6 +28,7 @@ class CartLine(BaseModel):
     origin: str            # 'primary' | 'upsell' | 'cross_sell'
     accepted_by: str       # 'intent' | 'human' | 'agent'
     reason: str = ""
+    restricted: str | None = None   # carried from the product; see RESTRICT-001
 
     @property
     def line_paise(self) -> Paise:
@@ -86,7 +87,8 @@ def line_from(p: Product, qty: int, origin: str, accepted_by: str,
                     category=p.category, unit_price_paise=p.price_paise,
                     shown_price_paise=p.price_paise, qty=qty,
                     margin_bps=p.margin_bps, origin=origin,
-                    accepted_by=accepted_by, reason=reason)
+                    accepted_by=accepted_by, reason=reason,
+                    restricted=p.restricted)
 
 
 def price_cart(cart: Cart, catalog: Catalog) -> Totals:

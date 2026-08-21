@@ -111,11 +111,18 @@ function wire(lines) {
 function verdictPanel(d) {
   const a = d.authorization, dr = d.drift, rk = d.risk;
   if (!a) {
+    const shelves = (d.stocked || []).map(s2 =>
+      `<button type="button" class="shelf" data-cat="${esc(s2.category)}">
+        ${esc(s2.category)}<span>${s2.n} items · ${R(s2.from_paise)}–${R(s2.to_paise)}${
+          s2.restricted ? " · needs a person" : ""}</span></button>`).join("");
     return `<div class="panel"><div class="verdict-row">
-      <span class="badge DENY">ABSTAINED</span></div>
-      <p class="said">${esc(d.note)}</p>
-      <p class="meta-line">abstention is a return value, not an error. it could not
-      ground this in the catalog and refused to guess.</p></div>`;
+      <span class="badge DENY">ABSTAINED</span>
+      <span class="mono muted">nothing in the catalog answers that</span></div>
+      <p class="said">${esc(d.note || "I could not ground that in the catalog.")}</p>
+      <p class="meta-line">Abstention is a return value, not an error \u2014 guessing is
+      how an agent buys the wrong thing with your money. Here is what this shop
+      actually stocks; click a shelf to try it.</p>
+      ${shelves ? `<div class="shelves">${shelves}</div>` : ""}</div>`;
   }
   const perfect = dr && dr.score === 0 && d.totals && STATE.ceiling &&
     d.totals.total_paise / STATE.ceiling >= .95 && a.verdict === "AUTO";
@@ -639,11 +646,15 @@ async function renderWho() {
 /* ══════════════════════════════ the ask ════════════════════════════════ */
 const EXAMPLES = [
   "buy premium running shoes under ₹5000 and get the best value one",
-  "buy a yoga mat under 2500, best value",
+  "buy chips under 200",
+  "buy orange juice under 250",
+  "buy whisky under 2000",
+  "buy paracetamol under 100",
+  "buy diapers under 1000",
+  "buy a notebook under 300",
+  "buy dog food under 1500",
   "buy earbuds under 3000, best rated",
-  "buy 2x grip socks under 800",
   "das hazaar ka backpack buy karo",
-  "show me running shoes under 5000",
 ];
 
 async function ask(utterance) {
@@ -825,6 +836,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     `<button type="button" data-u="${esc(e)}">${esc(e.length > 44 ? e.slice(0, 42) + "…" : e)}</button>`).join("");
   $("#chips").addEventListener("click", e => {
     const u = e.target.dataset.u; if (u) { $("#utterance").value = u; ask(u); }
+  });
+  document.addEventListener("click", e => {
+    const b = e.target.closest(".shelf");
+    if (!b) return;
+    const u = `buy ${b.dataset.cat} under 2000`;
+    $("#utterance").value = u;
+    ask(u);
   });
   $("#askForm").addEventListener("submit", e => {
     e.preventDefault();
