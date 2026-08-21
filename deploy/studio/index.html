@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>REMIT — an agent can spend. this is where it stops.</title>
+<meta name="description" content="An AI buyer and merchant revenue engine that optimises revenue while proving the final transaction still matches what the human authorised. Built by techuilaguy.">
+<meta name="theme-color" content="#0B0908">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<style>
+:root{--bg:#0B0908;--ink:#fff;--i2:rgba(255,255,255,.66);--i3:rgba(255,255,255,.42);--i4:rgba(255,255,255,.24);--ln:rgba(255,255,255,.11);--ln2:rgba(255,255,255,.06);--sig:#E5352B;--m:"JetBrains Mono",ui-monospace,monospace;--s:"Instrument Sans",-apple-system,"Segoe UI",Roboto,sans-serif;--pad:clamp(20px,5vw,64px)}
+*{box-sizing:border-box;margin:0;padding:0}html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--ink);font:16px/1.6 var(--s);overflow-x:hidden;-webkit-font-smoothing:antialiased}
+::selection{background:var(--sig);color:#fff}a{color:inherit;text-decoration:none}em{font-style:normal;color:var(--sig)}
+#gl{position:fixed;inset:0;width:100vw;height:100vh;z-index:1;pointer-events:none}
+#glow{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+#glow i{position:absolute;display:block;border-radius:50%;filter:blur(70px)}
+#glow .a{right:-18vw;top:-22vh;width:78vw;height:78vw;background:radial-gradient(circle,rgba(229,53,43,.62)0%,rgba(229,53,43,.30)34%,rgba(160,22,16,.14)58%,transparent 74%)}
+#glow .b{right:2vw;bottom:-40vh;width:56vw;height:56vw;background:radial-gradient(circle,rgba(255,86,40,.26)0%,rgba(190,30,20,.10)42%,transparent 68%)}
+#glow::after{content:"";position:absolute;inset:0;background:linear-gradient(105deg,rgba(11,9,8,.94)0%,rgba(11,9,8,.72)34%,rgba(11,9,8,.18)62%,rgba(11,9,8,0)82%),linear-gradient(to top,rgba(11,9,8,.86)0%,rgba(11,9,8,0)42%)}
+#page{position:relative;z-index:4}
+nav{position:fixed;top:0;left:0;right:0;z-index:40;display:flex;align-items:center;justify-content:space-between;padding:18px var(--pad);transition:.35s;border-bottom:1px solid transparent}
+nav[data-s="1"]{background:rgba(11,9,8,.72);backdrop-filter:blur(14px);border-bottom-color:var(--ln2)}
+.brand{display:flex;align-items:center;gap:10px}.brand svg{width:26px;height:26px;transition:transform .6s cubic-bezier(.22,1,.36,1)}.brand:hover svg{transform:rotate(180deg)}
+.wm{font-family:var(--m);font-weight:700;font-size:15px;letter-spacing:.22em}
+nav .lk{display:none;gap:28px}@media(min-width:1000px){nav .lk{display:flex}}
+nav .lk a{font-size:13.5px;color:var(--i3);position:relative;padding:4px 0}
+nav .lk a::after{content:"";position:absolute;left:0;right:100%;bottom:0;height:1px;background:var(--sig);transition:right .3s cubic-bezier(.22,1,.36,1)}
+nav .lk a:hover{color:var(--ink)}nav .lk a:hover::after{right:0}
+.sq{width:7px;height:7px;background:var(--sig);border-radius:1px;animation:bl 2.6s infinite}@keyframes bl{0%,100%{opacity:1}50%{opacity:.25}}
+header{min-height:100svh;display:flex;flex-direction:column;justify-content:space-between;padding:120px var(--pad) 40px}
+.top{max-width:min(980px,92vw);padding-top:clamp(12px,6vh,72px)}
+.eb{display:inline-flex;align-items:center;gap:9px;font-family:var(--m);font-size:11px;letter-spacing:.1em;color:var(--i3);text-transform:uppercase;border:1px solid var(--ln);border-radius:100px;padding:6px 13px 6px 10px;margin-bottom:clamp(22px,4vh,38px)}
+.pip{width:6px;height:6px;border-radius:50%;background:var(--sig);animation:pp 2.4s ease-out infinite}
+@keyframes pp{0%{box-shadow:0 0 0 0 rgba(229,53,43,.55)}70%{box-shadow:0 0 0 9px rgba(229,53,43,0)}100%{box-shadow:0 0 0 0 rgba(229,53,43,0)}}
+h1{font-weight:400;letter-spacing:-.035em;line-height:1.02;font-size:clamp(2.6rem,7.2vw,6.4rem);text-wrap:balance}
+h1 .l{display:block;overflow:hidden;padding-bottom:.06em}h1 .i{display:block}
+.sub{margin-top:clamp(18px,2.6vh,26px);max-width:56ch;color:var(--i2);font-size:clamp(14.5px,1.15vw,17px)}
+.cta-row{display:flex;align-items:center;gap:22px;margin-top:clamp(26px,4vh,40px);flex-wrap:wrap}
+.cta{display:inline-flex;align-items:center;gap:10px;cursor:pointer;background:var(--ink);color:#0B0908;border:0;border-radius:4px;font:600 14.5px var(--s);padding:12px 16px 12px 20px;min-height:46px;box-shadow:0 1px 3px rgba(0,0,0,.4),0 10px 30px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.9);transition:.18s}
+.cta:hover{background:#F2EFEC;box-shadow:0 2px 8px rgba(0,0,0,.45),0 16px 40px rgba(229,53,43,.22)}.cta:active{transform:scale(.965)}
+.cta svg{width:15px;height:15px;transition:transform .18s}.cta:hover svg{transform:translateX(3px)}
+.gh{font-size:14px;color:var(--i3);border-bottom:1px solid var(--ln);padding-bottom:2px}.gh:hover{color:var(--ink);border-color:var(--sig)}
+.bot{display:flex;flex-direction:column-reverse;gap:26px;align-items:flex-start;justify-content:space-between;padding-top:40px}
+@media(min-width:760px){.bot{flex-direction:row;align-items:flex-end}}
+.stats{display:flex;gap:clamp(24px,4vw,54px);flex-wrap:wrap}
+.st{display:flex;flex-direction:column;gap:5px}.st .h{display:flex;align-items:center;gap:8px}
+.st svg{width:13px;height:13px;fill:var(--sig)}
+.st .v{font-family:var(--m);font-size:clamp(17px,1.5vw,21px);font-weight:700;font-variant-numeric:tabular-nums}
+.st .k{margin-left:21px;font-size:12.5px;color:var(--i3);max-width:24ch}
+.tg{font-size:14px;color:var(--i2);max-width:32ch}@media(min-width:760px){.tg{text-align:right}}.tg b{color:var(--ink)}
+.ticker{border-top:1px solid var(--ln2);border-bottom:1px solid var(--ln2);overflow:hidden;white-space:nowrap;padding:10px 0;background:rgba(0,0,0,.28)}
+#tick{display:inline-block;font-family:var(--m);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--i3)}
+#tick s{text-decoration:none;padding:0 26px}#tick u{text-decoration:none;color:var(--sig)}
+main{max-width:1320px;margin:0 auto;padding:0 var(--pad)}
+section{position:relative;padding:clamp(76px,11vh,140px) 0;border-bottom:1px solid var(--ln2)}
+.num{position:absolute;right:-.06em;top:clamp(40px,7vh,90px);z-index:-1;font-family:var(--m);font-weight:700;line-height:.8;font-size:clamp(120px,26vw,340px);letter-spacing:-.06em;color:transparent;-webkit-text-stroke:1px rgba(255,255,255,.07);user-select:none}
+.hd{max-width:66ch}@media(min-width:1080px){.hd{margin-left:clamp(0px,8vw,140px)}}
+.kk{display:inline-block;font-family:var(--m);font-size:10.5px;letter-spacing:.24em;text-transform:uppercase;color:var(--sig);margin-bottom:16px;padding-left:26px;position:relative}
+.kk::before{content:"";position:absolute;left:0;top:50%;width:18px;height:1px;background:var(--sig)}
+h2{font-weight:400;font-size:clamp(1.55rem,3.1vw,2.5rem);line-height:1.14;letter-spacing:-.028em;text-wrap:balance}
+.ld{margin-top:16px;color:var(--i2);font-size:15.5px;max-width:62ch}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:clamp(26px,4vh,40px)}
+.chips button{background:none;border:1px solid var(--ln);border-radius:100px;cursor:pointer;color:var(--i3);font:11.5px var(--m);padding:8px 14px;transition:.2s}
+.chips button:hover{color:var(--ink);border-color:var(--i4);background:rgba(255,255,255,.04)}
+.chips button[data-on="1"]{color:#fff;border-color:var(--sig);background:rgba(229,53,43,.18)}
+.panel{border:1px solid var(--ln);border-left:2px solid var(--sig);background:linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,.012));padding:clamp(20px,3vw,30px);margin-top:26px}
+.vr{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:14px}
+.bg{font-family:var(--m);font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;padding:7px 13px;border:1px solid}
+.bg.AUTO{color:var(--ink);border-color:var(--i4);background:rgba(255,255,255,.06)}
+.bg.STEP_UP{color:var(--sig);border-color:var(--sig);background:rgba(229,53,43,.16)}
+.bg.DENY{color:#fff;border-color:var(--sig);background:var(--sig)}
+.mn{font-family:var(--m);font-size:12px;color:var(--i3)}
+.said{font-size:17px;line-height:1.5;max-width:60ch}
+.ml{font-family:var(--m);font-size:11.5px;color:var(--i3);margin-top:9px;line-height:1.6}
+.cls{display:flex;flex-wrap:wrap;gap:5px;margin-top:16px}
+.cl{display:inline-flex;align-items:center;gap:6px;font:10px var(--m);letter-spacing:.05em;padding:5px 9px;border:1px solid var(--ln);color:var(--i4)}
+.cl b{color:var(--i3);font-weight:400}
+.cl.x{color:#fff;border-color:var(--sig);background:var(--sig)}.cl.x b{color:#fff}
+.dims{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.dm{font:10.5px var(--m);color:var(--i3);border:1px solid var(--ln2);padding:4px 8px;background:rgba(255,255,255,.02)}
+.dm.h{color:var(--sig);border-color:rgba(229,53,43,.4);background:rgba(229,53,43,.16)}
+.row{display:grid;grid-template-columns:1fr auto;gap:4px 24px;align-items:baseline;padding:16px 4px;border-bottom:1px solid var(--ln2);transition:.2s}
+.row:hover{background:rgba(255,255,255,.028);padding-left:12px}
+.row.pk{border-left:2px solid var(--sig);padding-left:14px;background:linear-gradient(90deg,rgba(229,53,43,.16),transparent 60%)}
+.row .t{grid-column:1/-1;font:9.5px var(--m);letter-spacing:.2em;text-transform:uppercase;color:var(--i4)}
+.row.pk .t{color:var(--sig)}
+.row .n{font-size:16px;letter-spacing:-.015em}
+.row .p{font:700 15px var(--m);text-align:right;font-variant-numeric:tabular-nums}
+.row .p s{margin-left:8px;font-size:11px;color:var(--i4);font-weight:400}
+.row .sb{grid-column:1/-1;display:flex;gap:16px;font:10.5px var(--m);color:var(--i4)}
+.of{border:1px solid var(--ln);border-left:2px solid var(--i4);padding:14px 18px;margin-bottom:8px}
+.of.nd{border-left-color:var(--sig)}
+.of .r1{display:flex;justify-content:space-between;gap:16px;align-items:baseline}
+.of .dl{font:700 13px var(--m);color:var(--sig);font-variant-numeric:tabular-nums}
+.of .rs{font-size:13.5px;color:var(--i2);margin-top:4px}
+.of .tl{font:10.5px var(--m);color:var(--i4);margin-top:7px}
+.tw{overflow-x:auto;margin-top:22px}table{width:100%;border-collapse:collapse;font:12px var(--m)}
+th{text-align:left;font-weight:400;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--i4);border-bottom:1px solid var(--ln);padding:0 14px 9px 0;white-space:nowrap}
+td{padding:11px 14px 11px 0;border-bottom:1px solid var(--ln2);color:var(--i2);white-space:nowrap}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+tbody tr:hover td{color:var(--ink);background:rgba(255,255,255,.02)}
+.bad{color:var(--sig)}
+.bnd{margin-top:40px}
+.bnd .tp{display:flex;justify-content:space-between;font:11px var(--m);letter-spacing:.18em;text-transform:uppercase;color:var(--i3);margin-bottom:16px}
+.trk{position:relative;height:68px;border:1px solid var(--ln);background:rgba(255,255,255,.02)}
+.trk .fl{position:absolute;left:0;top:0;bottom:0;background:rgba(255,255,255,.13);transition:width .12s}
+.trk .ov{position:absolute;top:0;bottom:0;background:repeating-linear-gradient(45deg,rgba(229,53,43,.55)0 6px,rgba(229,53,43,.2)6px 12px);transition:.12s}
+.trk .ln{position:absolute;top:-12px;bottom:-12px;width:2px;background:var(--sig);transition:left .12s}
+.trk .ln s{position:absolute;left:-6px;top:50%;width:14px;height:26px;margin-top:-13px;background:var(--sig);border-radius:2px}
+.trk .ln u{position:absolute;left:50%;top:-20px;transform:translateX(-50%);font:9px var(--m);letter-spacing:.2em;text-transform:uppercase;color:var(--sig);white-space:nowrap;text-decoration:none}
+#sl{width:100%;margin-top:14px;accent-color:var(--sig);cursor:ew-resize}
+.figs{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1px;margin-top:1px;background:var(--ln2)}
+.fig{background:var(--bg);padding:16px 14px;display:flex;flex-direction:column;gap:5px}
+.fig .k{font:9.5px var(--m);letter-spacing:.16em;text-transform:uppercase;color:var(--i4)}
+.fig .v{font:700 17px var(--m);font-variant-numeric:tabular-nums}
+.fig .v.o{color:var(--sig)}
+.lev{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:1px;background:var(--ln2);margin-top:26px;border:1px solid var(--ln2)}
+.lev button{background:var(--bg);border:0;cursor:pointer;text-align:left;padding:18px;font-family:var(--s);color:var(--ink);position:relative;transition:.2s}
+.lev button::before{content:"";position:absolute;left:0;top:0;bottom:0;width:2px;background:transparent;transition:.2s}
+.lev button:hover{background:rgba(255,255,255,.035)}.lev button:hover::before,.lev button[data-f="1"]::before{background:var(--sig)}
+.lev .t{font-size:14.5px}.lev .d{font:10.5px var(--m);color:var(--i4);margin-top:5px}
+.lev .c{font:10.5px var(--m);color:var(--sig);margin-top:11px;min-height:15px;line-height:1.45;word-break:break-word}
+.plate{margin:clamp(50px,8vh,100px) 0 0;padding:clamp(28px,5vw,54px) 0;border-top:1px solid var(--ln);border-bottom:1px solid var(--ln);text-align:center}
+.plate p{font-size:clamp(1.3rem,3.4vw,2.4rem);line-height:1.2;letter-spacing:-.03em}
+.plate p:first-child{color:var(--i3)}
+.plate cite{display:block;margin-top:18px;font:10.5px var(--m);letter-spacing:.2em;text-transform:uppercase;color:var(--i4);font-style:normal}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1px;background:var(--ln2);border:1px solid var(--ln2);margin-top:36px}
+.cell{background:var(--bg);padding:20px 18px;display:flex;flex-direction:column;gap:7px}
+.cell .k{font:9.5px var(--m);letter-spacing:.16em;text-transform:uppercase;color:var(--i4)}
+.cell .v{font:700 clamp(22px,3vw,30px) var(--m);letter-spacing:-.03em;font-variant-numeric:tabular-nums;line-height:1}
+.cell .n{font:10.5px var(--m);color:var(--i4);line-height:1.5}
+ol{list-style:none;margin-top:24px}
+ol li{display:flex;gap:18px;align-items:baseline;padding:15px 4px;border-bottom:1px solid var(--ln2);transition:.2s}
+ol li:hover{background:rgba(255,255,255,.028);padding-left:12px}
+ol li b{font:400 10.5px var(--m);color:var(--sig);flex:none;width:24px}
+ol li span{font-size:15px;color:var(--i2)}
+footer{max-width:1320px;margin:0 auto;padding:clamp(70px,11vh,130px) var(--pad) 70px;border-top:1px solid var(--ln2)}
+footer p{font-size:clamp(1.2rem,2.6vw,1.9rem);line-height:1.28;letter-spacing:-.028em;max-width:24ch}
+.sig{margin-top:26px;font:11px var(--m);letter-spacing:.12em;color:var(--i3)}.sig b{color:var(--sig);font-weight:400}
+.fine{margin-top:30px;font:10.5px var(--m);color:var(--i4);max-width:52ch;line-height:1.7}
+#thwip{position:fixed;z-index:70;pointer-events:none;opacity:0;font:700 clamp(22px,4vw,44px) var(--m);letter-spacing:.14em;color:var(--sig);left:50%;top:46%;transform:translate(-50%,-50%);text-shadow:0 0 32px rgba(229,53,43,.5);transition:opacity .4s}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style></head><body>
+<canvas id="gl" aria-hidden="true"></canvas>
+<div id="glow" aria-hidden="true"><i class="a"></i><i class="b"></i></div>
+<div id="thwip" aria-hidden="true">THWIP</div>
+<div id="page">
+<nav id="nav">
+  <a class="brand" href="#t"><svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="13.2" fill="none" stroke="currentColor" stroke-width="1.1" opacity=".35"/><circle cx="16" cy="16" r="8.4" fill="none" stroke="currentColor" stroke-width="1.1" opacity=".55"/><circle cx="16" cy="16" r="3.6" fill="none" stroke="currentColor" stroke-width="1.1" opacity=".85"/><path d="M16 2.8V29.2M2.8 16H29.2M6.6 6.6l18.8 18.8M25.4 6.6L6.6 25.4" stroke="currentColor" stroke-width=".85" opacity=".38"/><path d="M25.6 3.2V28.8" stroke="#E5352B" stroke-width="1.6"/></svg><span class="wm">REMIT</span></a>
+  <div class="lk"><a href="#s">the studio</a><a href="#l">the line</a><a href="#k">break it</a><a href="#n">the numbers</a></div>
+  <div style="display:flex;align-items:center;gap:10px"><span class="sq"></span><span style="font-size:13.5px;color:var(--i2)">test mode only</span></div>
+</nav>
+<header id="t">
+  <div class="top">
+    <div class="eb"><span class="pip"></span><span id="hb">loading engine output…</span></div>
+    <h1><span class="l"><span class="i">An agent can spend.</span></span><span class="l"><span class="i">This is where it <em>stops</em>.</span></span></h1>
+    <p class="sub">REMIT is an AI buyer and a merchant revenue engine that share one boundary: every rupee it moves has to still match what a human actually authorised — and it can prove it, in microseconds, without asking a model.</p>
+    <div class="cta-row">
+      <button class="cta" id="go">Open the studio<svg viewBox="0 0 16 16"><path d="M2 8h11M9 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <a class="gh" href="#k">or try to break it</a>
+    </div>
+  </div>
+  <div class="bot">
+    <div class="stats">
+      <div class="st"><div class="h"><svg viewBox="0 0 14 14"><circle cx="3" cy="3" r="1.5"/><circle cx="11" cy="3" r="1.5"/><circle cx="3" cy="11" r="1.5"/><circle cx="11" cy="11" r="1.5"/></svg><span class="v">₹0</span></div><span class="k">moved unauthorised, held-out split</span></div>
+      <div class="st"><div class="h"><svg viewBox="0 0 14 14"><rect x="2" y="5.5" width="10" height="3" rx="1"/><rect x="5.5" y="2" width="3" height="10" rx="1"/></svg><span class="v">77.3%</span></div><span class="k">of the unbounded agent's upside, kept</span></div>
+      <div class="st"><div class="h"><svg viewBox="0 0 14 14"><path d="M7 1.5 12.5 7 7 12.5 1.5 7Z"/></svg><span class="v" id="us">—</span></div><span class="k">to re-decide, no model call</span></div>
+    </div>
+    <p class="tg">built by <b>techuilaguy</b><br>your friendly neighbourhood developer</p>
+  </div>
+</header>
+<main>
+<section id="s"><div class="num">I</div><div class="hd">
+  <span class="kk">the studio · real engine output</span>
+  <h2>Pick a sentence. Watch the whole decision.</h2>
+  <p class="ld">Each was run through the REMIT engine — intent compiler, deterministic ranking, revenue engine, drift, risk, seventeen policy clauses, payment. What you see is exactly what it returned, verdict and reason included.</p>
+</div>
+  <div class="chips" id="ch"></div>
+  <div id="out"></div>
+</section>
+<section id="l"><div class="num">II</div><div class="hd">
+  <span class="kk">the line</span>
+  <h2>Hold the basket. Move the authority. Watch it re-decide.</h2>
+  <p class="ld">The policy engine is a pure function — no I/O, no model call, no writes — so the same basket can be re-decided under any authorised amount. Every stop on this slider is a real re-run, and the microsecond figure is the time that re-run actually took.</p>
+</div>
+  <div id="bd"></div>
+  <blockquote class="plate"><p>an agent holding your card has great power.</p><p><em>this is the responsibility part.</em></p><cite>— the entire product, in one line</cite></blockquote>
+</section>
+<section id="k"><div class="num">III</div><div class="hd">
+  <span class="kk">break it</span>
+  <h2>Go on. Try.</h2>
+  <p class="ld">Six attacks, each run against the same journey: move the price after selection, add shipping after you were shown a total, delist the product mid-flight, revoke the authority, expire the intent, inflate the quantity. REMIT names the clause that caught it.</p>
+</div>
+  <div class="lev" id="lv"></div><div id="lo"></div>
+</section>
+<section id="n"><div class="num">IV</div><div class="hd">
+  <span class="kk">the numbers · 540 journeys, four arms, one seed</span>
+  <h2>What it earned, and what it refused to move.</h2>
+  <p class="ld">Read out of generated result files. The weak number is left in.</p>
+</div>
+  <div class="grid">
+    <div class="cell"><span class="k">revenue kept</span><span class="v">77.3%</span><span class="n">of the unbounded agent's upside</span></div>
+    <div class="cell"><span class="k">unbounded agent moved</span><span class="v bad">₹595,077.92</span><span class="n">unauthorised, across 198 transactions</span></div>
+    <div class="cell"><span class="k">REMIT moved</span><span class="v">₹0.00</span><span class="n">unauthorised — by construction</span></div>
+    <div class="cell"><span class="k">AOV</span><span class="v">₹2,686.99</span><span class="n">vs ₹1,792.37 plain checkout</span></div>
+  </div>
+</section>
+</main>
+<footer>
+  <p>I'd rather build things like this with people who are just as curious about where the money actually goes.</p>
+  <div class="sig"><b>techuilaguy</b> · pranauv shrinaath s. · srm institute of science and technology</div>
+  <p class="fine">Assembled mostly between 11pm and 4am, powered by something with wings. No affiliation — just gratitude, and a recycling problem.</p>
+</footer>
+</div>
+<script src="/d.js"></script>
+<script src="/gl.js"></script>
+<script src="/studio.js"></script>
+</body></html>

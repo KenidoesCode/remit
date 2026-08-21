@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>REMIT — an agent can spend. this is where it stops.</title>
+<meta name="description" content="An AI buyer and merchant growth engine that optimises revenue while proving the final transaction still matches what the human authorised. Built by techuilaguy.">
+<meta name="theme-color" content="#0B0908">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+<!-- the neighbourhood web: hand-written WebGL, drawn behind everything -->
+<canvas id="gl" aria-hidden="true"></canvas>
+<div id="glow" aria-hidden="true"><span class="g1"></span><span class="g2"></span><span class="g3"></span></div>
+<div id="grain" aria-hidden="true"></div>
+<div id="scanline" aria-hidden="true"></div>
+
+<div id="page">
+
+<!-- ══════════════════════════ nav ══════════════════════════ -->
+<nav id="nav" aria-label="Primary">
+  <a class="brand" href="#hero" aria-label="REMIT, home">
+    <svg class="mark" viewBox="0 0 32 32" aria-hidden="true">
+      <circle cx="16" cy="16" r="13.2" fill="none" stroke="currentColor" stroke-width="1.1" opacity=".35"/>
+      <circle cx="16" cy="16" r="8.4"  fill="none" stroke="currentColor" stroke-width="1.1" opacity=".55"/>
+      <circle cx="16" cy="16" r="3.6"  fill="none" stroke="currentColor" stroke-width="1.1" opacity=".85"/>
+      <path d="M16 2.8V29.2M2.8 16H29.2M6.6 6.6l18.8 18.8M25.4 6.6L6.6 25.4"
+            stroke="currentColor" stroke-width=".85" opacity=".38"/>
+      <path d="M25.6 3.2V28.8" stroke="var(--signal)" stroke-width="1.6"/>
+    </svg>
+    <span class="wordmark">REMIT</span>
+  </a>
+
+  <div class="links">
+    <a href="#act1" data-act="act1">the neighbourhood</a>
+    <a href="#act2" data-act="act2">the agent</a>
+    <a href="#act3" data-act="act3">the line</a>
+    <a href="#act4" data-act="act4">break it</a>
+    <a href="#act5" data-act="act5">the engineer</a>
+  </div>
+
+  <div class="navright">
+    <span class="sq" aria-hidden="true"></span>
+    <button id="buildMode" type="button">build mode</button>
+  </div>
+</nav>
+
+<!-- ══════════════════════════ hero ══════════════════════════ -->
+<header id="hero">
+  <div class="hero-top">
+    <div class="eyebrow" id="eyebrow">
+      <span class="pip"></span><span id="health">connecting…</span>
+    </div>
+
+    <h1 class="headline">
+      <span class="ln"><span class="in">An agent can spend.</span></span>
+      <span class="ln"><span class="in">This is where it <em>stops</em>.</span></span>
+    </h1>
+
+    <p class="sub">REMIT is an AI buyer and a merchant revenue engine that share one
+      boundary: every rupee it moves has to still match what a human actually
+      authorised — and it can prove it, in microseconds, without asking a model.</p>
+
+    <div class="cta-row">
+      <button class="cta" id="heroCta" type="button">
+        Run the agent
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 8h11M9 4l4 4-4 4"
+          fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+          stroke-linejoin="round"/></svg>
+      </button>
+      <a class="ghost" href="#act4">or try to break it</a>
+    </div>
+  </div>
+
+  <div class="hero-bottom">
+    <div class="stats" id="heroStats">
+      <div class="st"><div class="hd">
+        <svg viewBox="0 0 14 14" aria-hidden="true"><circle cx="3" cy="3" r="1.5"/><circle cx="11" cy="3" r="1.5"/><circle cx="3" cy="11" r="1.5"/><circle cx="11" cy="11" r="1.5"/></svg>
+        <span class="v" data-v="s1">—</span></div><span class="k">moved unauthorised</span></div>
+      <div class="st"><div class="hd">
+        <svg viewBox="0 0 14 14" aria-hidden="true"><rect x="2" y="5.5" width="10" height="3" rx="1"/><rect x="5.5" y="2" width="3" height="10" rx="1"/></svg>
+        <span class="v" data-v="s2">—</span></div><span class="k">of the unbounded agent's upside, kept</span></div>
+      <div class="st"><div class="hd">
+        <svg viewBox="0 0 14 14" aria-hidden="true"><path d="M7 1.5 12.5 7 7 12.5 1.5 7Z"/></svg>
+        <span class="v" data-v="s3">—</span></div><span class="k">to re-decide, no model call</span></div>
+    </div>
+    <p class="tag">built by <b>techuilaguy</b><br>your friendly neighbourhood developer</p>
+  </div>
+
+  <div class="scroll-cue" aria-hidden="true"><span></span>scroll</div>
+</header>
+
+<!-- ══════════════════════════ ticker ══════════════════════════ -->
+<div class="ticker" aria-hidden="true"><div class="tick" id="tick"></div></div>
+
+<main>
+
+<!-- ══════════════════════════ ACT I ══════════════════════════ -->
+<section class="act" id="act1">
+  <div class="numeral" aria-hidden="true">I</div>
+  <div class="act-head">
+    <span class="kicker">Act I · the neighbourhood</span>
+    <h2>Say one sentence. The agent does the rest — inside a line you drew.</h2>
+    <p class="lede">The catalog is the neighbourhood. The payment is across town.
+      What you authorised is a thread anchored to something that does not move,
+      and the agent may wander anywhere on this side of it without asking.</p>
+  </div>
+
+  <form class="ask" id="askForm">
+    <span class="prompt">›</span>
+    <input id="utterance" autocomplete="off" spellcheck="false"
+      placeholder="buy premium running shoes under ₹5000 and get the best value one"
+      aria-label="Tell the agent what to buy">
+    <button id="askBtn" type="submit">run</button>
+  </form>
+  <div class="chips" id="chips"></div>
+  <div class="wire" id="wire" aria-live="polite"></div>
+</section>
+
+<!-- ══════════════════════════ ACT II ══════════════════════════ -->
+<section class="act" id="act2">
+  <div class="numeral" aria-hidden="true">II</div>
+  <div class="act-head">
+    <span class="kicker">Act II · the agent moves</span>
+    <h2>It searches, compares, picks — and then the merchant gets a turn.</h2>
+    <p class="lede">Ranking is deterministic; the model never scores a product. The
+      revenue engine proposes accessories with a reason and an exact marginal cost.
+      Nothing is added silently, and offers are accepted against a running total, so
+      three that each fit cannot jointly break the envelope.</p>
+  </div>
+  <div id="act2Out"></div>
+</section>
+
+<!-- ══════════════════════════ ACT III ══════════════════════════ -->
+<section class="act" id="act3">
+  <div class="numeral" aria-hidden="true">III</div>
+  <div class="act-head">
+    <span class="kicker">Act III · the line</span>
+    <h2>Take the human's authority. Move it. Watch the system re-decide.</h2>
+    <p class="lede">Same basket, different permission. Every drag re-runs the real
+      policy engine — no model call, no payment, no writes — and reports how long the
+      pure function actually took.</p>
+  </div>
+  <div id="act3Out"></div>
+
+  <blockquote class="plate">
+    <p>an agent holding your card has great power.</p>
+    <p><em>this is the responsibility part.</em></p>
+    <cite>— the entire product, in one line</cite>
+  </blockquote>
+</section>
+
+<!-- ══════════════════════════ ACT IV ══════════════════════════ -->
+<section class="act" id="act4">
+  <div class="numeral" aria-hidden="true">IV</div>
+  <div class="act-head">
+    <span class="kicker">Act IV · break it</span>
+    <h2>Go on. Try.</h2>
+    <p class="lede">Every lever below is wired to a real code path. Move the price
+      after selection, delist the product mid-journey, revoke the authority, forge a
+      webhook. REMIT names the clause that caught it.</p>
+  </div>
+  <div class="levers" id="levers"></div>
+  <div id="breakOut"></div>
+
+  <div class="act-head sub-head">
+    <span class="kicker">and the same journey with the boundary switched off</span>
+    <p class="lede">Not a different build — the identical code path with a permissive
+      policy file. Same user, same merchant, same agent, one line of data changed.</p>
+  </div>
+  <div id="compareOut"></div>
+</section>
+
+<!-- ══════════════════════════ ACT V ══════════════════════════ -->
+<section class="act" id="act5">
+  <div class="numeral" aria-hidden="true">V</div>
+  <div class="act-head">
+    <span class="kicker">Act V · the engineer</span>
+    <h2>What it earned, what it refused, and everything I broke on the way.</h2>
+    <p class="lede">540 synthetic journeys, four arms, one catalog, one seed. Every
+      number on this page is read out of a generated result file. None of them are
+      typed by hand.</p>
+  </div>
+  <div id="numbersOut"></div>
+
+  <div class="act-head sub-head">
+    <span class="kicker">stuff i broke</span>
+    <p class="lede">Written when it happened, not reconstructed. Parsed straight out
+      of FAILURES.md at request time, so this page cannot drift from the repo — it
+      <em>is</em> the repo.</p>
+  </div>
+  <div id="failOut"></div>
+
+  <div class="act-head sub-head">
+    <span class="kicker">how this guy builds</span>
+  </div>
+  <div id="whoOut"></div>
+</section>
+
+</main>
+
+<footer>
+  <div class="close">
+    <p>I'd rather build things like this with people who are just as curious about
+      where the money actually goes.</p>
+    <div class="sig">
+      <b>techuilaguy</b> · pranauv shrinaath s. · srm institute of science and technology
+    </div>
+    <p class="fine">Assembled mostly between 11pm and 4am, powered by something with
+      wings. No affiliation — just gratitude, and a recycling problem.</p>
+  </div>
+</footer>
+
+</div>
+
+<aside id="rail" aria-hidden="true">
+  <a href="#act1" data-act="act1"><i></i><b>I</b></a>
+  <a href="#act2" data-act="act2"><i></i><b>II</b></a>
+  <a href="#act3" data-act="act3"><i></i><b>III</b></a>
+  <a href="#act4" data-act="act4"><i></i><b>IV</b></a>
+  <a href="#act5" data-act="act5"><i></i><b>V</b></a>
+</aside>
+
+<div id="thwip" aria-hidden="true">THWIP</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script>window.gsap||document.write('<script src="/vendor/gsap.min.js"><\/script>')</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+<script>window.ScrollTrigger||window.gsap&&gsap.ScrollTrigger||document.write('<script src="/vendor/ScrollTrigger.min.js"><\/script>')</script>
+<script>
+/* Last resort. If neither the CDN nor the vendored copy loaded, the page still
+   has to render — a decision engine that will not show its verdict because an
+   animation library is missing would be a poor advertisement for it. This shim
+   makes every tween land on its end state immediately. */
+if (!window.gsap) {
+  const els = t => typeof t === "string" ? [...document.querySelectorAll(t)]
+    : t instanceof Element ? [t] : (t && t.length ? [...t] : []);
+  const apply = (t, v) => {
+    els(t).forEach(e => {
+      if (v && v.opacity !== undefined) e.style.opacity = v.opacity;
+      e.style.transform = ""; e.style.filter = "";
+    });
+    if (v && typeof v.onComplete === "function") v.onComplete();
+  };
+  const tl = {
+    to(t, v) { apply(t, v); return this },
+    from(t) { apply(t, { opacity: 1 }); return this },
+    fromTo(t, a, b) { apply(t, b); return this },
+    set(t, v) { apply(t, v); return this },
+  };
+  window.gsap = {
+    to: (t, v) => (apply(t, v), tl),
+    from: t => (apply(t, { opacity: 1 }), tl),
+    fromTo: (t, a, b) => (apply(t, b), tl),
+    set: (t, v) => apply(t, v),
+    timeline: () => tl, killTweensOf: () => {},
+    quickTo: () => () => {}, registerPlugin: () => {},
+  };
+}
+</script>
+<script src="/gl.js"></script>
+<script src="/app.js"></script>
+</body>
+</html>

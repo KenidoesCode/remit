@@ -1,0 +1,6 @@
+-r requirements.txt
+# Tests
+pytest>=8.0
+hypothesis>=6.100
+# Optional: the LLM intent compiler. Everything runs without it.
+anthropic>=0.40

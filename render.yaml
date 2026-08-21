@@ -1,0 +1,29 @@
+# Render blueprint. `uvicorn remit.api:api` is the same command the README uses
+# locally, so the hosted service and a local run are the same program.
+services:
+  - type: web
+    name: remit
+    runtime: python
+    plan: free
+    region: singapore
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn remit.api:api --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12"
+      # A file, not :memory:. The ledger's hash chain, the idempotency table and
+      # the exposure caps have to outlive a single request. On the free plan this
+      # is the instance's own disk: it survives requests and restarts within an
+      # instance, and resets on redeploy. Attach a Render disk to keep it.
+      - key: REMIT_DB
+        value: /tmp/remit.sqlite
+      - key: REMIT_LIVE
+        value: "1"
+      # Set in the dashboard, never in the repo.
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
+      - key: RAZORPAY_WEBHOOK_SECRET
+        sync: false

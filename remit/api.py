@@ -1,0 +1,572 @@
+"""HTTP surface. Thin: routes translate, services decide.
+
+No business logic lives here. Every endpoint is a call into the same objects
+the CLI demo and the evaluation harness use, which is why the numbers on the
+screen and the numbers in eval/results/ cannot diverge.
+"""
+from __future__ import annotations
+
+import json
+import os
+import threading
+import time
+from datetime import datetime, timezone
+from pathlib import Path
+
+from fastapi import FastAPI, Request
+from fastapi.responses import FileResponse, JSONResponse
+from pydantic import BaseModel
+
+from .assembly import App, build, utcnow
+from .domain.drift import compute_drift
+from .domain.risk import Exposure, assess
+from .exec.razorpay import FakeGateway, verify_payment_signature
+from .policy.authorize import authorize
+from .money import rupees
+
+from .paths import FAILURES as FAILURES_MD, RESULTS as RESULTS_DIR, WEB, test_count
+STATE: dict[str, App] = {}
+# One writer. SQLite tolerates concurrent readers under WAL, but the
+# ledger's hash chain and the payment claim table both need a single
+# serialisation point, and a lock is the honest way to get one at this size.
+LOCK = threading.RLock()
+
+
+def get_app() -> App:
+    if "app" not in STATE:
+        # REMIT_DB gives the process a file to keep. Without it the ledger,
+        # the idempotency table and the exposure caps live only as long as one
+        # process does -- fine for tests, wrong for anything a human pays into.
+        STATE["app"] = build(db_path=os.environ.get("REMIT_DB", ":memory:"),
+                             now=utcnow(),
+                             live=os.environ.get("REMIT_LIVE") == "1")
+    return STATE["app"]
+
+
+api = FastAPI(title="REMIT", version="0.1.0")
+
+
+class ReplayRequest(BaseModel):
+    correlation_id: str
+    ceiling_paise: int
+    # Sent so a cold process can rebuild the basket. The journey is
+    # deterministic, so replaying the same utterance reconstructs the same cart.
+    utterance: str | None = None
+
+
+class CompareRequest(BaseModel):
+    utterance: str
+    user_id: str = "usr_demo"
+    inject: dict = {}
+
+
+class ShopRequest(BaseModel):
+    utterance: str
+    user_id: str = "usr_demo"
+    accept_offers: str = "in_envelope"
+    human_confirms: bool | None = None
+    inject: dict = {}
+
+
+@api.get("/health")
+def health():
+    with LOCK:
+        a = get_app()
+        ok, bad = a.ledger.verify_chain()
+        return {"status": "ok", "catalog_version": a.catalog.version(),
+                "products": a.seed_info["products"],
+                "policy": a.policy.version,
+                "calibrator": type(a.journey.calibrator).__name__,
+                "ledger_intact": ok, "first_bad_seq": bad,
+                "gateway": type(a.gateway).__name__}
+
+@api.get("/api/catalog")
+def catalog(category: str | None = None, q: str | None = None, limit: int = 60):
+    with LOCK:
+        a = get_app()
+        prods = a.catalog.search(category=category,
+                                 terms=[q] if q else None, limit=limit)
+        return {"catalog_version": a.catalog.version(),
+                "merchants": {m["merchant_id"]: dict(m)
+                              for m in a.db.execute("SELECT * FROM merchants")},
+                "products": [json.loads(p.model_dump_json()) for p in prods]}
+
+@api.get("/api/categories")
+def categories():
+    with LOCK:
+        a = get_app()
+        return [dict(r) for r in a.db.execute(
+            "SELECT category, COUNT(*) n, MIN(price_paise) lo, MAX(price_paise) hi"
+            " FROM products WHERE active=1 GROUP BY category ORDER BY category")]
+
+@api.post("/api/shop")
+def shop(req: ShopRequest):
+    with LOCK:
+        a = get_app()
+        now = utcnow()
+        exposure = _exposure(a)
+        r = a.journey.run(utterance=req.utterance, user_id=req.user_id, now=now,
+                          exposure=exposure, accept_offers=req.accept_offers,
+                          human_confirms=req.human_confirms, inject=req.inject)
+        d = r.dict()
+        d["exposure"] = json.loads(exposure.model_dump_json())
+        d["catalog_version"] = a.catalog.version()
+        if r.intent is not None and r.cart is not None:
+            # Kept in memory so the property line can re-decide the SAME basket
+            # under a different authority without re-running the agent.
+            STATE.setdefault("journeys", {})[r.correlation_id] = {
+                "env": r.intent, "cart": r.cart, "totals": r.totals,
+                "exposure": exposure, "catalog_version": a.catalog.version(),
+                "shown_total_paise": r.shown_total_paise,
+            }
+        return d
+
+def _exposure(a: App) -> Exposure:
+    row = a.db.execute(
+        "SELECT COALESCE(SUM(amount_paise),0) s, COUNT(*) n FROM payments"
+        " WHERE state NOT IN ('FAILED')").fetchone()
+    return Exposure(session_paise=row["s"], daily_paise=row["s"],
+                    txn_count_1h=row["n"])
+
+
+@api.post("/api/replay")
+def replay(req: ReplayRequest):
+    """The property line.
+
+    Re-decide an existing basket under a different authorised amount. This runs
+    ONLY the pure path -- drift, risk, policy -- with no model call, no payment
+    and no writes. `engine_us` is the real time the pure functions took, and it
+    is the reason the frontier sweep and this interaction are both possible:
+    if `authorize()` did I/O, neither would be.
+    """
+    with LOCK:
+        a = get_app()
+        j = STATE.get("journeys", {}).get(req.correlation_id)
+        if j is None and req.utterance:
+            r = a.journey.run(utterance=req.utterance, user_id="usr_replay",
+                              now=utcnow(), accept_offers="in_envelope",
+                              human_confirms=None)
+            if r.intent is not None and r.cart is not None:
+                j = {"env": r.intent, "cart": r.cart, "totals": r.totals,
+                     "exposure": Exposure(), "catalog_version": a.catalog.version(),
+                     "shown_total_paise": r.shown_total_paise}
+                STATE.setdefault("journeys", {})[req.correlation_id] = j
+        if j is None:
+            return JSONResponse({"error": "unknown correlation_id; run a journey first"},
+                                status_code=404)
+        env = j["env"].model_copy(deep=True)
+        # Hold the basket fixed; move only the authority. That is the honest
+        # framing of this interaction: same cart, different permission.
+        env.max_total_paise = int(req.ceiling_paise)
+        env.max_price_paise = None
+
+        t0 = time.perf_counter_ns()
+        drift = compute_drift(env=env, cart=j["cart"], totals=j["totals"],
+                              catalog_version=j["catalog_version"])
+        risk = assess(env=env, total_paise=j["totals"].total_paise, drift=drift,
+                      exposure=j["exposure"], now=utcnow(),
+                      parse_confidence=float(a.journey.calibrator(env.parse_confidence)),
+                      friction_floor_paise=a.policy.limits["friction_floor_paise"],
+                      friction_bps=a.policy.limits["friction_bps"],
+                      session_cap_paise=a.policy.limits["session_exposure_paise"],
+                      daily_cap_paise=a.policy.limits["daily_exposure_paise"],
+                      velocity_cap_1h=a.policy.limits["velocity_1h"])
+        auth = authorize(env=env, cart=j["cart"], totals=j["totals"], drift=drift,
+                         risk=risk, exposure=j["exposure"], policy=a.policy,
+                         now=utcnow(), catalog_version=j["catalog_version"],
+                         stale_pricing=False)
+        engine_us = (time.perf_counter_ns() - t0) / 1000.0
+
+        return {"ceiling_paise": env.max_total_paise,
+                "total_paise": j["totals"].total_paise,
+                "shown_total_paise": j["shown_total_paise"],
+                "drift": json.loads(drift.model_dump_json()),
+                "risk": json.loads(risk.model_dump_json()),
+                "authorization": auth.dict(),
+                "engine_us": round(engine_us, 1),
+                "note": "pure re-decision: no model call, no payment, no writes"}
+
+
+@api.post("/api/compare")
+def compare(req: CompareRequest):
+    """The same journey, twice: with the boundary and without it.
+
+    'Without' is not a different build -- it is the identical code path with a
+    permissive policy file. That is the point of policy-as-data.
+    """
+    with LOCK:
+        a = get_app()
+        now = utcnow()
+        permissive = a.policy.with_overrides(
+            max_transaction_paise=10 ** 12, session_exposure_paise=10 ** 12,
+            daily_exposure_paise=10 ** 12, velocity_1h=10 ** 6,
+            max_drift_auto=1.0, max_drift_stepup=1.0, min_parse_confidence=0.0,
+            require_purchase_authority=False, allow_agent_added_over_ceiling=True,
+            integrity_layer=False,
+            friction_floor_paise=10 ** 12, friction_bps=0)
+
+        out = {}
+        for name, pol, accept in (("without", permissive, "all"),
+                                  ("with", a.policy, "in_envelope")):
+            gw = FakeGateway()
+            sub = build(now=now, gateway=gw)
+            j = sub.rebuild_journey(policy=pol)
+            # No human is present in this comparison. That is the point: with a
+            # permissive policy the agent simply proceeds; with REMIT it stops
+            # and asks, and the money stays put until someone answers.
+            r = j.run(utterance=req.utterance, user_id=req.user_id, now=now,
+                      accept_offers=accept, human_confirms=None,
+                      inject=req.inject)
+            d = r.dict()
+            env = d.get("intent") or {}
+            ceiling = (env.get("max_total_paise")
+                       or (env.get("max_price_paise") or 0) * env.get("quantity", 1) or 0)
+            total = (d.get("totals") or {}).get("total_paise", 0)
+            executed = d["payment_state"] in ("CREATED", "AUTHORIZED", "SUCCESS")
+            out[name] = {
+                "verdict": (d.get("authorization") or {}).get("verdict"),
+                "total_paise": total,
+                "ceiling_paise": ceiling,
+                "margin_paise": (d.get("totals") or {}).get("merchant_margin_paise", 0),
+                "lines": len((d.get("cart") or {}).get("lines", [])),
+                "accepted_offers": len(d.get("accepted_offers", [])),
+                "drift": (d.get("drift") or {}).get("score", 0),
+                "payment_state": d["payment_state"],
+                # Same definition the evaluation harness uses: executed, on AUTO,
+                # when a careful human would have wanted to be asked.
+                "unauthorized_paise": (
+                    total if (executed and ceiling and total > ceiling
+                              and (d.get("authorization") or {}).get("verdict") == "AUTO")
+                    else 0),
+                "asked_human": (d.get("authorization") or {}).get("verdict") == "STEP_UP",
+                "latency_ms": d["latency_ms"],
+            }
+        w, wo = out["with"], out["without"]
+        out["delta"] = {
+            "revenue_paise": wo["total_paise"] - w["total_paise"],
+            "unauthorized_avoided_paise": wo["unauthorized_paise"] - w["unauthorized_paise"],
+        }
+        return out
+
+
+@api.get("/api/failures")
+def failures():
+    """Parsed from FAILURES.md at runtime, so this page cannot drift from the
+    document. It IS the document."""
+    with LOCK:
+        path = FAILURES_MD
+        if not path.exists():
+            return {"entries": []}
+        raw = path.read_text(encoding="utf-8")
+        entries = []
+        for block in raw.split("\n## ")[1:]:
+            head, _, body = block.partition("\n")
+            if not head.startswith("2026"):
+                continue
+            date, _, title = head.partition(" — ")
+            if not title:
+                date, _, title = head.partition(" - ")
+            fields = {}
+            current = None
+            for line in body.split("\n"):
+                st = line.strip()
+                if st.startswith("**") and st.count("**") >= 2:
+                    key = st.split("**")[1].rstrip(".").strip().lower()
+                    rest = st.split("**", 2)[2].strip()
+                    current = key
+                    fields[current] = rest
+                elif current and st and not st.startswith("---"):
+                    fields[current] = (fields[current] + " " + st).strip()
+            entries.append({"when": date.strip(), "title": title.strip(),
+                            "fields": fields})
+        return {"entries": entries, "count": len(entries)}
+
+
+@api.get("/api/builder")
+def builder():
+    """Facts about the person who built this. Supplied by him, not inferred,
+    and deliberately short."""
+    with LOCK:
+        a = get_app()
+        return {
+            "handle": "techuilaguy",
+            "name": "Pranauv Shrinaath S.",
+            "tagline": "your friendly neighbourhood developer",
+            "roles": [
+                {"what": "Director, Blockchain Domain", "where": "CodeNex, SRM"},
+                {"what": "Core organising team", "where": "DayZero"},
+                {"what": "Tech content, building in public",
+                 "where": "3,300+ people follow along"},
+            ],
+            "shipped": [
+                {"what": "a complete edtech platform", "how_long": "20 days"},
+            ],
+            "one_thing_i_wont_build_again": {
+                "what": "a Spotify clone",
+                "why": "following someone else's blueprint isn't really my thing",
+            },
+            "this_build": {
+                "tests": test_count(),
+                "products": a.seed_info["products"],
+                "policy_version": a.policy.version,
+                "calibrator": type(a.journey.calibrator).__name__,
+                "clauses": 17,
+                "failures_logged": len(failures()["entries"]),
+            },
+        }
+
+
+@api.get("/api/decisions")
+def decisions(limit: int = 40):
+    with LOCK:
+        a = get_app()
+        rows = [dict(r) for r in a.db.execute(
+            "SELECT * FROM decisions ORDER BY seq DESC LIMIT ?", (limit,))]
+        for r in rows:
+            r["drift"] = json.loads(r["drift"])
+            r["risk"] = json.loads(r["risk"])
+            r["policy"] = json.loads(r["policy"])
+        return rows
+
+@api.get("/api/control")
+def control():
+    with LOCK:
+        a = get_app()
+        exp = _exposure(a)
+        pay = [dict(r) for r in a.db.execute(
+            "SELECT * FROM payments ORDER BY created_at DESC LIMIT 25")]
+        blocked = a.db.execute(
+            "SELECT COUNT(*) n FROM decisions WHERE verdict='DENY'").fetchone()["n"]
+        stepups = a.db.execute(
+            "SELECT COUNT(*) n FROM decisions WHERE verdict='STEP_UP'").fetchone()["n"]
+        autos = a.db.execute(
+            "SELECT COUNT(*) n FROM decisions WHERE verdict='AUTO'").fetchone()["n"]
+        blocked_value = 0
+        for r in a.db.execute("SELECT policy FROM decisions WHERE verdict!='AUTO'"):
+            blocked_value += json.loads(r["policy"]).get("blocked_value_paise", 0)
+        ok, bad = a.ledger.verify_chain()
+        return {
+            "exposure": json.loads(exp.model_dump_json()),
+            "exposure_rupees": rupees(exp.session_paise),
+            "limits": a.policy.limits,
+            "verdicts": {"AUTO": autos, "STEP_UP": stepups, "DENY": blocked},
+            "blocked_value_paise": blocked_value,
+            "blocked_value": rupees(blocked_value),
+            "payments": pay,
+            "ledger": {"intact": ok, "first_bad_seq": bad,
+                       "events": a.ledger.db.execute(
+                           "SELECT COUNT(*) c FROM events").fetchone()[0]},
+            "intents": a.db.execute(
+                "SELECT COUNT(*) c FROM intents").fetchone()["c"],
+        }
+
+@api.get("/api/ledger")
+def ledger(correlation_id: str | None = None, limit: int = 120):
+    with LOCK:
+        a = get_app()
+        if correlation_id:
+            rows = a.ledger.trace(correlation_id)
+        else:
+            rows = list(a.ledger.db.execute(
+                "SELECT seq, ts, kind, payload, hash FROM events"
+                " ORDER BY seq DESC LIMIT ?", (limit,)))
+            rows = [(r[0], r[1], r[2], r[3], r[4]) for r in rows]
+        ok, bad = a.ledger.verify_chain()
+        return {"intact": ok, "first_bad_seq": bad,
+                "events": [{"seq": s, "ts": t, "kind": k,
+                            "payload": json.loads(p), "hash": h}
+                           for s, t, k, p, h in rows]}
+
+@api.get("/api/graph")
+def graph(intent_id: str):
+    with LOCK:
+        a = get_app()
+        return [dict(r) | {"payload": json.loads(r["payload"])}
+                for r in a.db.execute(
+                    "SELECT * FROM intent_graph_events WHERE intent_id=? ORDER BY seq",
+                    (intent_id,))]
+
+@api.get("/api/results/{name}")
+def results(name: str):
+    allowed = {"eval", "experiments", "frontier", "calibration"}
+    if name not in allowed:
+        return JSONResponse({"error": "unknown result set"}, status_code=404)
+    p = RESULTS_DIR / f"{name}.json"
+    if not p.exists():
+        return JSONResponse(
+            {"error": f"{name}.json not generated yet",
+             "hint": f"run python eval/{'run_eval' if name == 'eval' else name}.py"},
+            status_code=404)
+    return json.loads(p.read_text())
+
+
+class VerifyRequest(BaseModel):
+    correlation_id: str
+    razorpay_order_id: str
+    razorpay_payment_id: str
+    razorpay_signature: str
+
+
+@api.get("/api/checkout/{correlation_id}")
+def checkout(correlation_id: str):
+    """What the browser needs to open Razorpay Checkout on an order REMIT
+    already authorised. The secret never leaves this process; only the public
+    key id and the order id go out."""
+    with LOCK:
+        a = get_app()
+        row = a.db.execute(
+            "SELECT p.payment_id, p.amount_paise, p.state, p.order_id"
+            " FROM payments p WHERE p.correlation_id=? ORDER BY rowid DESC LIMIT 1",
+            (correlation_id,)).fetchone()
+        if row is None or not row["order_id"]:
+            return JSONResponse(
+                {"error": "no authorised order for that journey",
+                 "note": "REMIT only creates an order after the policy engine "
+                         "allows it; a STEP_UP or DENY has nothing to pay"},
+                status_code=404)
+        if row["state"] not in ("CREATED", "AUTHORIZED"):
+            return JSONResponse({"error": f"payment is {row['state']}"},
+                                status_code=409)
+        key_id = os.environ.get("RAZORPAY_KEY_ID", "")
+        if not key_id.startswith("rzp_test_"):
+            return JSONResponse(
+                {"error": "no test key configured",
+                 "note": "set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET, and "
+                         "REMIT_LIVE=1, to take a real test-mode payment"},
+                status_code=503)
+        return {"key_id": key_id, "order_id": row["order_id"],
+                "amount_paise": row["amount_paise"], "currency": "INR",
+                "payment_id": row["payment_id"], "name": "REMIT",
+                "description": "authorised by the intent envelope"}
+
+
+@api.post("/api/payment/verify")
+def payment_verify(req: VerifyRequest):
+    """Checkout succeeded in the browser. Prove it before believing it.
+
+    The browser is not a trusted narrator: it can claim any payment id. The
+    signature is HMAC-SHA256 over "order_id|payment_id" with the API secret,
+    so only Razorpay and this process can produce it. An invalid signature is
+    recorded and changes nothing."""
+    with LOCK:
+        a = get_app()
+        secret = os.environ.get("RAZORPAY_KEY_SECRET", "")
+        ok = verify_payment_signature(order_id=req.razorpay_order_id,
+                                      payment_id=req.razorpay_payment_id,
+                                      signature=req.razorpay_signature,
+                                      key_secret=secret)
+        row = a.db.execute(
+            "SELECT payment_id, state FROM payments WHERE correlation_id=?"
+            " ORDER BY rowid DESC LIMIT 1", (req.correlation_id,)).fetchone()
+        if row is None:
+            return JSONResponse({"error": "unknown journey"}, status_code=404)
+        if not ok:
+            a.ledger.append("CHECKOUT_SIGNATURE_REJECTED", req.correlation_id,
+                            {"order_id": req.razorpay_order_id,
+                             "claimed_payment_id": req.razorpay_payment_id},
+                            utcnow())
+            return JSONResponse(
+                {"verified": False, "state": row["state"],
+                 "note": "signature did not verify; payment state unchanged"},
+                status_code=400)
+        try:
+            a.payments.transition(row["payment_id"], "SUCCESS", utcnow(),
+                                  f"checkout verified {req.razorpay_payment_id}")
+        except Exception as e:
+            return JSONResponse({"verified": True, "state": row["state"],
+                                 "note": f"already settled: {e}"}, status_code=200)
+        a.ledger.append("CHECKOUT_VERIFIED", req.correlation_id,
+                        {"razorpay_payment_id": req.razorpay_payment_id},
+                        utcnow())
+        return {"verified": True, "state": "SUCCESS",
+                "razorpay_payment_id": req.razorpay_payment_id}
+
+
+@api.post("/api/webhook")
+async def webhook(request: Request):
+    a = get_app()
+    body = await request.body()
+    sig = request.headers.get("x-razorpay-signature", "")
+    return a.webhooks.handle(body=body, signature=sig, now=utcnow())
+
+
+@api.post("/api/reconcile")
+def reconcile():
+    with LOCK:
+        a = get_app()
+        return a.recon.run(utcnow())
+
+@api.post("/api/reset")
+def reset():
+    STATE.pop("app", None)
+    get_app()
+    return {"status": "reset"}
+
+
+def _static(name: str, media: str | None = None):
+    """Serve a file from web/, or say so plainly when it is not there.
+
+    The engine can be deployed on its own, with the front end hosted separately
+    as static files. In that shape web/ is absent, and a missing file should be
+    a 404 with a pointer -- not a 500 traceback."""
+    p = WEB / name
+    if not p.exists():
+        return JSONResponse(
+            {"error": f"{name} not bundled with this deployment",
+             "note": "this process is the engine; the front end is served separately"},
+            status_code=404)
+    return FileResponse(p, media_type=media) if media else FileResponse(p)
+
+
+@api.get("/")
+def index():
+    return _static("index.html")
+
+
+@api.get("/app.js")
+def appjs():
+    return _static("app.js", "application/javascript")
+
+
+@api.get("/gl.js")
+def gljs():
+    return _static("gl.js", "application/javascript")
+
+
+@api.get("/vendor/{name}")
+def vendorjs(name: str):
+    """Vendored libraries. Name is whitelisted rather than joined, because a
+    path parameter that reaches the filesystem is a traversal waiting to
+    happen."""
+    allowed = {"gsap.min.js", "ScrollTrigger.min.js"}
+    if name not in allowed:
+        return JSONResponse({"error": "not found"}, status_code=404)
+    return _static(f"vendor/{name}", "application/javascript")
+
+
+@api.get("/style.css")
+def css():
+    return _static("style.css", "text/css")
+
+
+# Registered last, so it only fires when nothing above matched. A 404 that says
+# which path the application actually received is worth having: on a managed
+# host the path can be rewritten before it arrives, and a bare "Not Found"
+# sends you looking in the wrong place. (It did. See FAILURES.md.)
+@api.api_route("/{full_path:path}",
+               methods=["GET", "POST", "PUT", "PATCH", "DELETE"])
+def not_found(full_path: str, request: Request):
+    return JSONResponse({
+        "error": "no route matched",
+        "path_the_app_received": request.url.path,
+        "hint": ("if that is not the path you requested, something in front of "
+                 "this process rewrote it"),
+        "routes": ["/", "/health", "/app.js", "/gl.js", "/style.css",
+                   "/api/catalog", "/api/categories", "/api/shop", "/api/replay",
+                   "/api/compare", "/api/failures", "/api/builder",
+                   "/api/decisions", "/api/control", "/api/ledger",
+                   "/api/results/{eval|experiments|frontier|calibration}",
+                   "/api/webhook", "/api/reconcile"],
+        "proxy_headers": {k: v for k, v in request.headers.items()
+                          if k.lower().startswith("x-vercel")},
+    }, status_code=404)

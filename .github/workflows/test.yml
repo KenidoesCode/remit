@@ -1,0 +1,35 @@
+name: ci
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install -r requirements.txt
+      - name: unit + property + chaos + adversarial tests
+        run: pytest -q
+      - name: the corpus must regenerate deterministically
+        run: |
+          python eval/generate.py
+          git diff --exit-code eval/corpus/cases.jsonl
+      - name: calibrate on train, choose on dev
+        run: python eval/calibrate.py
+      - name: the gates must hold
+        run: |
+          python eval/run_eval.py
+          python - <<'PY'
+          import json, sys
+          r = json.load(open("eval/results/eval.json"))
+          for split in ("all", "test"):
+              o = r[split]["outcome"]; g = r[split]["guardrails"]
+              assert o["unauthorized_movement_paise"] == 0, f"{split}: unauthorised money moved"
+              assert o["duplicate_payments"] == 0, f"{split}: duplicate payment"
+              assert o["webhook_state_violations"] == 0, f"{split}: webhook violation"
+              assert g["false_negatives_dangerous"] == 0, f"{split}: dangerous false negative"
+          print("gates hold on all and test splits")
+          PY
+      - name: no secrets
+        run: |
+          ! grep -rn "rzp_live_" --include='*.py' --include='*.md' --include='*.yaml' . || exit 1

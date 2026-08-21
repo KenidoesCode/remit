@@ -1,0 +1,10 @@
+# Vercel's Python builder searches for an entrypoint by filename. It found
+# remit/app.py -- the composition root, which builds the object graph and has
+# no ASGI `app` in it -- and stopped there. That module is now remit/assembly.py,
+# which is a better name for what it does, and this line removes the guessing
+# entirely: the entrypoint is stated, not inferred.
+#
+# Dependencies stay in requirements.txt. There is deliberately no [project]
+# table here; this file exists for one setting.
+[tool.vercel]
+entrypoint = "remit.api:api"

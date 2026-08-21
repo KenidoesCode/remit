@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+.venv/
+.vercel/
+.env
+deploy/studio-min/
+deploy/one.html

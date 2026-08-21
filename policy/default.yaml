@@ -1,0 +1,48 @@
+# REMIT policy. Data, not code.
+#
+# Every clause has a stable id that appears in the decision, the ledger and
+# the Refusal Ledger UI. Changing a threshold here changes the frontier
+# point; changing a clause id is a breaking change.
+version: "2026-08-21.a"
+name: "default"
+
+risk:
+  # What it costs the user, in paise, to be asked one extra question.
+  # This is the number that turns "confidence" into "escalate or not".
+  friction_cost_paise: 1500
+  # Fraction of the amount that is unrecoverable if the intent was wrong.
+  # Groceries are returnable; a mobile recharge is not.
+  irreversibility:
+    default: 0.55
+    recharge: 0.95
+    grocery: 0.35
+    subscription: 0.70
+  # Below this calibrated confidence we never auto-execute, whatever the
+  # arithmetic says. A floor, so a tiny amount can't buy autonomy.
+  hard_confidence_floor: 0.55
+  # If the model's stated amount disagrees with catalog x qty by more than
+  # this, something is wrong regardless of confidence.
+  max_amount_disagreement_paise: 100
+
+clauses:
+  SCOPE-001:  {enabled: true, description: "merchant in remit scope"}
+  SCOPE-002:  {enabled: true, description: "category in remit scope"}
+  LIFE-001:   {enabled: true, description: "remit not expired"}
+  LIFE-002:   {enabled: true, description: "remit not revoked"}
+  CEIL-001:   {enabled: true, description: "per-transaction ceiling"}
+  CEIL-002:   {enabled: true, description: "aggregate ceiling for this grant"}
+  CEIL-003:   {enabled: true, description: "count ceiling for this grant"}
+  COOL-001:   {enabled: true, description: "post-grant reduced cap window"}
+  ENV-001:    {enabled: true, description: "debit falls inside a notified envelope"}
+  AGG-001:    {enabled: true, description: "subject aggregate exposure across ALL live grants"}
+  FRESH-001:  {enabled: true, description: "consent freshness by elapsed days"}
+  FRESH-002:  {enabled: true, description: "consent freshness by cumulative spend"}
+  USER-001:   {enabled: true, description: "user-stated ceiling in the utterance"}
+  CONF-001:   {enabled: true, description: "calibrated confidence floor"}
+  CONF-002:   {enabled: true, description: "model/catalog amount agreement"}
+
+limits:
+  # Ceiling across every live grant a subject holds. Nothing in the real
+  # ecosystem computes this today -- UPI Circle caps a delegate, SBMD caps
+  # a mandate, and nobody caps the union.
+  subject_aggregate_exposure_paise: 2500000

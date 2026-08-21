@@ -1,0 +1,42 @@
+# REMIT authorization policy. Data, not code.
+# Every clause id here appears in the decision, the audit ledger and the UI.
+version: "2026-08-21.a"
+name: "balanced"
+
+limits:
+  max_transaction_paise: 2000000       # Rs 20,000 per transaction
+  session_exposure_paise: 2500000
+  daily_exposure_paise: 5000000
+  velocity_1h: 12
+  max_drift_auto: 0.05                 # above this, never auto-execute
+  max_drift_stepup: 0.60               # above this, deny outright
+  friction_floor_paise: 1500           # annoyance cost of any interruption
+  friction_bps: 500                    # plus 5% of the transaction value
+  min_parse_confidence: 0.55
+  allowed_currencies: ["INR"]
+  require_purchase_authority: true
+  integrity_layer: true                # off = the agent ignores what the human said
+  allow_agent_added_over_ceiling: false
+
+revenue:
+  aggressiveness: 1.0                  # 0 = no offers, 1 = full
+  max_offers: 3
+  min_relevance: 0.35
+
+clauses:
+  AUTH-001: "purchase authority was granted"
+  AUTH-002: "intent has not expired"
+  AUTH-003: "intent has not been revoked"
+  CUR-001:  "currency is supported"
+  CEIL-001: "total is within the authorised amount"
+  CEIL-002: "total is within the per-transaction cap"
+  EXPO-001: "session exposure within cap"
+  EXPO-002: "daily exposure within cap"
+  VEL-001:  "velocity within cap"
+  DRIFT-001: "drift below the auto-execute threshold"
+  DRIFT-002: "drift below the outright-deny threshold"
+  CONF-001: "parse confidence above the floor"
+  CAT-001:  "catalog version has not changed since pricing"
+  STOCK-001: "every line item is still in stock"
+  AGENT-001: "no agent-added item pushes the total past the ceiling"
+  RISK-001: "risk engine did not recommend denial"

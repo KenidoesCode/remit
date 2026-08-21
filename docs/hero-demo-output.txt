@@ -1,0 +1,195 @@
+
+══════════════════════════════════════════════════════════════════════════════
+REMIT  │  Revocable, Explainable Mandates for Intent-driven Transactions
+       │  an AI buyer that grows merchant revenue without a blank cheque
+══════════════════════════════════════════════════════════════════════════════
+  catalog: 101 products, 6 merchants, 305 merchandising relations, version 1
+  calibrator: IsotonicCalibrator
+
+══════════════════════════════════════════════════════════════════════════════
+SCENE 1  │  The human speaks. The agent searches, compares and selects.
+══════════════════════════════════════════════════════════════════════════════
+  "find me premium running shoes under ₹5000 and buy the best value option"
+
+  intent      running shoes x1, objective best_value, authority=True
+              parse confidence 1.0 (raw) -> risk uses the calibrated value
+  selected    Kinetic Pace Pro  ₹4,299.00  4.7★ (635 reviews)
+              why: best balance of rating, price and delivery in your budget
+  totals      subtotal ₹4,299.00   shipping ₹0.00   TOTAL ₹4,299.00
+              merchant margin ₹1,289.70
+  drift       score 0.0   non-zero: none
+  risk        low   E[loss] ₹0.00 vs cost of asking ₹214.95
+  VERDICT     AUTO   (17 clauses evaluated)
+              inside the authorised envelope; expected loss ₹0.00 below the cost of asking
+  payment     CREATED  order_b7102a1f4a9c76
+
+  top candidates the agent actually compared:
+    Kinetic Pace Pro                       ₹4,299.00  score 0.7492
+    Strideworks Velocity 4 Wide            ₹4,799.00  score 0.7119
+    Strideworks Velocity 4 - Mist          ₹4,599.00  score 0.7068
+    Strideworks Velocity 4                 ₹4,599.00  score 0.6904
+
+══════════════════════════════════════════════════════════════════════════════
+SCENE 2  │  The merchant revenue engine proposes. Nothing is added silently.
+══════════════════════════════════════════════════════════════════════════════
+  intent      running shoes x1, objective best_value, authority=True
+              parse confidence 1.0 (raw) -> risk uses the calibrated value
+  selected    Kinetic Pace Pro  ₹4,299.00  4.7★ (635 reviews)
+  offers      (proposed, never added silently)
+                Kinetic Pace Pro Knit              + ₹4,999.00  [needs you]
+                  knit upper version, more breathable for summer running
+                Kinetic Insole Support             +   ₹699.00  [fits]
+                  arch support for higher weekly mileage
+                Lumen Lab Anti-Chafe Stick         +   ₹598.00  [fits]
+                  prevents chafing on long runs in new shoes
+  accepted    ['prd_0022'] (inside the envelope)
+  totals      subtotal ₹4,998.00   shipping ₹0.00   TOTAL ₹4,998.00
+              merchant margin ₹1,639.20
+  drift       score 0.0   non-zero: none
+  risk        low   E[loss] ₹0.00 vs cost of asking ₹249.90
+  VERDICT     AUTO   (17 clauses evaluated)
+              inside the authorised envelope; expected loss ₹0.00 below the cost of asking
+  payment     CREATED  order_4cb5d2de750f94
+
+  [███████████████████████████████████████████████████░]
+  authorised    ₹5,000.00   current    ₹4,998.00   room ₹2.00
+  status: NEAR THE BOUNDARY
+
+══════════════════════════════════════════════════════════════════════════════
+SCENE 2b  │  A different basket, where the offer FITS. Revenue, inside the line.
+══════════════════════════════════════════════════════════════════════════════
+  "buy a yoga mat under 2500, best value"
+
+  intent      fitness accessories x1, objective best_value, authority=True
+              parse confidence 0.84 (raw) -> risk uses the calibrated value
+  selected    Kinetic Yoga Mat 6mm  ₹1,299.00  4.9★ (2787 reviews)
+  offers      (proposed, never added silently)
+                Kinetic Yoga Mat Pro 8mm           + ₹2,120.00  [needs you]
+                  8mm version for joint comfort on hard floors
+                Lumen Lab Recovery Balm            +   ₹648.00  [fits]
+                  post-session muscle recovery
+                Kinetic Shaker 700ml               +   ₹399.00  [fits]
+                  hydration for the same workout
+  accepted    ['prd_0055', 'prd_0019'] (inside the envelope)
+  totals      subtotal ₹2,297.00   shipping ₹128.00   TOTAL ₹2,425.00
+              merchant margin ₹1,114.47
+  drift       score 0.0   non-zero: none
+  risk        low   E[loss] ₹89.37 vs cost of asking ₹121.25
+  VERDICT     AUTO   (17 clauses evaluated)
+              inside the authorised envelope; expected loss ₹89.37 below the cost of asking
+  payment     CREATED  order_2b8ff6e9a0a943
+
+  without offers  ₹1,378.00  (margin ₹571.56)
+  with offers     ₹2,425.00  (margin ₹1,114.47)
+  merchant gains  ₹542.91 of margin on ₹1,047.00 of extra basket
+
+  [██████████████████████████████████████████████████░░]
+  authorised    ₹2,500.00   current    ₹2,425.00   room ₹75.00
+  status: NEAR THE BOUNDARY
+
+══════════════════════════════════════════════════════════════════════════════
+SCENE 3  │  The world moves. Shipping changes AFTER the human was shown a price.
+══════════════════════════════════════════════════════════════════════════════
+  the human was shown  ₹4,998.00
+  intent      running shoes x1, objective best_value, authority=True
+              parse confidence 1.0 (raw) -> risk uses the calibrated value
+  selected    Kinetic Pace Pro  ₹4,299.00  4.7★ (635 reviews)
+  accepted    ['prd_0022'] (inside the envelope)
+  totals      subtotal ₹4,998.00   shipping ₹799.00   TOTAL ₹5,797.00
+              merchant margin ₹1,639.20
+  drift       score 0.0872   non-zero: {'total': 0.1594, 'shipping': 1.0, 'cross_sell': 0.1594, 'catalog_version': 1.0}
+              ! final total ₹5,797.00 exceeds the authorised ₹5,000.00 by ₹797.00
+              ! shipping of ₹799.00 is what pushes this transaction outside the authorised amount
+              ! agent-added items are part of what takes this transaction outside the authorised amount
+              ! prices in this cart no longer match the catalog (cart priced at v1, catalog is now v2)
+  risk        low   E[loss] ₹176.92 vs cost of asking ₹289.85
+  VERDICT     STEP_UP   (17 clauses evaluated, failed: CEIL-001, DRIFT-001, CAT-001, AGENT-001)
+              this is more than you authorised (CEIL-001: ₹5,797.00 <= ₹5,000.00)
+              counterfactual: would pass CEIL-001 if the authorised amount were ₹5,797.00 (currently ₹5,000.00, short by ₹797.00)
+  payment     AWAITING_HUMAN
+
+  [████████████████████████████████████████████████████]
+  authorised    ₹5,000.00   current    ₹5,797.00   over by ₹797.00
+  status: BOUNDARY EXCEEDED
+
+  ₹0 moved. The agent stopped at the boundary and asked.
+
+══════════════════════════════════════════════════════════════════════════════
+SCENE 4  │  The human declines. Then the same request is retried four times.
+══════════════════════════════════════════════════════════════════════════════
+  human declines -> DECLINED_BY_HUMAN: human declined at the step-up
+  human approves -> CREATED  order_f8101892b79349  ₹5,098.00
+  then 4 identical retries -> replayed=[True, True, True, True]
+  orders actually created: 1  (must be 1)
+
+══════════════════════════════════════════════════════════════════════════════
+SCENE 5  │  Webhooks arrive twice, out of order, and one is forged.
+══════════════════════════════════════════════════════════════════════════════
+    captured             accepted=True  applied=True  state now SUCCESS
+    captured again       accepted=False applied=None  duplicate
+    authorized (late)    accepted=True  applied=False out-of-order: SUCCESS -> AUTHORIZED is not a legal transition
+    forged               accepted=False applied=False INVALID SIGNATURE - state not touched
+  final payment state: SUCCESS
+  transitions:
+               - -> CREATED      created
+         CREATED -> SUCCESS      webhook payment.captured
+
+══════════════════════════════════════════════════════════════════════════════
+SCENE 6  │  The intent graph and the tamper-evident Docket.
+══════════════════════════════════════════════════════════════════════════════
+  intent                 {"category": "running shoes", "ceiling": 500000}
+  └─ search                 {"results": 19}
+  └─ selection              {"product_id": "prd_0007", "price": 429900}
+  └─ offer:prd_0008         {"kind": "upsell", "delta": 499900, "needs_human": true}
+  └─ offer:prd_0022         {"kind": "cross_sell", "delta": 69900, "needs_human": true}
+  └─ offer:prd_0059         {"kind": "cross_sell", "delta": 59800, "needs_human": true}
+  └─ cart                   {"total": 509800, "lines": 1}
+  └─ drift                  {"score": 0.0432, "worst": "shipping"}
+  └─ policy                 {"verdict": "STEP_UP", "failed": ["CEIL-001"]}
+  └─ payment                {"order_id": "order_f8101892b79349", "amount": 509800}
+
+  Docket: 152 hash-chained events, chain INTACT
+    UTTERANCE          faadb4cf8167  {"len":71,"user":"usr_pranauv"}
+    INTENT_CREATED     bbe916f96a8d  {"category":"running shoes","created_at":"20
+    PRODUCT_SEARCH     ba6ec3e9c113  {"results":19,"term_fallback":false}
+    PRODUCT_SELECTED   dc83a0236c0f  {"product_id":"prd_0007","score":0.7492}
+    OFFER_PROPOSED     b5314a627d88  {"changes_intent":true,"headroom_after_paise
+    OFFER_PROPOSED     d6a9517424dc  {"changes_intent":false,"headroom_after_pais
+    OFFER_PROPOSED     d72beb15de1c  {"changes_intent":false,"headroom_after_pais
+    CART_PRICED        09c99ed1ec9e  {"discount_paise":0,"merchant_margin_paise":
+    DRIFT_MEASURED     7474a696ac12  {"dimensions":{"attributes":0.0,"authority":
+    ... 124 events for this one purchase
+
+══════════════════════════════════════════════════════════════════════════════
+SCENE 7  │  What it cost, and what it saved.
+══════════════════════════════════════════════════════════════════════════════
+  arm                        revenue   vs baseline         AOV   unauthorised
+  no revenue engine,     ₹858,547.92         ₹0.00   ₹1,792.37     ₹85,726.00
+  revenue engine ON,   ₹1,242,727.92   ₹384,180.00   ₹2,594.42    ₹154,477.00
+  full REMIT, human a  ₹1,155,407.92   ₹296,860.00   ₹2,686.99          ₹0.00
+  full REMIT, human d    ₹329,159.00  -₹529,388.92   ₹2,766.04          ₹0.00
+
+  REMIT keeps 77.3% of the unbounded agent's revenue upside
+  and removes 100% of its ₹154,477.00 of unauthorised movement.
+
+  the autonomy frontier:
+    locked                  10.0% autonomous    70.4 asks/100        ₹0.00
+    very strict              8.9% autonomous    71.5 asks/100        ₹0.00
+    strict                   8.9% autonomous    71.5 asks/100        ₹0.00
+    cautious                10.7% autonomous    69.6 asks/100        ₹0.00
+    balanced (default)      22.2% autonomous    58.1 asks/100        ₹0.00
+    relaxed                 24.6% autonomous    55.7 asks/100        ₹0.00
+    loose                   39.4% autonomous    40.9 asks/100        ₹0.00
+    very loose              45.2% autonomous    35.2 asks/100        ₹0.00 <- last safe point
+    permissive              54.4% autonomous    25.9 asks/100   ₹68,175.00
+    unbounded               54.4% autonomous    25.9 asks/100   ₹68,175.00
+
+  You can buy autonomy up to 45.2% for free.
+  Past 'very loose', the next step costs ₹68,175.00 that nobody authorised.
+
+──────────────────────────────────────────────────────────────────────────────
+  The goal is not to make the agent as autonomous as possible.
+  It is to find the point where autonomy stops paying for itself
+  in money the buyer never authorised.
+──────────────────────────────────────────────────────────────────────────────
+

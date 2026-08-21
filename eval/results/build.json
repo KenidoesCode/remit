@@ -1,0 +1,6 @@
+{
+  "generated_by": "eval/build_manifest.py",
+  "note": "counted by reading tests/test_*.py. shipped so a deployment that does not carry the test suite can still report a true number.",
+  "tests": 89,
+  "policy_clauses": 17
+}
