@@ -197,3 +197,66 @@ same reason — a claim about speed should arrive as a number.
 `GET /api/failures` parses the markdown rather than duplicating it.
 **Why:** a page that restates a document drifts from it. This one cannot, because
 it is the document.
+
+---
+
+## ADR-028 — One predicate for "does this answer what they asked for?"
+
+**Context.** The catalog search and the drift engine each implemented the
+product-match test. The search accepted name, category or attribute matches;
+drift accepted only name or category. Both were reasonable in isolation.
+
+**Decision.** Export `term_answers(name, category, attributes, terms)` from
+`remit/domain/catalog.py` and have both call it. `CartLine` carries
+`attributes` so drift evaluates the identical inputs.
+
+**Alternatives considered.**
+- *Lower the `product_match` weight from 2.5.* Rejected: it would have hidden
+  the disagreement behind a smaller number and left two definitions in place.
+- *Make the search stricter to match drift.* Rejected: it would have shrunk
+  what the agent can find in order to make two functions agree, trading real
+  capability for internal consistency.
+- *Re-label the ground truth so a widened search counts as "should ask".*
+  Rejected as metric-gaming. It may well be the correct label, but changing the
+  measure to improve the score is not how you find that out.
+
+**Trade-off.** Drift is now marginally more permissive: a product matched only
+by attribute no longer scores drift. That is the intended behaviour, and the
+compound-attribute rule that stopped "earbuds" matching "earbuds-accessory"
+is preserved inside the shared predicate.
+
+**Result.** Held-out precision 0.5238 → 0.55, recall unchanged at 1.0,
+dangerous false negatives unchanged at 0, unauthorised movement unchanged at
+₹0.00.
+
+---
+
+## ADR-029 — The opening is an application state, not a video
+
+**Context.** The product needed an identity moment before the homepage, and the
+obvious cheap answer is an MP4 or a Lottie file.
+
+**Decision.** Build it from what is already on the page: one inline SVG with
+three paths, animated with the GSAP the product already loads, using the
+existing `--bg`, `--signal`, `--ink`, `--m` and `--s` tokens. No new
+dependency, no asset, no network request.
+
+**Alternatives considered.**
+- *A video.* Rejected: an asset to download, a codec to fall back on, and it
+  cannot inherit the palette if the palette ever changes.
+- *A canvas or WebGL scene.* Rejected: the page already runs a WebGL layer, and
+  a second GL context for one thread is disproportionate.
+- *Show it once and store `introSeen`.* Rejected: identity that only the first
+  visitor sees is not identity, and a reviewer who refreshes should see the
+  same product.
+
+**Trade-off.** Every visit costs ~3.2 seconds before the product. Mitigated by
+keeping it short and by loading the homepage in parallel behind it.
+
+**The failure mode that mattered most.** An opening that hangs is worse than no
+opening. Three independent guarantees: a `try/catch` that reveals on any throw,
+a no-op GSAP shim already on the page if the CDN and the vendored copy both
+fail, and a 5.2-second hard timer that reveals the product regardless of what
+the animation is doing. Verified by deleting `window.gsap` at runtime and
+confirming the homepage still appears.
+

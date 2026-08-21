@@ -15,12 +15,12 @@
       "no_decision_reached": 78
     },
     "guardrails": {
-      "needs_human_precision": 0.5877,
+      "needs_human_precision": 0.6073,
       "needs_human_recall": 1.0,
       "false_negatives_dangerous": 0,
-      "false_positives_friction": 141,
-      "blocked_value": "\u20b9892,492.26",
-      "blocked_value_paise": 89249226
+      "false_positives_friction": 130,
+      "blocked_value": "\u20b9843,925.26",
+      "blocked_value_paise": 84392526
     },
     "quality": {
       "category_accuracy": 1.0,
@@ -33,20 +33,20 @@
       "amount_error_median": 0.0
     },
     "business": {
-      "revenue": "\u20b9329,159.00",
-      "revenue_paise": 32915900,
-      "merchant_margin": "\u20b9120,690.55",
-      "margin_paise": 12069055,
-      "transactions": 119,
-      "aov": "\u20b92,766.04",
-      "aov_paise": 276604,
-      "auto_rate": 0.2222,
-      "human_confirmation_rate": 0.4833,
+      "revenue": "\u20b9372,629.00",
+      "revenue_paise": 37262900,
+      "merchant_margin": "\u20b9136,783.79",
+      "margin_paise": 13678379,
+      "transactions": 129,
+      "aov": "\u20b92,888.59",
+      "aov_paise": 288859,
+      "auto_rate": 0.2426,
+      "human_confirmation_rate": 0.463,
       "denial_rate": 0.15
     },
     "efficiency": {
-      "latency_p50_ms": 2.36,
-      "latency_p95_ms": 3.36
+      "latency_p50_ms": 2.45,
+      "latency_p95_ms": 3.74
     }
   },
   "train": {
@@ -61,12 +61,12 @@
       "no_decision_reached": 45
     },
     "guardrails": {
-      "needs_human_precision": 0.6068,
+      "needs_human_precision": 0.6188,
       "needs_human_recall": 1.0,
       "false_negatives_dangerous": 0,
-      "false_positives_friction": 81,
-      "blocked_value": "\u20b9514,540.19",
-      "blocked_value_paise": 51454019
+      "false_positives_friction": 77,
+      "blocked_value": "\u20b9496,201.19",
+      "blocked_value_paise": 49620119
     },
     "quality": {
       "category_accuracy": 1.0,
@@ -79,20 +79,20 @@
       "amount_error_median": 0.0
     },
     "business": {
-      "revenue": "\u20b9200,063.00",
-      "revenue_paise": 20006300,
-      "merchant_margin": "\u20b973,917.98",
-      "margin_paise": 7391798,
-      "transactions": 72,
-      "aov": "\u20b92,778.65",
-      "aov_paise": 277865,
-      "auto_rate": 0.2253,
-      "human_confirmation_rate": 0.4691,
+      "revenue": "\u20b9213,305.00",
+      "revenue_paise": 21330500,
+      "merchant_margin": "\u20b978,703.18",
+      "margin_paise": 7870318,
+      "transactions": 75,
+      "aov": "\u20b92,844.06",
+      "aov_paise": 284406,
+      "auto_rate": 0.2377,
+      "human_confirmation_rate": 0.4568,
       "denial_rate": 0.1667
     },
     "efficiency": {
-      "latency_p50_ms": 2.32,
-      "latency_p95_ms": 3.31
+      "latency_p50_ms": 2.39,
+      "latency_p95_ms": 3.5
     }
   },
   "dev": {
@@ -107,12 +107,12 @@
       "no_decision_reached": 17
     },
     "guardrails": {
-      "needs_human_precision": 0.589,
+      "needs_human_precision": 0.6232,
       "needs_human_recall": 1.0,
       "false_negatives_dangerous": 0,
-      "false_positives_friction": 30,
-      "blocked_value": "\u20b9204,256.93",
-      "blocked_value_paise": 20425693
+      "false_positives_friction": 26,
+      "blocked_value": "\u20b9187,018.93",
+      "blocked_value_paise": 18701893
     },
     "quality": {
       "category_accuracy": 1.0,
@@ -125,20 +125,20 @@
       "amount_error_median": 0.0
     },
     "business": {
-      "revenue": "\u20b946,949.00",
-      "revenue_paise": 4694900,
-      "merchant_margin": "\u20b916,582.41",
-      "margin_paise": 1658241,
-      "transactions": 18,
-      "aov": "\u20b92,608.27",
-      "aov_paise": 260827,
-      "auto_rate": 0.1667,
-      "human_confirmation_rate": 0.5093,
+      "revenue": "\u20b964,187.00",
+      "revenue_paise": 6418700,
+      "merchant_margin": "\u20b923,087.68",
+      "margin_paise": 2308768,
+      "transactions": 22,
+      "aov": "\u20b92,917.59",
+      "aov_paise": 291759,
+      "auto_rate": 0.2037,
+      "human_confirmation_rate": 0.4722,
       "denial_rate": 0.1667
     },
     "efficiency": {
-      "latency_p50_ms": 2.39,
-      "latency_p95_ms": 3.12
+      "latency_p50_ms": 2.46,
+      "latency_p95_ms": 3.39
     }
   },
   "test": {
@@ -153,12 +153,12 @@
       "no_decision_reached": 16
     },
     "guardrails": {
-      "needs_human_precision": 0.5238,
+      "needs_human_precision": 0.55,
       "needs_human_recall": 1.0,
       "false_negatives_dangerous": 0,
-      "false_positives_friction": 30,
-      "blocked_value": "\u20b9173,695.14",
-      "blocked_value_paise": 17369514
+      "false_positives_friction": 27,
+      "blocked_value": "\u20b9160,705.14",
+      "blocked_value_paise": 16070514
     },
     "quality": {
       "category_accuracy": 1.0,
@@ -171,20 +171,20 @@
       "amount_error_median": 0.0
     },
     "business": {
-      "revenue": "\u20b982,147.00",
-      "revenue_paise": 8214700,
-      "merchant_margin": "\u20b930,190.16",
-      "margin_paise": 3019016,
-      "transactions": 29,
-      "aov": "\u20b92,832.65",
-      "aov_paise": 283265,
-      "auto_rate": 0.2685,
-      "human_confirmation_rate": 0.5,
+      "revenue": "\u20b995,137.00",
+      "revenue_paise": 9513700,
+      "merchant_margin": "\u20b934,992.93",
+      "margin_paise": 3499293,
+      "transactions": 32,
+      "aov": "\u20b92,973.03",
+      "aov_paise": 297303,
+      "auto_rate": 0.2963,
+      "human_confirmation_rate": 0.4722,
       "denial_rate": 0.0833
     },
     "efficiency": {
-      "latency_p50_ms": 2.4,
-      "latency_p95_ms": 3.57
+      "latency_p50_ms": 2.68,
+      "latency_p95_ms": 4.39
     }
   },
   "by_bucket": {
@@ -210,8 +210,8 @@
       "n": 46,
       "unauthorized_paise": 0,
       "false_negatives": 0,
-      "auto": 10,
-      "step_up": 16,
+      "auto": 14,
+      "step_up": 12,
       "deny": 18,
       "abstain": 0
     },
@@ -219,8 +219,8 @@
       "n": 26,
       "unauthorized_paise": 0,
       "false_negatives": 0,
-      "auto": 9,
-      "step_up": 17,
+      "auto": 10,
+      "step_up": 16,
       "deny": 0,
       "abstain": 0
     },
@@ -255,8 +255,8 @@
       "n": 156,
       "unauthorized_paise": 0,
       "false_negatives": 0,
-      "auto": 68,
-      "step_up": 70,
+      "auto": 73,
+      "step_up": 65,
       "deny": 0,
       "abstain": 18
     },
@@ -273,8 +273,8 @@
       "n": 20,
       "unauthorized_paise": 0,
       "false_negatives": 0,
-      "auto": 8,
-      "step_up": 9,
+      "auto": 9,
+      "step_up": 8,
       "deny": 0,
       "abstain": 3
     },

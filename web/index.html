@@ -14,6 +14,25 @@
 <body>
 
 <!-- the neighbourhood web: hand-written WebGL, drawn behind everything -->
+<!-- ── opening. first paint, before anything else. ────────────────────────
+     Uses only tokens already in style.css: --bg, --ink, --signal, --mono,
+     --sans. No new colour, no new font, no new dependency -- one inline SVG
+     path animated by the GSAP that is already on the page. -->
+<div id="intro" role="group" aria-label="REMIT — Revocable, Explainable Mandates for Intent-driven Transactions, by techuilaguy, also known as Pranauv Shrinaath">
+  <svg id="webshot" viewBox="0 0 1000 620" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+    <path class="w2" d="M -120 40 Q 240 110 497 292"/>
+    <path class="w2" d="M 1120 70 Q 760 140 503 292"/>
+    <path class="w1" d="M -140 -30 Q 180 50 499 290"/>
+    <circle class="anchor" cx="500" cy="291" r="3.2"/>
+  </svg>
+  <div class="intro-mid">
+    <h1 class="intro-mark">REMIT</h1>
+    <p class="intro-exp">Revocable, Explainable Mandates for Intent-driven Transactions</p>
+    <p class="intro-by">by <b>techuilaguy</b></p>
+    <p class="intro-aka">a.k.a. Pranauv Shrinaath</p>
+  </div>
+</div>
+
 <canvas id="gl" aria-hidden="true"></canvas>
 <div id="glow" aria-hidden="true"><span class="g1"></span><span class="g2"></span><span class="g3"></span></div>
 <div id="grain" aria-hidden="true"></div>

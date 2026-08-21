@@ -54,23 +54,22 @@ class Merchant(BaseModel):
     risk_tier: str
 
 
-def _matches_terms(p: "Product", terms: list[str]) -> bool:
-    """Does this product plausibly ANSWER what the human named?
+def term_answers(*, name: str, category: str, attributes: list[str],
+                 terms: list[str]) -> bool:
+    """THE predicate for 'does this product answer the noun the human said?'
 
-    Three ways to match, in order of how the catalog actually encodes meaning:
-      * the product NAME contains the phrase   ("Kinetic Yoga Mat 6mm" / "yoga mat")
-      * the CATEGORY is the phrase             ("running shoes")
-      * an ATTRIBUTE equals the phrase once hyphens are normalised
-        ("earbuds" == "earbuds"), but NOT a longer compound
-        ("earbuds-accessory" -> "earbuds accessory", which is a case for the
-        buds, not a pair of buds)
+    Exported deliberately. The catalog uses it to decide what may be selected,
+    and the drift engine uses it to decide whether what was selected still
+    answers the request. When those two disagreed, the search accepted a
+    product on an attribute match and drift then scored it as a mismatch --
+    94 unnecessary step-ups on the corpus for products that were exactly what
+    the human asked for. FAILURES.md #14.
 
-    Substring matching on attributes was the first attempt and it bought a
-    "Northbeam Buds Case" when the human said "earbuds". FAILURES.md 2026-08-21 18:20.
+    One question must have one answer, in one place.
     """
-    name = p.name.lower()
-    cat = p.category.lower()
-    attrs = {a.lower().replace("-", " ") for a in p.attributes}
+    name = name.lower()
+    cat = category.lower()
+    attrs = {a.lower().replace("-", " ") for a in attributes}
     for t in terms:
         t = t.lower().strip()
         if not t:
@@ -83,6 +82,11 @@ def _matches_terms(p: "Product", terms: list[str]) -> bool:
         if t in attrs or singular in attrs:
             return True
     return False
+
+
+def _matches_terms(p: "Product", terms: list[str]) -> bool:
+    return term_answers(name=p.name, category=p.category,
+                        attributes=p.attributes, terms=terms)
 
 
 def _prod(r: sqlite3.Row) -> Product:

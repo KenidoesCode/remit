@@ -198,9 +198,11 @@
       p.y += p.vy * speed * p.z * 60;
       if (p.x < 0.02 || p.x > 0.98) p.vx *= -1;
       if (p.y < 0.02 || p.y > 0.98) p.vy *= -1;
-      // the field does not cross the property line on its own. that is the
-      // whole idea: the neighbourhood stops where your authority stops.
-      if (p.x > bx - 0.012 && p.vx > 0) p.vx *= -1;
+      // The field used to be confined to the left of the property line. That
+      // read as meaning while the line was drawn; with the line gone it just
+      // read as "the effect is broken on the right half". The boundary still
+      // exists where it belongs -- in the property-line track and in the
+      // policy engine -- so the neighbourhood now fills the viewport.
     }
 
     /* ---- threads: neighbours within reach ------------------------------ */
@@ -316,9 +318,8 @@
     /* ---- nodes ----------------------------------------------------------- */
     for (let i = 0; i < GL.nodes.length; i++) {
       const p = GL.nodes[i];
-      const beyond = p.x > bx;
-      const a = (beyond ? 0.22 : 0.62) * (0.45 + p.z * 0.55);
-      P.push(px[i], py[i], a, p.r * p.z * 2.6 * GL.dpr, beyond ? 1 : 0);
+      const a = 0.62 * (0.45 + p.z * 0.55);
+      P.push(px[i], py[i], a, p.r * p.z * 2.6 * GL.dpr, 0);
     }
 
     /* ---- draw ------------------------------------------------------------ */

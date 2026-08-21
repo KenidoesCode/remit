@@ -357,3 +357,53 @@ had chosen, and the input distribution of a demo is *whatever a stranger types*.
 The abstain path had been treated as an edge case; it is the common case, and it
 is the only path where the system is reasoning about its own ignorance.
 
+---
+
+## 2026-08-21 20:40 — the search and the drift engine disagreed about one question, and the human paid for it
+
+**What I saw.** Precision on the held-out split was 0.5238 — roughly every
+second step-up was unnecessary friction. Rather than tune a threshold, I dumped
+every false positive on the full corpus and grouped them by the clause that
+first failed. 94 of 141 came from `DRIFT-001`, and every one of those had the
+same drift score: **0.1064**. One number appearing 66 times is not a
+distribution, it is a bug with a fingerprint.
+
+**What I thought it was.** That the `product_match` weight of 2.5 was too high.
+
+**What it actually was.** `product_match` and the catalog search were answering
+the same question — *does this product answer the noun the human said?* — with
+two different implementations. The catalog's `_matches_terms` accepts a match on
+the product name, the category, **or a normalised attribute**. The drift engine
+did `term in (name + " " + category)` and stopped there.
+
+So the search would legitimately select "Wayfarer Transit 30L" for "backpack"
+on an attribute match, and the drift engine would then score that same product
+as a mismatch and escalate to a human. The product was exactly what was asked
+for. The two components simply disagreed, and every disagreement was billed to
+the user as an interruption.
+
+**How I got out.** Extracted one exported predicate, `term_answers(...)`, and
+made both call it. The catalog decides what may be selected with it; drift
+decides whether what was selected still answers the request with it. Cart lines
+now carry `attributes` so drift can ask the identical question with the
+identical inputs.
+
+Deliberately **not** done: I did not weaken the predicate, and I did not
+re-label the ground truth. The remaining 68 `product_match` false positives are
+cases where the term genuinely matched nothing and the search widened to the
+category. Counting those as "the human would want to be asked" would improve
+precision by redefining the metric, which is cheating, so the number stays
+where it is and the question stays open.
+
+**Result, held-out split, scored once:** precision **0.5238 → 0.55**, friction
+false positives **30 → 27**, recall **1.0 unchanged**, dangerous false negatives
+**0 unchanged**, unauthorised movement **₹0.00 unchanged**. A small gain bought
+honestly, and the diagnosis is worth more than the delta: the largest single
+source of user-visible friction in this system was two functions disagreeing
+about one predicate.
+
+**What it changed.** I now think of duplicated predicates as a correctness bug
+rather than a style issue. Two implementations of one question will diverge, and
+in a system that interrupts people for a living, the divergence has a price and
+somebody pays it.
+

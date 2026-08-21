@@ -46,6 +46,73 @@ const ENGINE_MISSING = `<div class="panel"><div class="verdict-row">
 
 const STATE = { journey: null, ceiling: 0, replay: null, fired: {}, health: null };
 
+/* ═════════════════════════════ the opening ═════════════════════════════
+   A thread is shot from off-screen, lands on the mark, and the product is
+   revealed behind it. ~3.2s, then it is gone.
+
+   Three rules it must never break:
+     * it must never be the reason the product does not load. Every path ends
+       in reveal(), including the failure paths, and a hard timer reveals the
+       page regardless of what the animation is doing.
+     * it uses only tokens and libraries already on the page: the same red,
+       the same two families, the same GSAP. No new dependency for one thread.
+     * reduced motion still gets the branding, just without the travel. */
+function opening() {
+  const el = document.getElementById("intro");
+  const done = () => {
+    document.body.dataset.intro = "done";
+    if (!el) return;
+    el.style.pointerEvents = "none";
+    try {
+      gsap.to(el, { opacity: 0, duration: .45, ease: "power2.inOut",
+                    onComplete: () => el.remove() });
+    } catch (e) { el.remove(); }
+  };
+  if (!el) { document.body.dataset.intro = "done"; return; }
+  // The backstop. If anything below throws, hangs, or GSAP never arrives, the
+  // product still appears. An intro that can strand the page is not a feature.
+  const hardStop = setTimeout(done, 5200);
+  const finish = () => { clearTimeout(hardStop); done(); };
+
+  try {
+    const paths = [...el.querySelectorAll("#webshot path")];
+    if (REDUCED) {
+      gsap.set(".intro-mark, .intro-exp, .intro-by, .intro-aka", { opacity: 1 });
+      gsap.set("#webshot .anchor", { opacity: 1 });
+      setTimeout(finish, 1400);
+      return;
+    }
+    paths.forEach(p => {
+      const len = p.getTotalLength();
+      p.style.strokeDasharray = len;
+      p.style.strokeDashoffset = len;
+    });
+    gsap.set(".intro-mark, .intro-exp, .intro-by, .intro-aka", { opacity: 0, y: 14 });
+    gsap.set(".intro-mark", { letterSpacing: "0.5em" });
+
+    const t = gsap.timeline({ onComplete: finish });
+    t.to(paths[2], { strokeDashoffset: 0, duration: .52, ease: "power3.in" }, .22)
+     .to([paths[0], paths[1]], { strokeDashoffset: 0, duration: .5,
+                                 ease: "power2.in", stagger: .05 }, .34)
+     .to("#webshot .anchor", { opacity: 1, duration: .12 }, .74)
+     .fromTo("#webshot .anchor", { attr: { r: 1 } }, { attr: { r: 5.5 },
+              duration: .5, ease: "power3.out" }, .74)
+     .to(".intro-mark", { opacity: 1, y: 0, letterSpacing: "0.22em",
+                          duration: .7, ease: "expo.out" }, .78)
+     .to(".intro-exp", { opacity: 1, y: 0, duration: .55, ease: "expo.out" }, 1.16)
+     .to(".intro-by", { opacity: 1, y: 0, duration: .45, ease: "expo.out" }, 1.5)
+     .to(".intro-aka", { opacity: 1, y: 0, duration: .45, ease: "expo.out" }, 1.74)
+     // the thread pulls the mark into the system it made
+     .to(paths, { strokeDashoffset: (i, tgt) => -tgt.getTotalLength(),
+                  duration: .6, ease: "power2.inOut" }, 2.5)
+     .to("#webshot .anchor", { opacity: 0, duration: .3 }, 2.6)
+     .to(".intro-mid", { scale: .96, opacity: 0, duration: .5,
+                         ease: "power2.inOut" }, 2.72);
+  } catch (e) {
+    finish();
+  }
+}
+
 /* ═════════════════════════ hero choreography ═══════════════════════════ */
 function heroIn() {
   if (REDUCED) {
@@ -811,6 +878,7 @@ function installTicker(bits) {
 
 /* ═══════════════════════════════ boot ══════════════════════════════════ */
 document.addEventListener("DOMContentLoaded", async () => {
+  opening();
   if (GL) {
     GL.init($("#gl"));
     GL.onStrike = () => {

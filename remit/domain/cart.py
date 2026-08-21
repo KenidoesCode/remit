@@ -29,6 +29,8 @@ class CartLine(BaseModel):
     accepted_by: str       # 'intent' | 'human' | 'agent'
     reason: str = ""
     restricted: str | None = None   # carried from the product; see RESTRICT-001
+    attributes: list[str] = []      # carried so drift can use the same
+                                    # product-match predicate the catalog used
 
     @property
     def line_paise(self) -> Paise:
@@ -88,7 +90,7 @@ def line_from(p: Product, qty: int, origin: str, accepted_by: str,
                     shown_price_paise=p.price_paise, qty=qty,
                     margin_bps=p.margin_bps, origin=origin,
                     accepted_by=accepted_by, reason=reason,
-                    restricted=p.restricted)
+                    restricted=p.restricted, attributes=list(p.attributes))
 
 
 def price_cart(cart: Cart, catalog: Catalog) -> Totals:

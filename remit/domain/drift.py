@@ -34,6 +34,7 @@ from typing import Any
 from pydantic import BaseModel
 
 from ..money import Paise, rupees
+from .catalog import term_answers
 from .cart import Cart, Totals
 from .intent import IntentEnvelope
 
@@ -146,8 +147,13 @@ def compute_drift(*, env: IntentEnvelope, cart: Cart, totals: Totals,
     if not env.product_terms or primary is None:
         skipped.append("product_match")
     else:
-        hay = (primary.name + " " + primary.category).lower()
-        hit = any(t.lower() in hay for t in env.product_terms)
+        # Same predicate the catalog used to allow this product to be
+        # selected at all. A stricter test here does not make the system
+        # safer -- it makes two components disagree about one question, and
+        # the human pays for the disagreement with an interruption.
+        hit = term_answers(name=primary.name, category=primary.category,
+                           attributes=list(primary.attributes),
+                           terms=env.product_terms)
         dims["product_match"] = 0.0 if hit else 1.0
         if not hit:
             reasons.append(
