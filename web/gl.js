@@ -250,24 +250,17 @@
       }
     }
 
-    /* ---- the anchor thread: the property line --------------------------- */
+    /* ---- the property line, kept but not drawn ------------------------
+       The anchor thread used to be rendered as a bright vertical line down the
+       middle of the viewport. It moved with the slider and with scroll, and a
+       line that twitches behind body text is a distraction, not a metaphor.
+       The boundary still exists and still does its job: the field will not
+       cross it, and a refused filament still stops dead at it. It is simply
+       not painted any more. `ax` stays because the filament and the ripple
+       are positioned against it. */
     const ax = bx * w;
-    // twang decays; while it rings the thread is drawn as a standing wave
-    if (GL.twang.amp > 0.001) {
-      GL.twang.amp *= 0.955;
-      GL.twang.phase += 0.42;
-    } else GL.twang.amp = 0;
-    const seg = 46;
-    const lit = GL.mood === "stop" ? 1 : 0;
-    for (let s = 0; s < seg; s++) {
-      const y0 = (s / seg) * h, y1 = ((s + 1) / seg) * h;
-      const env0 = Math.sin((s / seg) * Math.PI);
-      const env1 = Math.sin(((s + 1) / seg) * Math.PI);
-      const o0 = Math.sin((s / seg) * Math.PI * 3 + GL.twang.phase) * GL.twang.amp * 26 * env0;
-      const o1 = Math.sin(((s + 1) / seg) * Math.PI * 3 + GL.twang.phase) * GL.twang.amp * 26 * env1;
-      const a = 0.55 + lit * 0.40 + GL.twang.amp * 0.5;
-      L.push(ax + o0, y0, a, 1, 1, ax + o1, y1, a, 1, 1);
-    }
+    if (GL.twang.amp > 0.001) { GL.twang.amp *= 0.955; GL.twang.phase += 0.42; }
+    else GL.twang.amp = 0;
 
     /* ---- the filament --------------------------------------------------- */
     if (GL.shot) {
