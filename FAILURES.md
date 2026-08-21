@@ -407,3 +407,71 @@ rather than a style issue. Two implementations of one question will diverge, and
 in a system that interrupts people for a living, the divergence has a price and
 somebody pays it.
 
+
+---
+
+## 15. The opening held the product hostage in a background tab
+
+**What I believed.** The opening was finished. It had a hard timer, a try/catch
+around every path, and a no-op GSAP shim, and I had verified all three in
+Playwright. Three independent guarantees that the product always appears.
+
+**What actually happened.** I opened the live deployment through a real browser
+to check the deploy, took a screenshot, and got a black rectangle. The page had
+loaded. The title was right. `document.body.dataset.intro` was `"done"` and
+`#page` was `visible` — the reveal had run. And the screen was still black.
+
+```
+{"intro":"done","introDisplay":"flex","pageVis":"visible","mark":"0"}
+{"still":true,"op":"0.8202","vis":"hidden","ticker":10,"hidden":true}
+```
+
+`gsap.ticker.frame` was **10**. Ten frames since load. The tab was in the
+background, so the browser had throttled `requestAnimationFrame` to almost
+nothing, and GSAP drives itself entirely from rAF. My hard timer was a
+`setTimeout`, so it fired on schedule and set `data-intro="done"` — but the
+teardown it called was `gsap.to(el, {opacity: 0, onComplete: () => el.remove()})`.
+That fade needed rAF. It got 10 frames. `#intro` was still sitting there at
+0.82 opacity, `position:fixed; inset:0; z-index:200; background:var(--bg)` — a
+full-screen opaque panel over a page that had already been revealed underneath.
+
+**Why my three guarantees did not catch it.** All three protected against
+*GSAP being absent or throwing*. None protected against **GSAP being present,
+working correctly, and simply running slowly**. The failure mode was not an
+error. Nothing threw. The timeline was healthy; it just had no clock. A
+callback that only fires on animation completion is not a guarantee, it is a
+hope with good manners, and every test I had written asserted that the hope was
+*declared*, not that the product appeared without it.
+
+**The fix, two parts.**
+
+Removal gets a clock that keeps running when rAF does not. `setTimeout` is
+throttled in a background tab but never stopped, so the panel comes off either
+way. `remove()` on a detached node is a no-op, so the two paths cannot fight:
+
+```js
+setTimeout(() => el.remove(), 700);
+try { gsap.to(el, {opacity: 0, ..., onComplete: () => el.remove()}); }
+catch (e) { el.remove(); }
+```
+
+And the opening no longer plays to an empty room. A link someone was sent opens
+in a background tab while they finish reading something else; running the
+timeline there spends it on nobody and hands them a half-played intro when they
+arrive. So it waits:
+
+```js
+if (document.hidden) {
+  document.addEventListener("visibilitychange", () => opening(), { once: true });
+  return;
+}
+```
+
+**What it changed.** I had been testing that the failure paths *existed*. I had
+not tested the case where nothing fails and the thing is still broken. Slow is
+a failure mode, and it is the one that survives a try/catch. Two tests now lock
+the behaviour rather than the declaration.
+
+Also worth saying plainly: I found this because I opened the deployed URL in a
+browser instead of trusting that a green suite and a successful deploy meant a
+working page. Neither of those looks at the screen.

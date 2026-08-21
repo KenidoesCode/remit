@@ -260,3 +260,31 @@ fail, and a 5.2-second hard timer that reveals the product regardless of what
 the animation is doing. Verified by deleting `window.gsap` at runtime and
 confirming the homepage still appears.
 
+---
+
+## ADR-030 — Animation callbacks are not control flow
+
+**Status:** accepted
+
+**Context.** The opening tore itself down inside a GSAP `onComplete`. In a
+background tab, `requestAnimationFrame` is throttled to a near halt, GSAP stops
+advancing, and the callback never runs — leaving an opaque full-screen panel
+over a page that had already been revealed. Nothing threw, so every guard we
+had (try/catch, a GSAP shim, a hard timer) sailed past it. See FAILURES #15.
+
+**Decision.** Anything whose absence breaks the product gets a clock that is
+independent of the renderer. Animation callbacks may *decorate* a transition;
+they may not be the only thing that completes it. Concretely: the opening's
+removal runs on `setTimeout`, and GSAP's `onComplete` is a redundant second
+path made harmless by `remove()` being idempotent.
+
+**Consequence.** One redundant call and one extra timer, forever. In exchange,
+the class of bug where the product is invisible because a frame loop is slow
+cannot recur here. The same rule applies to any future reveal, modal or
+overlay: if it covers the product, its removal does not run on rAF alone.
+
+**Rejected.** Hiding `#intro` with a CSS rule keyed on `data-intro="done"`
+would also have worked and needed no timer. It was rejected because the fade is
+worth keeping, and a CSS-only teardown would have to choose between an abrupt
+cut and a transition that has the same problem in a different language.
+

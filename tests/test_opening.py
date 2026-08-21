@@ -72,3 +72,20 @@ def test_the_thread_exists_and_is_drawn_not_imported(path_class):
     assert path_class in HTML
     assert "<svg id=\"webshot\"" in HTML
     assert "three.js" not in HTML.lower() and "lottie" not in HTML.lower()
+
+
+def test_the_teardown_does_not_depend_on_the_animation_clock():
+    """GSAP runs on requestAnimationFrame, which a browser throttles to a
+    standstill in a background tab. If removal only happened in an onComplete,
+    a tab that loaded unfocused would keep a full-screen opaque panel over the
+    product. The removal gets a setTimeout of its own. FAILURES #15."""
+    body = APP.split("function opening()")[1].split("\nfunction ")[0]
+    assert "setTimeout(() => el.remove(), 700)" in body
+
+
+def test_the_opening_waits_to_be_looked_at():
+    """A link someone was sent opens in a background tab. Playing the opening
+    there spends it on nobody."""
+    body = APP.split("function opening()")[1].split("\nfunction ")[0]
+    assert "if (document.hidden) {" in body
+    assert "visibilitychange" in body

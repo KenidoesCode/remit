@@ -63,12 +63,28 @@ function opening() {
     document.body.dataset.intro = "done";
     if (!el) return;
     el.style.pointerEvents = "none";
+    // The fade is GSAP's; the removal is not. GSAP drives itself from
+    // requestAnimationFrame, and a browser throttles rAF to a standstill in a
+    // background tab -- so an onComplete callback is not a guarantee, it is a
+    // hope. setTimeout keeps firing when rAF does not, so the teardown gets
+    // its own clock. remove() on an already-detached node is a no-op, so the
+    // two paths cannot fight. FAILURES #15.
+    setTimeout(() => el.remove(), 700);
     try {
       gsap.to(el, { opacity: 0, duration: .45, ease: "power2.inOut",
                     onComplete: () => el.remove() });
     } catch (e) { el.remove(); }
   };
   if (!el) { document.body.dataset.intro = "done"; return; }
+  // Opening in a background tab is the common case for a link someone was
+  // sent: the tab loads while they are still reading something else. rAF is
+  // throttled there, so the timeline would crawl and they would arrive at a
+  // half-played intro. Wait for the tab to actually be looked at, then run it
+  // from the top. Nothing is hidden in the meantime that they can see.
+  if (document.hidden) {
+    document.addEventListener("visibilitychange", () => opening(), { once: true });
+    return;
+  }
   // The backstop. If anything below throws, hangs, or GSAP never arrives, the
   // product still appears. An intro that can strand the page is not a feature.
   const hardStop = setTimeout(done, 5200);
