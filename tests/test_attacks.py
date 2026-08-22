@@ -17,10 +17,18 @@ from remit.lab.attacks import ATTACKS, BY_KEY, run_attack
 
 NOW = datetime(2026, 8, 21, 12, 0, tzinfo=timezone.utc)
 
-# The one that is supposed to succeed. REMIT has no authentication, so anyone
-# can claim any user id -- and a suite that cannot demonstrate a real failure
-# cannot be trusted when it reports success.
-EXPECTED_TO_BREAK = {"identity_forgery"}
+# Empty, and it did not used to be.
+#
+# `identity_forgery` succeeded until FAILURES #32: user_id arrived in the
+# request body and nothing verified it. The expectation was updated when the
+# fix landed rather than the test deleted, which is the only honest way to
+# retire a failing security test.
+#
+# The cost of an empty set is real: this suite can no longer demonstrate, from
+# its own results, that it is capable of detecting a failure. That job now
+# belongs to `test_an_attack_that_raises_counts_as_a_break` below, which is
+# weaker evidence and worth saying out loud.
+EXPECTED_TO_BREAK: set[str] = set()
 
 
 def fresh():

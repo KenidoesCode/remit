@@ -1,17 +1,7 @@
 {
   "attacks": 23,
-  "held": 22,
-  "broke": [
-    {
-      "key": "identity_forgery",
-      "surface": "payment",
-      "name": "Spend as somebody else",
-      "invariant": "only the account holder can spend against their limits",
-      "broke": true,
-      "what_happened": "an unauthenticated caller spent 497600 paise against usr_victim_alice's identity and limits. user_id is a string in the request body and nothing verifies it.",
-      "stopped_by": ""
-    }
-  ],
+  "held": 23,
+  "broke": [],
   "by_surface": {
     "intent": {
       "n": 7,
@@ -23,7 +13,7 @@
     },
     "payment": {
       "n": 11,
-      "held": 10
+      "held": 11
     }
   },
   "note": "Every attack states the invariant it targets before it runs, and the result is a boolean about that invariant. Several of these were written before the defence existed and failed on the first run -- they are the regression suite for FAILURES.md, not a victory lap.",
@@ -231,9 +221,9 @@
       "surface": "payment",
       "name": "Spend as somebody else",
       "invariant": "only the account holder can spend against their limits",
-      "broke": true,
-      "what_happened": "an unauthenticated caller spent 497600 paise against usr_victim_alice's identity and limits. user_id is a string in the request body and nothing verifies it.",
-      "stopped_by": ""
+      "broke": false,
+      "what_happened": "identity comes from a signature this server issued; the body has no field to put one in, and another principal's order is a 404",
+      "stopped_by": "signed httpOnly session principal (remit/auth.py)"
     }
   ]
 }

@@ -1058,3 +1058,103 @@ failure, which is the thing this entry is about.
 it fail, even when the defence already exists. "All green on the first run" is
 a claim about the tests, not about the system, and I had been reading it as the
 second thing.
+
+---
+
+## 32. Every guarantee in this system rested on a string in a request body
+
+**What happened.** REMIT's own attack lab had been reporting this on the public
+page, in red, for as long as the lab has existed:
+
+```
+BROKE  [payment] Spend as somebody else
+       an unauthenticated caller spent 497600 paise against
+       usr_victim_alice's identity and limits.
+```
+
+I put that attack in deliberately, to prove the harness could detect a failure.
+It was doing a second job I had not admitted: telling anyone who scrolled that
+the trust boundary had a hole in it.
+
+`user_id` arrived in the request body (`api.py:112,122,174`) and nothing
+verified it. Exposure, velocity, the idempotency namespace and — worst —
+**approval ownership** were all keyed on that string. So the honest description
+of the system was: *these limits apply to whoever agrees to be limited.*
+
+Every other control is downstream of identity. Twenty-one policy clauses, a
+hash-chained ledger, approval tokens bound to five things — all conditional on
+nobody typing somebody else's name.
+
+**Two more holes the same review turned up.**
+
+`/api/checkout/{correlation_id}` looked up an order by correlation id alone. A
+correlation id is not a secret: it is on screen, in the ledger and in the logs.
+Any visitor holding one could read another visitor's live Razorpay order id and
+public key and complete a payment against it.
+
+`/api/reset` was unauthenticated and dropped the instance's app state. Not a
+spending lever, which is why it survived the first identity pass — but "you
+cannot spend as Bob" is a thin guarantee sitting next to "you can delete Bob".
+
+**The fix.** The server mints an opaque principal, signs it with HMAC-SHA256,
+and puts it in an httpOnly cookie. From then on identity comes from the
+server's own signature. The request models have **no field to put an identity
+in** — a rejected field is a field somebody finds a second spelling for, so
+there is no field. Order lookup and payment verification are scoped to the
+principal. `/api/reset` requires an operator token and 404s when none is
+configured.
+
+**What this is and is not.** It authenticates a SESSION, not a person. There is
+no password, no email, no account recovery, and no claim that the human behind
+the cookie is who they say they are. It is enough to make the boundary real —
+you cannot choose whose limits to spend — and it is not a login. A real
+deployment binds this principal to an identity provider, which is one function
+that is deliberately not written, because writing it with no IdP behind it
+would be theatre.
+
+**The attack stays in the suite and now reports `held`.** I updated the
+expectation rather than deleting the test, and I moved it to drive the HTTP
+boundary, because that is where identity is decided. `EXPECTED_TO_BREAK` is now
+empty, and that has a cost worth naming: this suite can no longer demonstrate
+from its own results that it is capable of detecting a failure. That job falls
+to a synthetic test, which is weaker evidence.
+
+**What it changed.** I had been treating authentication as a production concern
+— something in the "gap" column, to be built when there were real users. It is
+not a production concern. It is the *premise*. Every safety property I have
+written about for three weeks was of the form "given who is asking", and I had
+never checked the given.
+
+---
+
+## 33. The rate limiter locked out a building
+
+**What happened.** Three tests started failing the moment authentication landed
+— not from the auth change, but from what it exposed:
+
+```
+{'error': 'too many requests',
+ 'note': '90 API calls per 60s per client'}
+```
+
+The limiter keyed on IP address. Every request in the test suite comes from the
+same host, so all 388 tests shared one 90-request bucket and the suite tripped
+its own limiter.
+
+**Why that matters outside the test suite.** A campus, a carrier NAT, an office
+or a corporate proxy is exactly the same shape: many distinct people behind one
+address. Keyed on IP alone, the honest description of the limit is "ninety
+requests per *network*", which is not a rate limit — it is a way to lock out a
+building because one person was enthusiastic.
+
+Keyed on the session alone it is worse: an attacker mints a fresh principal per
+request and the limit does not exist at all.
+
+**The fix.** Both, and the pair is the point: a tight budget per principal, and
+a looser ceiling per address that still catches somebody cycling identities.
+The principal is now resolved *before* the limiter, because the limiter needs
+it.
+
+**What it changed.** A shared identifier is not an identifier. I had reached for
+the IP because it was the only thing available before authentication existed —
+and then never revisited it once something better did.

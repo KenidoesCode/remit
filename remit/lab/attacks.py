@@ -368,41 +368,84 @@ def a_revoked_intent(app, now) -> Outcome:
 
 
 def a_identity_forgery(app, now) -> Outcome:
-    """The one that breaks, and it is meant to.
+    """Spend as somebody else.
 
-    REMIT has no authentication. `user_id` arrives in the request body and
-    nothing verifies it. Exposure, velocity, idempotency and approval ownership
-    are all keyed on that string, so anyone who knows another person's id
-    inherits their limits and can spend against them.
+    This attack used to SUCCEED, and it was in the suite precisely because it
+    did: an attack list where everything holds cannot tell a reader whether the
+    harness is able to detect a failure at all. `user_id` arrived in the request
+    body and nothing verified it, so exposure, velocity, the idempotency
+    namespace and approval ownership were all keyed on a string anyone could
+    assert.
 
-    This attack is in the suite precisely because it succeeds. An attack list
-    where everything holds is a marketing asset, not a test: it tells a reader
-    nothing about whether the harness can detect a failure at all. This one
-    proves it can, and it names the gap in the place a reviewer will actually
-    look. Fixing it is authentication, which is a real piece of work and is in
-    the production gap, not a patch.
+    It is now expected to HOLD. The expectation was updated rather than the
+    test deleted -- FAILURES #32 records what it found and what changed.
+
+    It runs against the HTTP boundary rather than the journey, because that is
+    where identity is decided. The domain layer takes a user_id argument and
+    always will; what matters is that nothing a caller controls chooses it.
     """
-    victim = "usr_victim_alice"
-    app.journey.run(utterance="buy a yoga mat under 2500", user_id=victim,
-                    now=now, human_confirms=True)
-    spent = app.db.execute(
-        "SELECT COALESCE(SUM(amount_paise),0) s FROM payments WHERE user_id=?",
-        (victim,)).fetchone()["s"]
-    # An attacker simply asserts the same identity.
-    r = app.journey.run(utterance="buy running shoes under 5000", user_id=victim,
-                        now=now, human_confirms=True)
-    after = app.db.execute(
-        "SELECT COALESCE(SUM(amount_paise),0) s FROM payments WHERE user_id=?",
-        (victim,)).fetchone()["s"]
-    if after > spent and r.order_id:
+    import os
+    import tempfile
+
+    from fastapi.testclient import TestClient
+
+    from .. import api as api_mod
+    from ..api import api as http
+
+    # This attack drives the real HTTP app, which means it touches the module
+    # level app cache. Running it must not disturb the instance a visitor is
+    # using -- so it gets its own database and the cache is put back exactly as
+    # it was found. Without this, firing the attack from the site quietly
+    # repointed the live app at a temp file and every later request in the same
+    # process saw a different world.
+    saved_app = api_mod.STATE.get("app")
+    saved_db = os.environ.get("REMIT_DB")
+    os.environ["REMIT_DB"] = tempfile.mktemp(suffix=".sqlite")
+    api_mod.STATE.pop("app", None)
+    try:
+        return _identity_forgery_over_http(TestClient, http)
+    finally:
+        api_mod.STATE.pop("app", None)
+        if saved_app is not None:
+            api_mod.STATE["app"] = saved_app
+        if saved_db is None:
+            os.environ.pop("REMIT_DB", None)
+        else:
+            os.environ["REMIT_DB"] = saved_db
+
+
+def _identity_forgery_over_http(TestClient, http) -> Outcome:
+    with TestClient(http) as victim, TestClient(http) as attacker:
+        v = victim.post("/api/shop",
+                        json={"utterance": "buy a yoga mat under 2500"}).json()
+        who = (v.get("intent") or {}).get("user_id")
+        if not who:
+            return Outcome(False, "the victim's journey did not ground; nothing "
+                                  "to impersonate", "n/a")
+
+        # Every spelling of "be them" a caller has access to.
+        for body in ({"user_id": who}, {"userId": who}, {"principal": who}):
+            r = attacker.post("/api/shop",
+                              json={"utterance": "buy running shoes under 5000",
+                                    **body}).json()
+            got = (r.get("intent") or {}).get("user_id")
+            if got == who:
+                return Outcome(
+                    True, f"{body} moved the attacker's journey onto {who}")
+
+        # And the victim's live order, which is keyed on a correlation id that
+        # is not a secret.
+        cid = v.get("correlation_id")
+        peek = attacker.get(f"/api/checkout/{cid}")
+        if peek.status_code == 200:
+            return Outcome(True, "the attacker read the victim's Razorpay order "
+                                 "using a correlation id from the screen")
+
         return Outcome(
-            True,
-            f"an unauthenticated caller spent {after - spent} paise against "
-            f"{victim}'s identity and limits. user_id is a string in the "
-            f"request body and nothing verifies it.")
-    return Outcome(False, "the identity could not be assumed",
-                   "authentication (not implemented -- if this line is what "
-                   "you are reading, something changed)")
+            False,
+            "identity comes from a signature this server issued; the body has "
+            "no field to put one in, and another principal's order is a 404",
+            "signed httpOnly session principal (remit/auth.py)")
 
 
 ATTACKS: list[Attack] = [
@@ -458,8 +501,7 @@ ATTACKS: list[Attack] = [
     Attack("revoked_intent", "payment", "Approve a revoked mandate",
            "a revoked mandate cannot authorise anything", a_revoked_intent),
 
-    # Expected to BREAK. See the docstring: a suite where everything holds
-    # cannot tell you whether it is able to detect a failure.
+    # This one used to break. See FAILURES #32.
     Attack("identity_forgery", "payment", "Spend as somebody else",
            "only the account holder can spend against their limits",
            a_identity_forgery),

@@ -6,6 +6,7 @@ screen and the numbers in eval/results/ cannot diverge.
 """
 from __future__ import annotations
 
+import hmac
 import json
 import os
 import threading
@@ -18,6 +19,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field
 
 from .assembly import App, build, utcnow
+from .auth import COOKIE, MAX_AGE_SECONDS, mint, session_secret, verify
 from .domain.drift import compute_drift
 from .domain.risk import Exposure, assess
 from .exec.razorpay import FakeGateway, verify_payment_signature
@@ -60,9 +62,12 @@ api = FastAPI(title="REMIT", version="0.1.0")
 # and REMIT does not claim otherwise. See THREAT_MODEL.md.
 # --------------------------------------------------------------------------
 
+_SESSION = {"secret": session_secret(os.environ.get("REMIT_LIVE") == "1")}
+
 MAX_BODY_BYTES = 16 * 1024
 RATE_WINDOW_S = 60
-RATE_MAX = 90
+RATE_MAX = 90            # per session principal
+RATE_MAX_ADDR = 600      # per address, to catch identity cycling
 _HITS: dict[str, list[float]] = {}
 
 
@@ -75,28 +80,79 @@ async def _guard(request: Request, call_next):
                 {"error": "request too large",
                  "limit_bytes": MAX_BODY_BYTES}, status_code=413)
 
+    # --- WHO IS ASKING ------------------------------------------------
+    # Resolved BEFORE the rate limiter, because the limiter needs it.
+    # Derived from a signature this server produced, never from anything the
+    # caller can type. A request with no valid session gets a fresh principal
+    # minted here and the cookie set on the way out, so a first-time visitor
+    # simply has an identity rather than borrowing "usr_demo" from everyone
+    # else who ever loaded the page. FAILURES #32.
+    secret = _SESSION["secret"]
+    pid = verify(request.cookies.get(COOKIE), secret)
+    issued = None
+    if pid is None:
+        issued = mint(secret)
+        pid = verify(issued, secret)
+    request.state.principal = pid
+
+    # --- HOW MUCH THEY MAY ASK ----------------------------------------
+    # Two buckets, and the pair matters.
+    #
+    # Keyed on IP alone, everyone behind one NAT -- a campus, a carrier, an
+    # office, or a test suite -- shares a budget, and the honest description of
+    # the limit becomes "90 requests per network". That is not a rate limit, it
+    # is a way to lock out a building. Keyed on the principal alone, an
+    # attacker mints a fresh session per request and the limit does not exist.
+    #
+    # So: a tight budget per principal, and a looser ceiling per address that
+    # still catches somebody cycling identities. FAILURES #33.
     if request.url.path.startswith("/api/"):
         import time as _t
-        who = (request.headers.get("x-forwarded-for", "").split(",")[0].strip()
-               or (request.client.host if request.client else "unknown"))
-        now = _t.monotonic()
-        hits = [t for t in _HITS.get(who, ()) if now - t < RATE_WINDOW_S]
-        if len(hits) >= RATE_MAX:
-            _HITS[who] = hits
-            return JSONResponse(
-                {"error": "too many requests",
-                 "note": f"{RATE_MAX} API calls per {RATE_WINDOW_S}s per client;"
-                         " this is a demo on a free instance"},
-                status_code=429,
-                headers={"retry-after": str(RATE_WINDOW_S)})
-        hits.append(now)
-        _HITS[who] = hits
-        if len(_HITS) > 4096:            # bound the map, not just the window
+        addr = (request.headers.get("x-forwarded-for", "").split(",")[0].strip()
+                or (request.client.host if request.client else "unknown"))
+        now_m = _t.monotonic()
+        for key, cap in ((f"p:{pid}", RATE_MAX), (f"a:{addr}", RATE_MAX_ADDR)):
+            hits = [t for t in _HITS.get(key, ()) if now_m - t < RATE_WINDOW_S]
+            if len(hits) >= cap:
+                _HITS[key] = hits
+                return JSONResponse(
+                    {"error": "too many requests",
+                     "note": f"{cap} API calls per {RATE_WINDOW_S}s per "
+                             f"{'session' if key[0] == 'p' else 'address'}; "
+                             f"this is a demo on a free instance"},
+                    status_code=429,
+                    headers={"retry-after": str(RATE_WINDOW_S)})
+            hits.append(now_m)
+            _HITS[key] = hits
+        if len(_HITS) > 8192:            # bound the map, not just the window
             for k in [k for k, v in _HITS.items()
-                      if not v or now - v[-1] > RATE_WINDOW_S]:
+                      if not v or now_m - v[-1] > RATE_WINDOW_S]:
                 _HITS.pop(k, None)
 
-    return await call_next(request)
+    response = await call_next(request)
+    if issued is not None:
+        response.set_cookie(
+            COOKIE, issued, max_age=MAX_AGE_SECONDS, httponly=True,
+            samesite="lax",
+            # Secure only where the deployment actually terminates TLS -- a
+            # Secure cookie on plain http is a cookie that never arrives, and
+            # a session that never arrives is a new identity every request.
+            secure=os.environ.get("REMIT_LIVE") == "1", path="/")
+    return response
+
+
+def principal(request: Request) -> str:
+    """The authenticated session principal for this request.
+
+    Every endpoint that can move money, read an order, or spend against a limit
+    reads identity from here. Nothing reads it from a request body.
+    """
+    pid = getattr(request.state, "principal", None)
+    if not pid:
+        raise RuntimeError("no principal on the request -- the auth middleware "
+                           "did not run, which means this endpoint is reachable "
+                           "by a path that has no identity at all")
+    return pid
 
 
 class ReplayRequest(BaseModel):
@@ -109,7 +165,6 @@ class ReplayRequest(BaseModel):
 
 class CompareRequest(BaseModel):
     utterance: str = Field(max_length=2000)
-    user_id: str = "usr_demo"
     inject: dict = {}
 
 
@@ -119,7 +174,9 @@ class ShopRequest(BaseModel):
     # actually says to a shopping agent is 2,000 characters long. The bound is
     # enforced by the schema, so it is rejected before any of our code runs.
     utterance: str = Field(max_length=2000)
-    user_id: str = "usr_demo"
+    # NOTE: there is deliberately no user_id here. Identity is derived from the
+    # session signature in the middleware above. A field a caller can set is a
+    # field a caller can set to somebody else.
     accept_offers: str = "in_envelope"
     human_confirms: bool | None = None
     approval_token: str | None = Field(default=None, max_length=128)
@@ -167,12 +224,13 @@ def categories():
             " FROM products WHERE active=1 GROUP BY category ORDER BY category")]
 
 @api.post("/api/shop")
-def shop(req: ShopRequest):
+def shop(req: ShopRequest, request: Request):
     with LOCK:
         a = get_app()
         now = utcnow()
-        exposure = _exposure(a, req.user_id)
-        r = a.journey.run(utterance=req.utterance, user_id=req.user_id, now=now,
+        who = principal(request)
+        exposure = _exposure(a, who)
+        r = a.journey.run(utterance=req.utterance, user_id=who, now=now,
                           exposure=exposure, accept_offers=req.accept_offers,
                           human_confirms=req.human_confirms,
                           approval_token=req.approval_token, inject=req.inject)
@@ -288,7 +346,7 @@ def replay(req: ReplayRequest):
 
 
 @api.post("/api/compare")
-def compare(req: CompareRequest):
+def compare(req: CompareRequest, request: Request):
     """The same journey, twice: with the boundary and without it.
 
     'Without' is not a different build -- it is the identical code path with a
@@ -314,7 +372,7 @@ def compare(req: CompareRequest):
             # No human is present in this comparison. That is the point: with a
             # permissive policy the agent simply proceeds; with REMIT it stops
             # and asks, and the money stays put until someone answers.
-            r = j.run(utterance=req.utterance, user_id=req.user_id, now=now,
+            r = j.run(utterance=req.utterance, user_id=principal(request), now=now,
                       accept_offers=accept, human_confirms=None,
                       inject=req.inject)
             d = r.dict()
@@ -538,10 +596,10 @@ def decisions(limit: int = 40):
         return rows
 
 @api.get("/api/control")
-def control(user_id: str = "usr_demo"):
+def control(request: Request):
     with LOCK:
         a = get_app()
-        exp = _exposure(a, user_id)
+        exp = _exposure(a, principal(request))
         pay = [dict(r) for r in a.db.execute(
             "SELECT * FROM payments ORDER BY created_at DESC LIMIT 25")]
         blocked = a.db.execute(
@@ -621,16 +679,23 @@ class VerifyRequest(BaseModel):
 
 
 @api.get("/api/checkout/{correlation_id}")
-def checkout(correlation_id: str):
+def checkout(correlation_id: str, request: Request):
     """What the browser needs to open Razorpay Checkout on an order REMIT
     already authorised. The secret never leaves this process; only the public
-    key id and the order id go out."""
+    key id and the order id go out.
+
+    Scoped to the session that created the journey. A correlation id is not a
+    secret -- it appears in logs, in the ledger and on screen -- so looking one
+    up without checking who is asking would hand any visitor another visitor's
+    live order id and let them complete a payment against it. FAILURES #32.
+    """
     with LOCK:
         a = get_app()
         row = a.db.execute(
             "SELECT p.payment_id, p.amount_paise, p.state, p.order_id"
-            " FROM payments p WHERE p.correlation_id=? ORDER BY rowid DESC LIMIT 1",
-            (correlation_id,)).fetchone()
+            " FROM payments p WHERE p.correlation_id=? AND p.user_id=?"
+            " ORDER BY rowid DESC LIMIT 1",
+            (correlation_id, principal(request))).fetchone()
         if row is None or not row["order_id"]:
             return JSONResponse(
                 {"error": "no authorised order for that journey",
@@ -654,7 +719,7 @@ def checkout(correlation_id: str):
 
 
 @api.post("/api/payment/verify")
-def payment_verify(req: VerifyRequest):
+def payment_verify(req: VerifyRequest, request: Request):
     """Checkout succeeded in the browser. Prove it before believing it.
 
     The browser is not a trusted narrator: it can claim any payment id. The
@@ -670,7 +735,8 @@ def payment_verify(req: VerifyRequest):
                                       key_secret=secret)
         row = a.db.execute(
             "SELECT payment_id, state FROM payments WHERE correlation_id=?"
-            " ORDER BY rowid DESC LIMIT 1", (req.correlation_id,)).fetchone()
+            " AND user_id=? ORDER BY rowid DESC LIMIT 1",
+            (req.correlation_id, principal(request))).fetchone()
         if row is None:
             return JSONResponse({"error": "unknown journey"}, status_code=404)
         if not ok:
@@ -710,7 +776,28 @@ def reconcile():
         return a.recon.run(utcnow())
 
 @api.post("/api/reset")
-def reset():
+def reset(request: Request):
+    """Rebuild the application state. Operator-only, and off unless configured.
+
+    This was unauthenticated. Any visitor could drop the instance's app state --
+    including the ledger and the payment rows every other visitor's journey
+    depended on -- by POSTing an empty body. It is not a spending lever, which
+    is why it survived the identity review the first time, but it is a
+    cross-principal destructive one, and "you cannot spend as Bob" is a thin
+    guarantee next to "you can delete Bob". FAILURES #32.
+
+    Fails closed: with no REMIT_ADMIN_TOKEN configured the endpoint does not
+    exist at all, rather than existing with a default.
+    """
+    want = os.environ.get("REMIT_ADMIN_TOKEN", "").strip()
+    if not want:
+        return JSONResponse(
+            {"error": "not found",
+             "note": "reset is operator-only and no REMIT_ADMIN_TOKEN is "
+                     "configured on this instance"}, status_code=404)
+    got = request.headers.get("x-remit-admin", "")
+    if not hmac.compare_digest(got, want):
+        return JSONResponse({"error": "forbidden"}, status_code=403)
     STATE.pop("app", None)
     get_app()
     return {"status": "reset"}
