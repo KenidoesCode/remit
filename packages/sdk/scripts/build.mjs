@@ -7,6 +7,7 @@
  */
 import { rm, mkdir, writeFile } from "node:fs/promises";
 import { execFileSync } from "node:child_process";
+import { createRequire } from "node:module";
 import * as esbuild from "esbuild";
 
 const OUT = "dist";
@@ -46,9 +47,26 @@ await esbuild.build({
   banner: { js: "#!/usr/bin/env node" },
 });
 
-execFileSync("npx", ["tsc", "--emitDeclarationOnly", "--outDir", OUT], {
+// Resolve TypeScript's own entry point and run it with THIS node.
+//
+// `npx tsc` needs a shell on Windows, and a shell means quoting — which breaks
+// the moment the checkout lives somewhere with a space in the path, e.g.
+// C:\Users\Pranauv Shrinaath\... . Resolving the module and spawning
+// process.execPath avoids npx, avoids a shell, and uses the exact typescript
+// that was installed rather than whatever npx decides to fetch.
+const require_ = createRequire(import.meta.url);
+let tscBin;
+try {
+  tscBin = require_.resolve("typescript/bin/tsc");
+} catch {
+  console.error(
+    "typescript is not installed. Run `npm install` in packages/sdk first —\n" +
+    "this repository ships source, not node_modules.",
+  );
+  process.exit(1);
+}
+execFileSync(process.execPath, [tscBin, "--emitDeclarationOnly", "--outDir", OUT], {
   stdio: "inherit",
-  shell: process.platform === "win32",
 });
 
 // tsc emits dist/index.d.ts for ESM; CJS consumers resolve types through

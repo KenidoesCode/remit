@@ -37,9 +37,14 @@ shells out, and never assembles a path with `/`. There are no platform-specific
 branches in the source.
 
 **What has actually been run:** Linux x64 on Node 22 during development, and
-CI runs install + build + test + pack on `ubuntu-latest`, `macos-latest` and
-`windows-latest` across Node 18, 20 and 22. Anything beyond that is a
-reasonable expectation rather than a measurement.
+Windows 11 / PowerShell / Node 24 for a real publish — which found two
+shell-portability bugs in the build tooling that Linux had hidden every time
+(`FAILURES #53`). Both are fixed by removing the shell entirely.
+
+A CI matrix covering `ubuntu-latest`, `macos-latest` and `windows-latest` across
+Node 18, 20 and 22 is committed at `.github/workflows/sdk.yml`. **It has not
+run yet** — the push was rejected for lacking `workflow` scope — so it is not
+evidence of anything until it does. macOS in particular has run nothing.
 
 ## Verify the install
 

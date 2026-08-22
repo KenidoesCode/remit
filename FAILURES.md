@@ -2189,3 +2189,52 @@ re-link every hash consistently, and this verifier would pass. It is
 tamper-**evident** against partial edits and it is **not** tamper-proof. That is
 why `no_external_trust_anchor: true` is a field on every result rather than a
 line in a document — a footnote is a thing you skip.
+
+## 53. It worked on my machine, which was the whole problem
+
+**What happened.** The SDK was finished, packed, installed from a tarball into a
+clean directory, driven end to end, and globally installed. Then the person it
+was built for ran `npm publish` on **Windows, PowerShell, Node 24** and it died
+before it started:
+
+```
+Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'esbuild'
+```
+
+The immediate cause is dull: the folder came from `git archive`, which contains
+source and not `node_modules`, so `npm install` had to run first. My fault for
+handing over an archive with no instructions, not a code defect.
+
+The two defects behind it are not dull, and neither would ever have appeared
+here.
+
+**`node --test test/*.test.js`.** This is in a thousand READMEs and it is not
+portable. `cmd.exe` and PowerShell do not expand globs, so Node receives the
+literal string `test/*.test.js` and matches nothing. On Linux the shell expands
+it before Node sees it, so it passed every single time I ran it. `node --test
+test/` is not the fix either — I tried it, and it fails outright on Node 22.
+
+**`npx tsc` in the build.** `execFileSync("npx", [...], { shell: platform === "win32" })`
+needs a shell on Windows, and a shell means quoting. The path it had to quote
+was `C:\Users\Pranauv Shrinaath\Downloads\...` — **a space in a directory name**,
+which is the single most ordinary thing about a Windows machine and something no
+path in this container has ever contained.
+
+**The fix** removes the shell from both. Tests are discovered with `node:fs` and
+passed as absolute paths to a spawned `node --test`; `tsc` is resolved with
+`createRequire` and run with `process.execPath`. No shell, no globbing, no
+quoting, on any platform.
+
+**What it changed, and what it did not.** The CI matrix I had already written
+runs install, build, test and pack on `windows-latest` and `macos-latest` — and
+it would have caught both of these on the first run. It has never run, because
+the push was rejected for lacking `workflow` scope on the token. So the
+regression test for this exists, is committed, and **has not executed once**,
+which is worth writing down rather than counting as covered.
+
+The uncomfortable part: I wrote a README section claiming Windows, macOS and
+Linux support, then hedged it with *"verified in development on Linux x64"* and
+pointed at CI as the evidence. The hedge was accurate and I still shipped two
+Windows-breaking bugs behind it, because a caveat is not a test. **The only
+platform claim worth anything is one where the platform actually ran the code**
+— and here the platform was a person, on his own laptop, at 4am.

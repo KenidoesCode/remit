@@ -51,7 +51,7 @@
   "sideEffects": false,
   "scripts": {
     "build": "node scripts/build.mjs",
-    "test": "node --test test/*.test.js",
+    "test": "node scripts/test.mjs",
     "typecheck": "tsc --noEmit",
     "prepublishOnly": "npm run build && npm test"
   },

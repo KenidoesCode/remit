@@ -313,9 +313,11 @@ built on the wrong one retries forever.
   `node:path` and `node:process` — no shelling out, no bash, no path separators
   assembled by hand.
 
-Verified in development on Linux x64 with Node 22. The code contains no
-platform-specific branches, and CI runs the package on all three operating
-systems — see [Limitations](#limitations).
+Verified on Linux x64 / Node 22, and on Windows 11 / PowerShell / Node 24
+during a real publish — which found two shell-portability bugs that Linux had
+hidden (see `FAILURES #53`). Both are fixed by removing the shell from the build
+and test scripts entirely. **macOS has not been run**; a CI matrix covering it
+is committed but has not executed yet.
 
 ## Versioning
 
