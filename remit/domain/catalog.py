@@ -165,8 +165,21 @@ class Catalog:
             attrs = set(a.lower() for a in p.attributes)
             if req and not req.issubset(attrs):
                 continue
-            if exc and attrs & exc:
-                continue
+            # A person who says "not basmati" is not talking about an
+            # attribute tag; they are talking about the thing on the label.
+            # Matching exclusions against `attributes` alone let
+            # "buy rice but not basmati" select Freshcart Basmati Rice, which
+            # is the exact product the sentence ruled out -- and then ask the
+            # human to confirm it. Exclusions read the name and the category
+            # too, on word boundaries so "white" does not strike "whitening"
+            # and "non" does not strike "nonstick".
+            if exc:
+                words = set(re.findall(r"[a-z0-9]+", p.name.lower()))
+                words |= set(re.findall(r"[a-z0-9]+", (p.category or "").lower()))
+                words |= set(re.findall(r"[a-z0-9]+",
+                                        (p.subcategory or "").lower()))
+                if (attrs & exc) or (words & exc):
+                    continue
             if tset and not _matches_terms(p, tset, match_all_terms):
                 continue
             out.append(p)

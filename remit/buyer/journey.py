@@ -356,6 +356,7 @@ class Journey:
         picks: list[tuple[Product, dict, str, float]] = []
         unfulfilled: list[str] = []
         over_budget: list[dict] = []
+        excluded_out: list[dict] = []
         searched = 0
         for it in requested:
             found = self._candidates(env, it)
@@ -373,6 +374,21 @@ class Journey:
                         "cheapest_paise": cheapest.price_paise,
                         "cheapest_name": cheapest.name,
                         "ceiling_paise": env.max_price_paise})
+                elif env.excluded_attributes:
+                    # And before saying "we do not stock that" for the second
+                    # time: check whether we stock it and the human excluded
+                    # all of it. "buy rice but not basmati", in a shop whose
+                    # only rice is basmati, is not a shop with no rice. Telling
+                    # them it is would be the same class of lie as FAILURES #19
+                    # -- true-sounding, wrong, and it sends them away.
+                    unfiltered = env.model_copy(update={"excluded_attributes": []})
+                    would = self._candidates(unfiltered, it, ignore_budget=True)
+                    if would:
+                        excluded_out.append({
+                            "surface": it.get("surface") or (it["terms"] or [""])[0],
+                            "excluded": list(env.excluded_attributes),
+                            "example": would[0].name,
+                            "n": len(would)})
             searched += len(found)
             ranked_i = rank(found, env.objective, env.max_price_paise,
                             terms=it.get("terms"))
@@ -399,6 +415,14 @@ class Journey:
                     f"you said {a.get('surface')!r}; the nearest thing this shop"
                     f" sells is {by_surface[a.get('surface')].name!r}"
                     for a in approx if a.get("surface") in by_surface)}
+        if excluded_out:
+            r.telemetry = dict(r.telemetry) | {
+                "excluded_out": excluded_out,
+                "excluded_note": "; ".join(
+                    f"this shop has {o['n']} thing{'' if o['n'] == 1 else 's'} "
+                    f"answering {o['surface']!r} ({o['example']}), and you "
+                    f"excluded {', '.join(o['excluded'])}"
+                    for o in excluded_out)}
         if over_budget:
             r.telemetry = dict(r.telemetry) | {
                 "over_budget": over_budget,
@@ -425,7 +449,9 @@ class Journey:
                     {"results": searched, "unfulfilled": len(unfulfilled)}, now)
         if not picks:
             self._event("EXCEPTION", cid, {"why": "no product matched the intent"}, now)
-            if over_budget:
+            if excluded_out:
+                r.note = r.telemetry["excluded_note"]
+            elif over_budget:
                 r.note = r.telemetry["over_budget_note"]
             elif unfulfilled:
                 r.note = "this catalog does not stock " + ", ".join(unfulfilled)

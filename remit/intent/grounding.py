@@ -35,7 +35,7 @@ from __future__ import annotations
 
 import re
 import sqlite3
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from difflib import SequenceMatcher
 
 # Words that are grammar, not goods. Kept small on purpose: this list only has
@@ -45,11 +45,11 @@ STOP = {
     "please", "pls", "plz", "some", "any", "one", "two", "buy", "purchase",
     "order", "get", "want", "need", "give", "add", "cart", "checkout", "pay",
     "book", "under", "below", "less", "than", "max", "maximum", "budget",
-    "around", "about", "upto", "up", "rs", "rupees", "inr", "with", "without",
+    "around", "about", "upto", "up", "rs", "rupees", "inr", "with",
     "best", "good", "cheap", "cheapest", "top", "rated", "value", "worth",
     "fast", "fastest", "quick", "urgent", "today", "asap", "premium", "high",
     "end", "new", "nice", "also", "then", "plus", "from", "in", "on", "at",
-    "it", "is", "are", "that", "this", "not", "no", "do", "can", "you",
+    "it", "is", "are", "that", "this", "do", "can", "you",
     "karo", "kar", "de", "do", "mujhe", "chahiye", "jaldi", "sasta", "acha",
 }
 
@@ -174,6 +174,12 @@ class Grounding:
                                    # catalog cannot answer -- "and a ferrari"
     noise: list[str]               # unknown words sitting next to something we
                                    # DID understand. Reported, never counted.
+    excluded: list[str] = field(default_factory=list)
+                                   # what the human said they did NOT want.
+                                   # "shoes but not white" -> ["white"].
+                                   # These become excluded_attributes on the
+                                   # envelope, which the catalog filter and the
+                                   # vector hard-filter both already honour.
 
     @property
     def all_terms(self) -> list[str]:
@@ -321,6 +327,36 @@ class Lexicon:
 
 SPLIT = {"and", "plus", "also", "aur", "then", "with", "&", "+", ",", ";"}
 
+# ── negation ────────────────────────────────────────────────────────────────
+# "not", "no" and "without" sat in STOP, which meant they were discarded before
+# anything looked at them. The word after them was then grounded normally and
+# joined the CURRENT item -- and `RequestedItem.terms` is a conjunction, i.e.
+# every term is REQUIRED. So "shoes but not white" asked for white shoes, and
+# "buy a laptop but not refurbished" asked for a refurbished laptop. The system
+# did not merely miss the constraint; it inverted it, silently, in the
+# permissive direction, and reported full confidence while doing it.
+#
+# A negation opens a span. Everything from the marker to the next conjunction,
+# comma or end of sentence is excluded rather than required.
+NEGATE = {
+    "not", "no", "without", "except", "excluding", "avoid", "skip",
+    "nahi", "bina",
+}
+# Two Hinglish markers are deliberately absent. "mat" is the negative
+# imperative ("mat karo" -- don't) and it is also a thing this shop sells:
+# "buy a yoga mat black edition" treated the mat as a negation marker, dropped
+# it, and excluded the colour -- the request lost its noun. "minus" and "non"
+# went the same way: too short, too load-bearing elsewhere, and each one buys a
+# rare sentence at the cost of a common one. A negation vocabulary that
+# swallows a product name is worse than one that misses a constraint, because
+# the first is silent.
+# "other than", "apart from" -- two words, so they need their own pass.
+NEGATE_PAIRS = {("other", "than"), ("apart", "from"), ("but", "not"),
+                ("no", "more"), ("rather", "than")}
+# A negation span ends here. "not white and not black" is two spans, not one
+# span containing a conjunction.
+NEGATE_END = {",", ";", "and", "or", "but", "plus", "also", "aur", "&", "+"}
+
 TOKEN = re.compile(r"[a-z]+|[,;&+]", re.I)
 
 
@@ -355,6 +391,64 @@ def content_query(utterance: str) -> str:
     return " ".join(toks)
 
 
+def _strip_negations(toks: list[str]) -> tuple[list[str], list[str]]:
+    """Lift "not white" out of the sentence before anything is grounded.
+
+    Everything from a negation marker to the next conjunction, comma or end of
+    sentence is what the human does not want. Removing the span rather than
+    tagging it in place matters: if the words stayed, the longest-match pass
+    would ground them and add them to the current item, whose terms are a
+    CONJUNCTION -- so a constraint meant to exclude would become a requirement.
+    That is the bug, and leaving the tokens in the stream is how it happened.
+
+    Deliberately conservative:
+
+      * A marker with nothing after it excludes nothing. "buy shoes, not" is a
+        person who stopped typing, not a constraint.
+      * The span stops at the first conjunction, so "not white and not black"
+        is two spans and "not white and buy socks" does not swallow the socks.
+      * Stop words inside the span are dropped, so "not the refurbished one"
+        excludes "refurbished", not "the refurbished one".
+
+    Returns the surviving tokens and the excluded words, lowercased.
+    """
+    out: list[str] = []
+    excluded: list[str] = []
+    i = 0
+    while i < len(toks):
+        t = toks[i].lower()
+        pair = (t, toks[i + 1].lower()) if i + 1 < len(toks) else None
+        n_marker = 2 if pair in NEGATE_PAIRS else (1 if t in NEGATE else 0)
+        if not n_marker:
+            out.append(toks[i])
+            i += 1
+            continue
+        j = i + n_marker
+        span: list[str] = []
+        while j < len(toks) and toks[j].lower() not in NEGATE_END:
+            w = toks[j].lower()
+            if w not in STOP and len(w) > 1:
+                span.append(w)
+            j += 1
+        if span:
+            excluded.extend(span)
+        else:
+            # A marker that excludes nothing is grammar, not a constraint --
+            # "no" in "no rush", a sentence that stopped mid-word. Drop the
+            # marker and keep what followed it, exactly as the stop list used
+            # to. Restoring the marker instead put a 7-letter word back into
+            # the stream that was no longer a stop word, where it reached the
+            # fuzzy matcher and the ungrounded list, cost parse confidence, and
+            # turned the code-mixed and injection buckets into step-ups.
+            out.extend(t for t in toks[i + n_marker:j])
+        i = j
+    # Order preserved, duplicates removed: an envelope is a statement, and the
+    # same statement made twice is one statement.
+    seen: set[str] = set()
+    uniq = [w for w in excluded if not (w in seen or seen.add(w))]
+    return out, uniq
+
+
 def ground(utterance: str, lex: Lexicon) -> Grounding:
     """Everything the utterance names, grouped the way the human grouped it.
 
@@ -372,6 +466,7 @@ def ground(utterance: str, lex: Lexicon) -> Grounding:
     helicopter" instead of quietly selling a yoga mat. FAILURES #13.
     """
     toks = _tokens(utterance)
+    toks, excluded = _strip_negations(toks)
     groups: list[list[Grounded]] = [[]]
     unknown: list[list[str]] = [[]]
     merchants: list[str] = []
@@ -448,4 +543,4 @@ def ground(utterance: str, lex: Lexicon) -> Grounding:
             approximate=all(lex.phrases.get(x.term, (None, "head"))[1]
                             == "modifier" for x in g)))
     return Grounding(items=items, merchants=sorted(set(merchants)),
-                     ungrounded=ungrounded, noise=noise)
+                     ungrounded=ungrounded, noise=noise, excluded=excluded)

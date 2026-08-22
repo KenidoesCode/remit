@@ -1563,3 +1563,72 @@ process, one `RLock`, SQLite in WAL. A second process would not share that
 lock. The UNIQUE constraints would still hold — they are the real defence — but
 the exposure read would race. That gap is in `docs/FINAL_AUDIT.md` section F
 and it stays there.
+
+---
+
+## 42. "Not white" asked for white
+
+**What happened.** `excluded_attributes` has been on the envelope since the
+beginning. The catalog filter honoured it. The vector hard-filter honoured it.
+The tool schema advertised it. Nothing on the default path ever wrote to it,
+because `not`, `no` and `without` were in `STOP` — discarded before anything
+looked at them.
+
+That is not a missing feature. The word after the discarded marker still
+grounded, and joined the **current** requested item — and a `RequestedItem`'s
+terms are a *conjunction*, meaning every term is required. So:
+
+```
+"buy shoes but not white"           ->  asked for WHITE shoes
+"buy a laptop but not refurbished"  ->  asked for a REFURBISHED laptop
+"buy rice but not basmati"          ->  asked for BASMATI rice
+```
+
+The constraint was not lost. It was **inverted**, silently, in the permissive
+direction, and the system reported ordinary confidence while doing it. A
+control plane that reads "not X" as "X" is worse than one that abstains,
+because abstaining is visible.
+
+**The fix.** A negation opens a span: everything from the marker to the next
+conjunction, comma or end of sentence is excluded rather than required, and the
+span is lifted out of the token stream *before* grounding. Removing the words
+rather than tagging them in place is the whole point — if they stayed, the
+longest-match pass would ground them into the conjunction again, which is
+exactly how the bug happened.
+
+**And the filter had to learn to read the label.** The first version compared
+exclusions against `product.attributes` alone. "Basmati" is on the label, not
+in a tag list, so `"buy rice but not basmati"` selected *Freshcart Basmati Rice
+5kg* — the one product the sentence ruled out — and then asked the human to
+confirm it. Exclusions now read the name, category and subcategory too, on word
+boundaries, so "white" does not strike "whitening".
+
+**Saying so out loud.** A shop whose only rice is basmati, asked for rice but
+not basmati, does not have "no rice". `excluded_note` says *"this shop has 1
+thing answering 'rice' (Freshcart Basmati Rice 5kg), and you excluded
+basmati"*. Telling them the shelf was empty would be the same class of lie as
+FAILURES #19: true-sounding, wrong, and it sends them away.
+
+### Two things this cost before it was right
+
+**Precision fell 0.6346 → 0.6111 on the held-out split**, and the buckets that
+moved were `code_mixed` and `injection`. The cause was one line: when a marker
+turned out to exclude nothing ("no rush", a sentence that stopped mid-word) I
+put the marker token *back* into the stream — into a stream where it was no
+longer a stop word. A 7-letter word like "without" then reached the fuzzy
+matcher and the ungrounded list, cost parse confidence, and turned 12 automatic
+purchases into interruptions. Dropping the marker and keeping only what
+followed it restored the number **exactly**: 0.6346, recall 1.0, 0 dangerous
+false negatives, 19 friction false positives — identical to before the feature.
+
+**And "mat" nearly ate a product.** I had included it as a Hinglish negative
+imperative (*"mat karo"* — don't). It is also a thing this shop sells:
+
+```
+"buy a yoga mat black edition"  ->  kept: buy a yoga | excluded: black, edition
+```
+
+The request lost its noun. `minus` and `non` went the same way. Each one buys a
+rare sentence at the cost of a common one, and **a negation vocabulary that
+swallows a product name is worse than one that misses a constraint, because the
+first is silent.**

@@ -331,6 +331,12 @@ class RuleCompiler:
             semantic_items=semantic_surfaces,
             ungrounded=g.ungrounded,
             merchant_constraints=g.merchants,
+            # What the human said they did NOT want. Until this line the field
+            # existed, the catalog filter honoured it and the vector index
+            # honoured it -- and nothing on the default path ever wrote to it,
+            # because `not`, `no` and `without` were stopwords. See
+            # grounding._strip_negations and FAILURES #42.
+            excluded_attributes=g.excluded,
             max_price_paise=ceiling if ceiling_is_per_unit else None,
             max_total_paise=None if ceiling_is_per_unit else ceiling,
             # Read from the sentence, not assumed. A hardcoded "INR" made
