@@ -160,6 +160,33 @@ def authorize(*, env: IntentEnvelope, cart: Cart, totals: Totals,
     check("VEL-001", exposure.txn_count_1h < L["velocity_1h"],
           f"{exposure.txn_count_1h} in the last hour", hard=True)
 
+    # SPLIT-001 -- the same ceiling, spent more than once.
+    #
+    # CEIL-001 compares one cart against the sentence that authorised it, and
+    # that is the whole of what a ceiling meant here until now. So an agent
+    # that could not fit inside "under 2000" in one basket could simply use
+    # three, and each one passed on its own merits. Six times 200 rupees is
+    # 1,200 rupees of spending against a person who said 200, and the system
+    # had no way to see it, because it never looked at more than one basket.
+    #
+    # Soft, deliberately. Buying twice under the same instruction is a thing
+    # people legitimately do -- the shipment split, the first one was the wrong
+    # size, they simply want another. What it is NOT is something an agent gets
+    # to decide alone. So this asks; it does not refuse. A hard clause here
+    # would turn a normal second purchase into a dead end, and the cost of
+    # being wrong in that direction is a person who cannot buy socks.
+    #
+    # The aggregate is scoped to a mandate that reads like this one -- same
+    # category, same stated ceiling, recent -- rather than to all spending,
+    # because "shoes under 5000" and "laptop under 50000" are two authorities
+    # and summing them would be arithmetic, not consent.
+    _split_total = exposure.mandate_spent_paise + totals.total_paise
+    check("SPLIT-001",
+          (not exposure.mandate_paise)
+          or _split_total <= exposure.mandate_paise,
+          f"{rupees(_split_total)} across {exposure.mandate_txns + 1} baskets "
+          f"under one {rupees(exposure.mandate_paise)} instruction", hard=False)
+
     check("DRIFT-002", drift.score <= L["max_drift_stepup"],
           f"drift {drift.score:.3f} <= {L['max_drift_stepup']}", hard=True)
     check("DRIFT-001", (not integrity) or drift.score <= L["max_drift_auto"],

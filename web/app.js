@@ -812,10 +812,18 @@ function renderLevers() {
       if (l.webhook) msg = await fireWebhook(l.webhook);
       else {
         if (!STATE.journey && !l.utterance) { out.textContent = "run a journey first"; return; }
-        const d = await api("/api/shop", {
+        // Faults that write to the catalog run against a throwaway instance,
+        // not this one. Pressing "raise the price 25%" used to raise it for
+        // every visitor who came after, permanently, and the next press raised
+        // it again from there -- the demo inflated its own prices. Same code,
+        // same clauses, disposable instance. remit/faults.py names the split.
+        const fault = l.inject ? l.inject() : {};
+        const shared = ["price", "price_bump_pct", "shipping", "delist"]
+          .some(k => k in fault);
+        const d = await api(shared ? "/api/probe" : "/api/shop", {
           utterance: l.utterance || STATE.journey.intent.utterance,
           accept_offers: "in_envelope", human_confirms: null,
-          inject: l.inject ? l.inject() : {},
+          inject: fault,
         });
         const a = d.authorization;
         msg = a ? `${a.verdict} · ${a.failed.length ? a.failed.join(", ") : "no clause failed"}`
@@ -950,7 +958,7 @@ async function renderAttacks() {
   let a, done = {};
   try { a = await api("/api/attacks"); } catch (e) { return; }
   try {
-    const pre = await api("/api/results/attacks");
+    const pre = await results("attacks");
     if (!pre.error) for (const r of pre.rows) done[r.key] = r;
   } catch (e) { /* no pre-generated run; live only */ }
 
@@ -1001,7 +1009,8 @@ async function renderFrontier() {
   const out = $("#frontierOut");
   if (!out) return;
   let f;
-  try { f = await api("/api/results/frontier"); } catch (e) { return; }
+  try { f = await results("frontier"); }
+  catch (e) { out.innerHTML = couldNotLoad("the frontier", "renderFrontier"); return; }
   if (f.error) { out.innerHTML = `<p class="meta-line">${esc(f.error)}</p>`; return; }
   const safe = f.points.filter(p => !p.unauthorized_paise);
   const knee = safe[safe.length - 1];
@@ -1047,11 +1056,44 @@ async function renderFrontier() {
    thesis behind a disclosure rather than in a table cell. Every number that
    was on the page is still on the page. Nothing was rounded, reordered or
    quietly dropped -- including the part that is unflattering to REMIT. */
+
+/* A cold free-tier instance answers the first few requests slowly, and eight
+   rooms all fetch at once on load. One dropped read used to leave a room blank
+   for the rest of the visit -- `catch (e) { return; }` with nothing drawn and
+   nothing to press. A reviewer's first impression of the Arena was then an
+   empty section, and nothing on the page said why or offered a second go.
+
+   One retry, then say so out loud with a button. */
+async function results(name, retries = 1) {
+  try {
+    return await api("/api/results/" + name);
+  } catch (e) {
+    if (retries > 0) {
+      await new Promise(r => setTimeout(r, 1200));
+      return results(name, retries - 1);
+    }
+    throw e;
+  }
+}
+
+const couldNotLoad = (name, fn) => `<div class="err">
+  could not load ${esc(name)} — the instance may still be waking up.
+  <button class="ghost" data-retry="${esc(fn)}" style="margin-left:12px">try again</button>
+</div>`;
+
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-retry]");
+  if (!b) return;
+  const fn = window[b.dataset.retry];
+  if (typeof fn === "function") { b.textContent = "loading…"; fn(); }
+});
+
 async function renderArena() {
   const out = $("#arenaOut");
   if (!out) return;
   let a;
-  try { a = await api("/api/results/arena"); } catch (e) { return; }
+  try { a = await results("arena"); }
+  catch (e) { out.innerHTML = couldNotLoad("the arena", "renderArena"); return; }
   if (a.error) {
     out.innerHTML = `<p class="meta-line">${esc(a.error)} — ${esc(a.hint || "")}</p>`;
     return;
@@ -1647,3 +1689,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 function drawFrontierSafe() {
   api("/api/results/frontier").then(f => { if (!f.error) drawFrontier(f.points); }).catch(() => {});
 }
+
+/* named so the retry button can find them */
+window.renderArena = renderArena;
+window.renderFrontier = renderFrontier;

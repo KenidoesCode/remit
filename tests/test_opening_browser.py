@@ -234,7 +234,7 @@ def test_the_arena_rows_do_not_collide(site, browser, width):
     # wait on the count, not on visibility: the leaderboard is fetched, and a
     # cold instance can take longer than a selector's patience.
     pg.wait_for_function(
-        "document.querySelectorAll('#arenaOut .ag').length === 7", timeout=30000)
+        "document.querySelectorAll('#arenaOut .ag').length === 7", timeout=60000)
 
     collisions = pg.evaluate(OVERLAPS % "'#arenaOut .brow'")
     assert collisions == [], f"at {width}px: {collisions[:4]}"
@@ -262,7 +262,7 @@ def test_every_arena_score_is_readable(site, browser, width):
     # wait on the count, not on visibility: the leaderboard is fetched, and a
     # cold instance can take longer than a selector's patience.
     pg.wait_for_function(
-        "document.querySelectorAll('#arenaOut .ag').length === 7", timeout=30000)
+        "document.querySelectorAll('#arenaOut .ag').length === 7", timeout=60000)
     shown = pg.evaluate("""[...document.querySelectorAll('#arenaOut .score u')]
       .map(e => { const r = e.getBoundingClientRect();
         return { t: e.textContent.trim(), ok: r.width > 10 &&
@@ -286,7 +286,7 @@ def test_the_arena_keeps_every_number_and_the_unflattering_ranking(site, browser
     # wait on the count, not on visibility: the leaderboard is fetched, and a
     # cold instance can take longer than a selector's patience.
     pg.wait_for_function(
-        "document.querySelectorAll('#arenaOut .ag').length === 7", timeout=30000)
+        "document.querySelectorAll('#arenaOut .ag').length === 7", timeout=60000)
 
     truth = _json.loads((ROOT / "eval" / "results" / "arena.json").read_text())
     pg.evaluate("document.querySelectorAll('#arenaOut .ag')"

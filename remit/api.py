@@ -20,6 +20,7 @@ from pydantic import BaseModel, Field
 
 from .assembly import App, build, utcnow
 from .auth import COOKIE, MAX_AGE_SECONDS, mint, session_secret, verify
+from .faults import refusal_note, scrub
 from .domain.drift import compute_drift
 from .domain.risk import Exposure, assess
 from .exec.razorpay import FakeGateway, verify_payment_signature
@@ -230,11 +231,19 @@ def shop(req: ShopRequest, request: Request):
         now = utcnow()
         who = principal(request)
         exposure = _exposure(a, who)
+        # This is the live instance. A fault that writes to the catalog would
+        # write it for everybody, so those run on a throwaway via /api/probe.
+        # Refused faults are named in the response rather than dropped, because
+        # a fault silently discarded looks like a fault that was survived.
+        inject, refused = scrub(req.inject, shared=True)
         r = a.journey.run(utterance=req.utterance, user_id=who, now=now,
                           exposure=exposure, accept_offers=req.accept_offers,
                           human_confirms=req.human_confirms,
-                          approval_token=req.approval_token, inject=req.inject)
+                          approval_token=req.approval_token, inject=inject)
         d = r.dict()
+        if refused:
+            d["refused_faults"] = refused
+            d["refused_note"] = refusal_note(refused)
         d["exposure"] = json.loads(exposure.model_dump_json())
         d["catalog_version"] = a.catalog.version()
         if d.get("intent") is None:
@@ -252,10 +261,13 @@ def shop(req: ShopRequest, request: Request):
                     " GROUP BY category ORDER BY n DESC")]
         if r.intent is not None and r.cart is not None:
             # Kept in memory so the property line can re-decide the SAME basket
-            # under a different authority without re-running the agent.
-            STATE.setdefault("journeys", {})[r.correlation_id] = {
+            # under a different authority without re-running the agent. Keyed
+            # by principal first: a correlation id is on screen and in the
+            # ledger, so it cannot be the only thing standing between one
+            # visitor's basket and another's.
+            STATE.setdefault("journeys", {}).setdefault(who, {})[r.correlation_id] = {
                 "env": r.intent, "cart": r.cart, "totals": r.totals,
-                "exposure": exposure, "catalog_version": a.catalog.version(),
+                "catalog_version": a.catalog.version(),
                 "shown_total_paise": r.shown_total_paise,
             }
         return d
@@ -287,8 +299,43 @@ def _exposure(a: App, user_id: str) -> Exposure:
                     txn_count_1h=row["n"])
 
 
+@api.post("/api/probe")
+def probe(req: ShopRequest, request: Request):
+    """The fault lab: the same journey, on an instance nobody else is using.
+
+    /api/shop is the one trusted entry point and it may not be attacked with
+    faults that write to shared state -- see remit/faults.py. This is where
+    those faults are legal: a fresh in-memory app on the fake gateway, built
+    for this request and thrown away after it. The reviewer gets every lever,
+    the catalog the next reviewer sees is untouched, and the result does not
+    depend on what the previous visitor pressed.
+
+    The policy, the catalog seed, the clauses and the code are identical. Only
+    the instance is disposable, so a verdict here means the same thing a
+    verdict on /api/shop means.
+    """
+    with LOCK:
+        from .exec.razorpay import FakeGateway
+        now = utcnow()
+        sub = build(now=now, gateway=FakeGateway())
+        inject, refused = scrub(req.inject, shared=False)
+        r = sub.journey.run(utterance=req.utterance, user_id=principal(request),
+                            now=now, accept_offers=req.accept_offers,
+                            human_confirms=req.human_confirms, inject=inject)
+        d = r.dict()
+        d["catalog_version"] = sub.catalog.version()
+        d["sandboxed"] = True
+        d["note_sandbox"] = ("run against a fresh in-memory instance on the "
+                             "test-mode gateway; no money moved and nothing on "
+                             "this deployment changed")
+        if refused:
+            d["refused_faults"] = refused
+            d["refused_note"] = refusal_note(refused)
+        return d
+
+
 @api.post("/api/replay")
-def replay(req: ReplayRequest):
+def replay(req: ReplayRequest, request: Request):
     """The property line.
 
     Re-decide an existing basket under a different authorised amount. This runs
@@ -296,22 +343,46 @@ def replay(req: ReplayRequest):
     and no writes. `engine_us` is the real time the pure functions took, and it
     is the reason the frontier sweep and this interaction are both possible:
     if `authorize()` did I/O, neither would be.
+
+    That docstring was true of the re-decision and false of the line above it.
+    When the correlation id was unknown this endpoint used to rebuild the
+    basket by running a FULL journey on the LIVE app -- writing intents, carts
+    and decisions, able to reach the real gateway -- under the hardcoded shared
+    identity "usr_replay", with `Exposure()` left at zero. Three separate
+    problems in one line: a money-capable path that took no session principal,
+    a shared identity every visitor spent against, and EXPO/VEL clauses
+    evaluated against zeros, which made the property line report verdicts that
+    the real endpoint would not have given.
+
+    The rebuild now happens on a throwaway instance and the re-decision uses
+    the caller's own live exposure, so the line says what /api/shop would say.
     """
     with LOCK:
         a = get_app()
-        j = STATE.get("journeys", {}).get(req.correlation_id)
+        who = principal(request)
+        # Baskets are held per principal. A correlation id is not a secret --
+        # it is on screen and in the ledger -- and one visitor should not be
+        # able to read another's cart by guessing one.
+        mine = STATE.setdefault("journeys", {}).setdefault(who, {})
+        j = mine.get(req.correlation_id)
         if j is None and req.utterance:
-            r = a.journey.run(utterance=req.utterance, user_id="usr_replay",
-                              now=utcnow(), accept_offers="in_envelope",
-                              human_confirms=None)
+            from .exec.razorpay import FakeGateway
+            sub = build(now=utcnow(), gateway=FakeGateway())
+            r = sub.journey.run(utterance=req.utterance, user_id=who,
+                                now=utcnow(), accept_offers="in_envelope",
+                                human_confirms=None)
             if r.intent is not None and r.cart is not None:
                 j = {"env": r.intent, "cart": r.cart, "totals": r.totals,
-                     "exposure": Exposure(), "catalog_version": a.catalog.version(),
+                     "catalog_version": sub.catalog.version(),
                      "shown_total_paise": r.shown_total_paise}
-                STATE.setdefault("journeys", {})[req.correlation_id] = j
+                mine[req.correlation_id] = j
         if j is None:
             return JSONResponse({"error": "unknown correlation_id; run a journey first"},
                                 status_code=404)
+        # Read fresh rather than trusting what was stored when the basket was
+        # built: exposure is the one input to this decision that moves on its
+        # own, and a property line drawn against a stale one is decoration.
+        j = dict(j, exposure=_exposure(a, who))
         env = j["env"].model_copy(deep=True)
         # Hold the basket fixed; move only the authority. That is the honest
         # framing of this interaction: same cart, different permission.
@@ -763,10 +834,25 @@ def payment_verify(req: VerifyRequest, request: Request):
 
 @api.post("/api/webhook")
 async def webhook(request: Request):
-    a = get_app()
+    """The one writer that used to run outside the serialisation point.
+
+    Every other endpoint takes LOCK. This one is `async` and did not, and it
+    calls `PaymentStore.transition` -- so a webhook arriving while a journey
+    was mid-flight wrote payment state concurrently with the write path it was
+    meant to be serialised against. The dedupe (`webhook_events.event_id`
+    PRIMARY KEY) and the FSM guard both held, because both are enforced by the
+    database rather than by ordering, which is why nothing had gone wrong yet.
+    "Nothing has gone wrong yet" is not a concurrency argument.
+
+    The body is read before the lock -- awaiting on a socket while holding a
+    threading lock would block every other request for as long as the sender
+    felt like taking -- and the state change happens inside it.
+    """
     body = await request.body()
     sig = request.headers.get("x-razorpay-signature", "")
-    return a.webhooks.handle(body=body, signature=sig, now=utcnow())
+    with LOCK:
+        a = get_app()
+        return a.webhooks.handle(body=body, signature=sig, now=utcnow())
 
 
 @api.post("/api/reconcile")

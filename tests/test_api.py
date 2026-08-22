@@ -126,17 +126,56 @@ def test_results_404_with_a_hint_rather_than_a_lie(client):
 
 # ---------- the levers in Act IV are real ----------
 
-@pytest.mark.parametrize("inject,expect_clause", [
-    ({"revoked": True}, "AUTH-003"),
-    ({"expire": True}, "AUTH-002"),
-    ({"delist": True}, "STOCK-001"),
+@pytest.mark.parametrize("path,inject,expect_clause", [
+    # in-flight faults: the blast radius is this journey, so they are legal
+    # against the live instance
+    ("/api/shop", {"revoked": True}, "AUTH-003"),
+    ("/api/shop", {"expire": True}, "AUTH-002"),
+    # shared-state faults: these write to the catalog every visitor reads, so
+    # they run on a throwaway. Same clause, same code, disposable instance.
+    ("/api/probe", {"delist": True}, "STOCK-001"),
 ])
-def test_break_levers_are_caught_by_a_named_clause(client, inject, expect_clause):
-    d = client.post("/api/shop", json={
+def test_break_levers_are_caught_by_a_named_clause(client, path, inject, expect_clause):
+    d = client.post(path, json={
         "utterance": "buy running shoes under 5000",
         "human_confirms": True, "inject": inject}).json()
-    assert expect_clause in d["authorization"]["failed"]
+    assert expect_clause in d["authorization"]["failed"], d["authorization"]["failed"]
     assert d["payment_state"] != "CREATED"
+
+
+def _shelf(client):
+    """Price, availability and version of everything on the shelf -- the state
+    one visitor must not be able to move on behalf of the next."""
+    d = client.get("/api/catalog?q=running shoes").json()
+    return (d["catalog_version"],
+            [(p["product_id"], p["price_paise"]) for p in d["products"]])
+
+
+@pytest.mark.parametrize("inject", [
+    {"price": 1}, {"shipping": 99900}, {"delist": True}, {"price_bump_pct": 90},
+])
+def test_the_live_instance_refuses_faults_that_write_to_shared_state(client, inject):
+    """A visitor could reprice the merchant's catalog for everyone who came
+    after them, permanently, by pressing a button in the Break room -- and the
+    next visitor pressing it repriced from there. The demo inflated its own
+    prices. `authorize()` ran every time, so nothing was ever bypassed; it is
+    simply not something a control plane may offer on a shared instance."""
+    before = _shelf(client)
+    d = client.post("/api/shop", json={
+        "utterance": "buy running shoes under 5000", "inject": inject}).json()
+    assert d.get("refused_faults") == sorted(inject), d.get("refused_faults")
+    assert "throwaway" in d.get("refused_note", ""), d.get("refused_note")
+    assert _shelf(client) == before
+
+
+def test_the_sandbox_does_not_touch_the_live_catalog(client):
+    """And the throwaway has to actually be a throwaway."""
+    before = _shelf(client)
+    d = client.post("/api/probe", json={
+        "utterance": "buy running shoes under 5000", "inject": {"price": 990000}}).json()
+    assert d["sandboxed"] is True
+    assert not d.get("refused_faults")
+    assert _shelf(client) == before
 
 
 def test_forged_webhook_is_refused_over_http(client):

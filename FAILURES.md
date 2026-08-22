@@ -1343,3 +1343,223 @@ measure, so it should never have been left to a screenshot. A third test reads
 `eval/results/arena.json` and asserts every thesis, score, escalation count and
 transaction count still appears on the page, and that the order is unchanged —
 a visual pass that quietly drops a number is not a visual pass.
+
+---
+
+## 37. The fault lab was writing to everybody's catalog
+
+**What happened.** The Break room offers a reviewer six levers: move the price
+after selection, blow up the shipping, delist the product, inflate the
+quantity, expire the intent, revoke it. Three of them called
+`catalog.set_price`, `catalog.set_shipping` and `catalog.deactivate` — on the
+**live instance**, through `POST /api/shop`, from a public page.
+
+So a reviewer pressing *"raise the price 25%"* raised it for every visitor who
+came after them, permanently. The next reviewer pressing the same button raised
+it 25% from there. The demo inflated its own catalog, and the product a judge
+saw on Thursday was not the product the README priced on Monday.
+
+Nothing was bypassed — `authorize()` ran on every one of those requests, and
+the verdicts were correct. That is exactly why it survived: every test asked
+"was this caught by the right clause?" and the answer was always yes. No test
+asked whether the *next visitor* saw the same shelf.
+
+**The second thing this hid.** A fault lab whose results depend on what the
+previous visitor pressed is not a lab. Two reviewers running the same attack an
+hour apart got different numbers and neither of them could tell.
+
+**The fix** is a split, not a removal: `remit/faults.py` names which faults are
+in-flight (`qty`, `expire`, `revoked`, `payment` — their blast radius is one
+journey and they die with it) and which write to state other people read
+(`price`, `price_bump_pct`, `shipping`, `delist`). The live endpoint accepts
+only the first kind. The second kind runs on `POST /api/probe`: a fresh
+in-memory instance on the fake gateway, built for that request and thrown away
+after it. Same policy, same clauses, same code — disposable instance.
+
+Refused faults are **named in the response** rather than dropped. A fault
+silently discarded looks exactly like a fault the system survived, and that is
+a worse lie than the original bug.
+
+---
+
+## 38. The property line ran a real journey and called itself pure
+
+**What happened.** `POST /api/replay` re-decides a basket under a different
+authorised amount. Its docstring, which I wrote, says:
+
+> This runs ONLY the pure path — drift, risk, policy — with no model call, no
+> payment and no writes.
+
+True of the re-decision. False of the four lines above it. When the correlation
+id was unknown, the endpoint rebuilt the basket by running **a full journey on
+the live app** — writing intents, carts and decisions, able to reach the real
+gateway — and it did so like this:
+
+```python
+r = a.journey.run(utterance=req.utterance, user_id="usr_replay", ...)
+```
+
+Three separate problems in one line.
+
+**It took no session principal.** Every other money-capable route resolves one
+in the middleware and passes it down (FAILURES #32). This one had `def
+replay(req: ReplayRequest)` — no `Request` parameter at all, so there was
+nothing to resolve. The identity fix had closed every door except the one that
+had no handle on it.
+
+**`usr_replay` was a real shared spending identity.** Not forged — hardcoded,
+in the source, pooled across every visitor who pressed the property line. Their
+exposure and velocity accumulated together, which is the shape of FAILURES #21
+returning under a different name.
+
+**Exposure was fixed at zero.** `Exposure()` with every field defaulted, so
+EXPO-001, EXPO-002 and VEL-001 were evaluated against nothing. The property
+line — the interaction whose entire purpose is *"here is what the engine would
+decide"* — was reporting verdicts that `/api/shop` would not have given.
+
+**The fix.** The rebuild happens on a throwaway instance. The re-decision reads
+the caller's own live exposure, freshly, rather than whatever was stored when
+the basket was built — exposure is the one input to that decision that moves on
+its own, and a property line drawn against a stale one is decoration. And
+stashed baskets are keyed by principal first: a correlation id is on screen, in
+the ledger and in the logs, so it cannot be the only thing standing between one
+visitor's basket and another's.
+
+**What it changed.** `tests/test_no_bypass.py` exists now, and its central test
+is the one the hardening brief asks for by name. It does not inspect the code.
+It drives the whole public surface — journeys, step-ups, replays, comparisons,
+attacks, faults, forged approvals, foreign currency — and then asks the
+database a question that does not care how a row got there: *for every payment,
+is there a decision behind it, and did that decision permit money to move?* A
+bypass anywhere in the surface shows up as an orphan row.
+
+Both of these were found by writing that test rather than by reading the code.
+I had read `api.py` a dozen times this week.
+
+---
+
+## 39. A clause that could never fire, guarding a bug that always could
+
+**What happened.** `CUR-001` is a hard DENY on a currency allowlist. It passed
+540 corpus cases, 260 matrix cases and 23 attacks without once being exercised,
+because the compiler set the field it tests:
+
+```python
+currency="INR",   # in RuleCompiler, and again in LLMCompiler
+```
+
+No input could ever produce anything else. The clause was decoration.
+
+Meanwhile the number in the sentence parsed anyway. `"buy headphones under
+$5,000"` matched the bare `5,000`, found no rupee marker, took the
+`rupees >= 100` branch at confidence 0.80, and became **500000 paise** — a
+five-thousand-*rupee* ceiling from a five-thousand-*dollar* sentence. Off by
+roughly 85×, in the permissive direction, silently, with a clause sitting right
+there whose entire job was to prevent it.
+
+**The fix.** `amounts.detect_currency()` reads the unit the human actually
+wrote — `$ usd dollar`, `€ eur euro`, `£ gbp pound`, `¥ jpy yen`, `aed dirham`,
+`sgd`, `aud` — and requires the symbol to touch a digit, so the `$` in a
+template-injection string (`${ceiling*1000}`) is not mistaken for a price. The
+envelope carries what it finds, and CUR-001 refuses it.
+
+**Deliberately not converted.** REMIT holds no exchange rate and is not going
+to acquire one. A control plane that invents a rate has invented authority. It
+refuses, and names the currency in the refusal.
+
+The same omission was in the approval token: `approvals.currency` and
+`approvals.merchants` were both written at issue and **never read** by
+`redeem()`. The merchant one was load-bearing by accident — a product id
+belongs to exactly one merchant, so a merchant swap changes the cart hash — but
+resting a guarantee on an implementation detail of the seed data is not resting
+it on anything. Both are compared directly now.
+
+---
+
+## 40. One ceiling, spent three times
+
+**What happened.** `CEIL-001` compares one basket against the sentence that
+authorised it. That was the entire meaning of a ceiling in this system.
+
+```
+"buy chips under 200"      -> 190 rupees, AUTO
+"buy biscuits under 200"   -> 180 rupees, AUTO
+"buy soap under 200"       -> 195 rupees, AUTO
+                              ---
+                              565 rupees, from a person who said 200
+```
+
+Every one passes on its own merits. Nothing in the policy engine could see it,
+because nothing in the policy engine ever looked at more than one basket.
+
+**The fix, and what it must not do.** `SPLIT-001` sums what this principal has
+already spent under a statement that reads like this one, and asks when the
+total would cross it. Three deliberate narrowings:
+
+- **Same category and same stated ceiling.** The obvious wrong implementation
+  sums everything against the smallest ceiling anyone mentioned recently, which
+  refuses a person who bought socks and then a laptop. Two different
+  instructions are two authorities; summing them is arithmetic, not consent.
+- **Soft.** Buying twice under one instruction is something people do — the
+  first was the wrong size, the delivery split, they want another packet. It is
+  not something an *agent* decides alone. So the clause asks. Hard here would
+  turn an ordinary second purchase into a dead end.
+- **One hour.** Buying the same thing tomorrow is a new decision, not a
+  suspicion.
+
+The aggregate is computed in the journey and passed to `authorize()` as an
+argument, like every other input. The policy engine still does no I/O, and
+there is now a test that greps it to make sure it never starts — replay, the
+frontier sweep and the whole Arena depend on that purity.
+
+**What it cost on its first day.** Three suites went red at once, all saying
+the same thing: a **resend** was being counted as a split. A double-tapped
+button, a chat UI that resends, an agent with a retry policy — one basket,
+already handled by idempotency, now stepping up. The most ordinary event in the
+system, turned into a suspicion by a clause meant for an attack. Prior
+purchases under the same `semantic_hash` are excluded; a split is *different*
+baskets under one instruction.
+
+**Honest note on evidence.** The 540-case evaluation passes `Exposure()` to
+keep its cases independent, so it does not exercise this clause at all and the
+metrics did not move — the only thing that changed is p50 latency, 3.63ms →
+4.08ms, which is the extra query. `tests/test_split.py` is the evidence, not
+the corpus, and that is a real gap in the corpus rather than a strength of the
+clause.
+
+---
+
+## 41. Every claim about contention was a claim about what the code looked like
+
+**What happened.** Three separate places in this repository assert behaviour
+under concurrency:
+
+- `remit/grants/approval.py` — single use is a predicated UPDATE "so that two
+  browser tabs racing the same token cannot both win"
+- `remit/exec/idempotency.py` — the UNIQUE constraint is the serialisation point
+- `remit/lab/attacks.py` — the retry storm is "six identical journeys at once"
+
+None of it had ever run concurrently. The retry storm is a `for` loop. The
+approval race is two sequential calls. Every claim was about what the code
+looks like when you read it.
+
+**And one writer was outside the lock.** `POST /api/webhook` is `async` and did
+not take `LOCK`, while every other endpoint does — and it calls
+`PaymentStore.transition`. The dedupe and the FSM guard both held, because both
+are enforced by the database rather than by ordering. "Nothing has gone wrong
+yet" is not a concurrency argument. It takes the lock now, after reading the
+body — awaiting on a socket while holding a threading lock would block every
+other request for as long as the sender felt like taking.
+
+**The fix.** `tests/test_concurrency.py` issues genuinely simultaneous requests
+from real threads and counts what came out: 40 identical journeys → one payment
+and 39 replays; 32 tabs redeeming one approval → one redemption and 31
+`already_used`; 12 duplicate webhooks → one applied; six different people
+buying at the same instant → six payments, six idempotency namespaces, no
+collision.
+
+**What it does not prove.** The model under test is the deployed one: a single
+process, one `RLock`, SQLite in WAL. A second process would not share that
+lock. The UNIQUE constraints would still hold — they are the real defence — but
+the exposure read would race. That gap is in `docs/FINAL_AUDIT.md` section F
+and it stays there.

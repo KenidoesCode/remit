@@ -42,6 +42,11 @@ from ..policy.authorize import Authorization, Policy, Verdict, authorize
 from ..retrieval.index import hard_filter
 from ..tools.broker import ToolBroker
 
+# How far back SPLIT-001 looks. Long enough that an agent decomposing a
+# purchase across a few minutes is still one episode; short enough that
+# buying the same thing again tomorrow is a new decision, not a suspicion.
+WINDOW_HOURS = 1
+
 
 # A network timeout talking to a payment gateway is the one error that must
 # not be treated as a failure: the order may exist. httpx raises its own
@@ -141,6 +146,73 @@ class Journey:
         self.calibrator = calibrator or (lambda x: x)
 
     # ---------- audit helpers ----------
+    def _mandate_exposure(self, env, exposure, now):
+        """What has already been spent under a statement that reads like this one.
+
+        A ceiling was only ever compared against the basket in front of it, so
+        an agent that could not fit inside "under 2000" in one cart could use
+        three. This is the only input SPLIT-001 needs, and it is computed here
+        rather than inside authorize() because authorize() does no I/O and is
+        not going to start.
+
+        "Reads like this one" is deliberately narrow: same category, same
+        stated ceiling, inside the window. Summing every purchase against the
+        smallest ceiling anyone mentioned recently would refuse a person who
+        bought socks and then a laptop, which is arithmetic rather than
+        consent. Two different instructions are two authorities.
+
+        Returns the exposure unchanged when the human named no ceiling -- there
+        is nothing to aggregate against -- and when the caller has opted out by
+        passing an exposure explicitly zeroed, as the evaluation harness does
+        to keep its cases independent.
+        """
+        ceiling = env.ceiling_paise()
+        if not ceiling:
+            return exposure
+        window = (now - timedelta(hours=WINDOW_HOURS)).isoformat()
+        spent = txns = 0
+        try:
+            rows = self.db.execute(
+                "SELECT p.amount_paise, iv.envelope FROM payments p"
+                " JOIN intents i ON i.intent_id = p.intent_id"
+                " JOIN intent_versions iv ON iv.intent_id = i.intent_id"
+                "   AND iv.version = i.current_version"
+                " WHERE p.user_id = ? AND p.created_at >= ?"
+                "   AND p.state NOT IN ('FAILED')",
+                (env.user_id, window)).fetchall()
+        except Exception:
+            # A control that cannot read its history must not therefore permit
+            # more than it otherwise would. Nothing to add is not the same as
+            # nothing spent, but the failure mode here is a missing STEP_UP,
+            # not a missing DENY, and the clause is soft by design.
+            return exposure
+        for row in rows:
+            try:
+                prior = IntentEnvelope(**json.loads(row["envelope"]))
+            except Exception:
+                continue
+            if prior.semantic_hash == env.semantic_hash:
+                # The same request, sent again -- a double-tapped button, a
+                # chat UI that resends, an agent retrying. That is one basket,
+                # and idempotency already returns the one payment it made. A
+                # split is DIFFERENT baskets under one instruction; counting a
+                # resend as one would step up on the most ordinary event in the
+                # system and cost a person their purchase.
+                continue
+            if prior.category != env.category:
+                continue
+            if prior.ceiling_paise() != ceiling:
+                continue
+            spent += int(row["amount_paise"])
+            txns += 1
+        if not txns:
+            return exposure
+        return exposure.model_copy(update={
+            "mandate_paise": ceiling,
+            "mandate_spent_paise": spent,
+            "mandate_txns": txns,
+        })
+
     def _event(self, kind: str, cid: str, payload: dict, now: datetime) -> None:
         self.ledger.append(kind, cid, payload, now)
 
@@ -486,6 +558,7 @@ class Journey:
                      "calibrated_confidence": round(p_cal, 4)}, now)
 
         # 7. POLICY ------------------------------------------------------
+        exposure = self._mandate_exposure(env, exposure, now)
         oos = [l.product_id for l in cart.lines
                if (self.catalog.get(l.product_id) or None) is None
                or (self.catalog.get(l.product_id).inventory < l.qty)]

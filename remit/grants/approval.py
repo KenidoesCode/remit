@@ -139,6 +139,24 @@ class ApprovalStore:
                 "amount_changed",
                 f"approved {row['amount_paise']} paise, the cart now totals "
                 f"{totals.total_paise}")
+        if row["currency"] != env.currency:
+            return Rejection(
+                "currency_changed",
+                f"approved in {row['currency']}, this cart is priced in "
+                f"{env.currency}; an amount without a unit is not an amount")
+        now_merchants = ",".join(sorted({l.merchant_id for l in cart.lines}))
+        if row["merchants"] != now_merchants:
+            # This column was written at issue and never read, which made it
+            # documentation rather than a control. The cart hash catches a
+            # merchant swap only because a product id happens to belong to one
+            # merchant -- true today, an implementation detail, and not the
+            # thing anyone would want the guarantee to rest on. A person who
+            # approved a basket from one seller did not approve the same goods
+            # from another, and this says so directly.
+            return Rejection(
+                "merchant_changed",
+                f"approved against {row['merchants'] or 'no merchant'}, this "
+                f"cart is with {now_merchants or 'no merchant'}")
         # Single-use, enforced by the predicate rather than by having read the
         # row a moment ago. Two tabs racing this both reach here; one UPDATE
         # matches a row and one does not.

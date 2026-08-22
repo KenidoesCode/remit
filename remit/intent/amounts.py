@@ -60,6 +60,52 @@ def _fold_devanagari(text: str) -> str:
     return "".join(out)
 
 
+# ── what unit is this number in ──────────────────────────────────────────────
+# An amount without a unit is not an amount. The compiler used to hardcode
+# currency="INR" on every envelope, which made CUR-001 -- a hard DENY clause on
+# a currency allowlist -- unfalsifiable: no input could ever set the field it
+# tests, so the clause passed 540 corpus cases without once being exercised.
+#
+# Worse, the number itself still parsed. "buy headphones under $5,000" matched
+# the bare 5,000, found no rupee marker, took the >= 100 branch at confidence
+# 0.80, and became 500000 paise -- a 5,000-RUPEE ceiling from a 5,000-DOLLAR
+# sentence, off by roughly 85x in the permissive direction, silently.
+#
+# So: detect the unit the human actually wrote. A foreign unit does not get
+# converted -- REMIT holds no rate, and a control plane that invents an
+# exchange rate has invented authority. It gets refused by CUR-001, with the
+# currency named.
+_FOREIGN = (
+    ("USD", r"\$|\busd\b|\bdollars?\b"),
+    ("EUR", r"\u20ac|\beur\b|\beuros?\b"),
+    ("GBP", r"\u00a3|\bgbp\b|\bpounds?\b|\bsterling\b"),
+    ("JPY", r"\u00a5|\bjpy\b|\byen\b"),
+    ("AED", r"\baed\b|\bdirhams?\b"),
+    ("SGD", r"\bsgd\b"),
+    ("AUD", r"\baud\b"),
+)
+# Adjacent to a number, in either order, or a bare currency word. A lone "$"
+# in a template-injection string ("${ceiling*1000}") is not a price and must
+# not become one -- the symbol has to touch a digit.
+_NEAR = r"(?:{m})\s*[0-9]|[0-9][0-9,.]*\s*(?:{m})"
+
+
+def detect_currency(text: str) -> str:
+    """The currency the human wrote, or INR because this catalog is priced in it.
+
+    Returns an ISO code. Never converts, never guesses a rate.
+    """
+    t = _fold_devanagari(text.lower())
+    for code, pat in _FOREIGN:
+        if re.search(_NEAR.format(m=pat), t, re.I):
+            return code
+        # A bare word form with no digit beside it still names a unit:
+        # "pay in dollars", "keep it under a hundred euros".
+        if re.search(r"\b(?:in|of)\s+(?:{m})".format(m=pat), t, re.I):
+            return code
+    return "INR"
+
+
 _DIGIT_UNIT = re.compile(
     r"(?:\u20b9|rs\.?|inr)?\s*([0-9][0-9,]*(?:\.[0-9]+)?)\s*"
     r"(k|hazaar|hazar|thousand|lakh|lac|lakhs|crore|cr|sau|hundred)?\b",

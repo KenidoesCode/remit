@@ -41,6 +41,21 @@ class Exposure(BaseModel):
     session_paise: Paise = 0
     daily_paise: Paise = 0
     txn_count_1h: int = 0
+    # What this principal has already spent under a mandate that reads like
+    # THIS one -- same category, same stated ceiling, recent. Zero when the
+    # human stated no ceiling, or when nothing comparable has been bought.
+    #
+    # It exists because a ceiling was only ever compared against one cart.
+    # "buy chips under 200", six times in four minutes, is six carts that each
+    # satisfy CEIL-001 and 1,200 rupees of spending against a sentence that
+    # said 200. Nothing in the system had a way to notice, because nothing in
+    # the system was looking at more than one basket at a time.
+    #
+    # Supplied as an argument like everything else authorize() reads, so the
+    # policy engine stays a pure function of its inputs.
+    mandate_paise: Paise = 0          # the ceiling the human stated
+    mandate_spent_paise: Paise = 0    # already spent under that same statement
+    mandate_txns: int = 0
 
 
 class RiskDecision(BaseModel):

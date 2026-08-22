@@ -23,7 +23,7 @@ from datetime import datetime
 from typing import Protocol
 
 from ..money import Paise
-from .amounts import AmountCandidate, best_ceiling
+from .amounts import AmountCandidate, best_ceiling, detect_currency
 from .grounding import Lexicon, RequestedItem, content_query, ground
 from ..domain.intent import IntentEnvelope, new_intent
 
@@ -333,7 +333,10 @@ class RuleCompiler:
             merchant_constraints=g.merchants,
             max_price_paise=ceiling if ceiling_is_per_unit else None,
             max_total_paise=None if ceiling_is_per_unit else ceiling,
-            currency="INR",
+            # Read from the sentence, not assumed. A hardcoded "INR" made
+            # CUR-001 a clause that could never fire, and turned "under $5,000"
+            # into a 5,000-rupee ceiling. See amounts.detect_currency.
+            currency=detect_currency(utterance),
             quantity=qty, objective=objective, required_attributes=required,
             purchase_authority=authority, parse_confidence=round(conf, 4))
         return env, telemetry | {"abstained": False}
@@ -418,7 +421,9 @@ class LLMCompiler:
             user_id=user_id, utterance=utterance, now=now,
             category=data.get("category"),
             max_price_paise=ceiling if _per_unit else None,
-            max_total_paise=None if _per_unit else ceiling, currency="INR",
+            max_total_paise=None if _per_unit else ceiling,
+            # The model does not get to name the unit either.
+            currency=detect_currency(utterance),
             quantity=_q,
             objective=data.get("objective", "best_value"),
             required_attributes=data.get("required_attributes", []),

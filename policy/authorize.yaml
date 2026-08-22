@@ -33,6 +33,7 @@ clauses:
   EXPO-001: "session exposure within cap"
   EXPO-002: "daily exposure within cap"
   VEL-001:  "velocity within cap"
+  SPLIT-001: "one stated ceiling, spent once -- aggregate across baskets"
   DRIFT-001: "drift below the auto-execute threshold"
   DRIFT-002: "drift below the outright-deny threshold"
   CONF-001: "parse confidence above the floor"
