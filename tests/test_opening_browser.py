@@ -1,4 +1,4 @@
-"""The opening, in a real browser, in the state a link is actually opened in.
+"""The page, in a real browser, in the states it is actually opened in.
 
 Three entries in FAILURES.md are browser-behaviour bugs that no amount of unit
 testing could have caught -- #15 (rAF is throttled in a background tab, so an
@@ -189,4 +189,119 @@ def test_the_hero_offers_the_walkthrough(site, browser):
     link = pg.locator('.cta-row a[href="#walk"]')
     assert link.count() == 1 and link.is_visible()
     assert pg.locator("#walkOut .wstep").count() == 5
+    ctx.close()
+
+
+# ─────────────────────────────────────────────────────── layout regressions
+
+OVERLAPS = """(() => {
+  const bad = [];
+  document.querySelectorAll(%s).forEach(row => {
+    const es = [...row.children];
+    const rs = es.map(e => e.getBoundingClientRect());
+    for (let i = 0; i < rs.length; i++)
+      for (let j = i + 1; j < rs.length; j++) {
+        const a = rs[i], b = rs[j];
+        if (a.right > b.left + 1 && b.right > a.left + 1 &&
+            a.bottom > b.top + 1 && b.bottom > a.top + 1)
+          bad.push((es[i].className || es[i].tagName) + ' over ' +
+                   (es[j].className || es[j].tagName));
+      }
+  });
+  return bad;
+})()"""
+
+
+@pytest.mark.parametrize("width", [1440, 1024, 768, 390])
+def test_the_arena_rows_do_not_collide(site, browser, width):
+    """FAILURES #36.
+
+    The leaderboard was a nine-column table whose second column was a full
+    sentence of prose. `td { white-space: nowrap }` applies to that sentence,
+    so it ran on one line straight across the numbers to its right and out of
+    the viewport -- the screenshots show a thesis ending mid-word on top of the
+    autonomy column.
+
+    Two cells occupying the same rectangle is a thing a browser can measure and
+    a thing a person reports as "the words are overlapping", so measure it: at
+    every width, no two cells in a row may intersect, and no cell may sit past
+    the board's right edge.
+    """
+    ctx = browser.new_context(viewport={"width": width, "height": 900})
+    pg = ctx.new_page()
+    pg.goto(site, wait_until="domcontentloaded")
+    pg.wait_for_function("document.body.dataset.intro === 'done'", timeout=20000)
+    # wait on the count, not on visibility: the leaderboard is fetched, and a
+    # cold instance can take longer than a selector's patience.
+    pg.wait_for_function(
+        "document.querySelectorAll('#arenaOut .ag').length === 7", timeout=30000)
+
+    collisions = pg.evaluate(OVERLAPS % "'#arenaOut .brow'")
+    assert collisions == [], f"at {width}px: {collisions[:4]}"
+
+    past = pg.evaluate("""(() => {
+      const b = document.querySelector('#arenaOut .board').getBoundingClientRect();
+      return [...document.querySelectorAll('#arenaOut .board *')]
+        .filter(e => e.getBoundingClientRect().right > b.right + 1)
+        .map(e => e.className || e.tagName);
+    })()""")
+    assert past == [], f"at {width}px these run past the board: {past[:4]}"
+    ctx.close()
+
+
+@pytest.mark.parametrize("width", [1440, 390])
+def test_every_arena_score_is_readable(site, browser, width):
+    """The score is the ranking, so it is the one number that may never be
+    pushed off its own row. It was: the bar was itself the flex item, so at
+    100% width it squeezed `100.0` out of the viewport on a phone. The bar
+    lives in a track now."""
+    ctx = browser.new_context(viewport={"width": width, "height": 900})
+    pg = ctx.new_page()
+    pg.goto(site, wait_until="domcontentloaded")
+    pg.wait_for_function("document.body.dataset.intro === 'done'", timeout=20000)
+    # wait on the count, not on visibility: the leaderboard is fetched, and a
+    # cold instance can take longer than a selector's patience.
+    pg.wait_for_function(
+        "document.querySelectorAll('#arenaOut .ag').length === 7", timeout=30000)
+    shown = pg.evaluate("""[...document.querySelectorAll('#arenaOut .score u')]
+      .map(e => { const r = e.getBoundingClientRect();
+        return { t: e.textContent.trim(), ok: r.width > 10 &&
+          r.right <= document.documentElement.clientWidth + 1 }; })""")
+    assert len(shown) == 7, shown
+    assert all(s["ok"] for s in shown), [s for s in shown if not s["ok"]]
+    ctx.close()
+
+
+def test_the_arena_keeps_every_number_and_the_unflattering_ranking(site, browser):
+    """This was a visual pass. The data does not move.
+
+    In particular the frugal agent still beats REMIT, and REMIT is still third.
+    That is the most interesting thing on the page and the audit is explicit
+    that it stays exactly where it is."""
+    import json as _json
+    ctx = browser.new_context(viewport={"width": 1440, "height": 900})
+    pg = ctx.new_page()
+    pg.goto(site, wait_until="domcontentloaded")
+    pg.wait_for_function("document.body.dataset.intro === 'done'", timeout=20000)
+    # wait on the count, not on visibility: the leaderboard is fetched, and a
+    # cold instance can take longer than a selector's patience.
+    pg.wait_for_function(
+        "document.querySelectorAll('#arenaOut .ag').length === 7", timeout=30000)
+
+    truth = _json.loads((ROOT / "eval" / "results" / "arena.json").read_text())
+    pg.evaluate("document.querySelectorAll('#arenaOut .ag')"
+                ".forEach(d => d.open = true)")
+    page_text = pg.locator("#arenaOut").inner_text()
+
+    order = pg.evaluate("[...document.querySelectorAll('#arenaOut .ag-who b')]"
+                        ".map(e => e.textContent.trim())")
+    assert order == [a["name"] for a in truth["agents"]], order
+    assert order[0] == "Frugal buyer" and order[2] == "REMIT (balanced)", order
+
+    for a in truth["agents"]:
+        assert a["thesis"][:40] in page_text, f"thesis missing for {a['name']}"
+        assert f"{a['remit_score']:.1f}" in page_text, a["name"]
+        assert str(a["escalations"]) in page_text, a["name"]
+        assert str(a["transactions"]) in page_text, a["name"]
+    assert "147" in page_text, "the unauthorised transaction count is gone"
     ctx.close()

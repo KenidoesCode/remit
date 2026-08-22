@@ -1284,3 +1284,62 @@ It also caught a second thing on the way in: the walk-through was rendered at
 the *end* of boot, behind `/api/health` and eight room renders, so anything
 that threw in that chain would have left the page's primary demonstration
 blank. It is drawn first now, and outside that chain.
+
+---
+
+## 36. Nine columns, one of them a paragraph
+
+**What happened.** The Arena leaderboard was an HTML table with nine columns,
+and column two held the agent's name *and* a full sentence of its thesis. The
+sentence ran straight across the numbers to its right and off the edge of the
+viewport:
+
+```
+2  Growth hacker
+   Attach everything the relevance engine will allow -- twice the offers at a third of the relevance bar. Still refuses to cross the human's line; it just walks right up t
+```
+
+`td { white-space: nowrap }` is set globally for the ledger tables, which is
+correct for a hash or an amount and catastrophic for prose. `max-width: 40ch`
+on the cell did nothing, because `max-width` on a table cell is advisory and a
+nowrap line has no width to be constrained to.
+
+**The worse half.** Even where it did not overlap, the layout buried the point.
+The finding in that table is that **the frugal agent beat the growth hacker and
+beat REMIT** — and it sat in column three of row one, in 12px mono, next to
+eight other numbers of equal visual weight. A reviewer reads left to right and
+gives up around column five.
+
+**The fix.** Not a wider table. The verdict in a sentence, three numbers that
+carry the argument (who won · where REMIT placed · what the unbounded control
+arm moved that nobody authorised), then one row per agent with the score as a
+bar in a track, and the thesis behind a disclosure. Rows are a grid, so at
+880px the numbers become a labelled 2×2 instead of a horizontal scroll.
+
+Every number that was on the page is still on the page, and opening a row now
+shows six more that were never there — revenue, margin, transactions, average
+order, conversion, mean drift, abstentions, p95. **The ranking did not move.**
+REMIT is still third, behind an agent whose entire strategy is to never propose
+anything, and the page says so in words rather than leaving it to be found.
+
+**Two things this cost on the way.**
+
+`.who` already existed in the stylesheet, on the engineering room's biography
+block, with a background and a grid of its own. My leaderboard's `.who` picked
+both up: a grey slab behind every agent name and a row that would not align.
+A class name is a global, and in a hand-written stylesheet with no scoping the
+only defence is to look first. Renamed to `.ag-who`.
+
+And the score bar was itself the flex item, so at 100% it squeezed `100.0` off
+the row on a phone — the winner's score was the one number the winner's row did
+not show. The bar lives in a track now, which also makes the proportion legible
+rather than implied.
+
+**What it changed.** `tests/test_opening_browser.py` now measures collisions
+directly: at 1440, 1024, 768 and 390, no two cells in a leaderboard row may
+occupy the same rectangle and nothing may sit past the board's right edge.
+"The words are overlapping" is a thing a person reports and a browser can
+measure, so it should never have been left to a screenshot. A third test reads
+`eval/results/arena.json` and asserts every thesis, score, escalation count and
+transaction count still appears on the page, and that the order is unchanged —
+a visual pass that quietly drops a number is not a visual pass.

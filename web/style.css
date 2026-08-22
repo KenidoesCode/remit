@@ -448,7 +448,6 @@ tbody tr:hover td{color:var(--ink);background:rgba(255,255,255,.02)}
 #numbersOut .stat .n,#labOut .stat .n,#auditOut .stat .n,#arenaOut .stat .n{font-family:var(--mono);font-size:10.5px;color:var(--ink-4);line-height:1.5}
 #numbersOut h3{font-family:var(--mono);font-size:10.5px!important;letter-spacing:.24em!important;
   text-transform:uppercase;color:var(--signal)!important;font-weight:400}
-table.arena td:nth-child(2){max-width:40ch}
 #fc{width:100%;height:300px;display:block;margin-top:8px}
 
 .fail{border-bottom:1px solid var(--line-2)}
@@ -645,14 +644,115 @@ body:not([data-intro="done"]) #glow{visibility:hidden}
 /* ─────────────────── the lab rooms: arena, matrix, counterfactual ───────
    Same tokens, same two families, same red. A new room is a new argument,
    not a new brand. */
-table.arena td .thesis, .thesis{
-  display:block;font-family:var(--sans);font-size:11.5px;color:var(--ink-4);
-  margin-top:3px;max-width:52ch;line-height:1.45;
+.thesis{
+  display:block;font-family:var(--sans);font-size:13px;color:var(--ink-2);
+  max-width:68ch;line-height:1.55;
 }
-table.arena tr.dirty td{background:rgba(229,53,43,.05)}
-table.arena tr.dq td{
-  font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;
-  color:var(--signal);padding-top:0;border-top:0;text-transform:uppercase;
+
+/* ── arena leaderboard ────────────────────────────────────────────────────
+   Was a nine-column table with a paragraph in column two. td is nowrap, so
+   the paragraph ran straight across the numbers and out of the viewport.
+   Rows are a grid now; the sentence lives behind a disclosure. */
+.arena-verdict{
+  margin-top:26px;padding:20px 22px;border:1px solid var(--line);
+  font-size:clamp(15px,2vw,17.5px);line-height:1.6;color:var(--ink-2);
+  max-width:80ch;
+}
+.arena-verdict b{color:var(--ink);font-weight:600}
+.stats.arena-top{
+  display:grid;gap:1px;background:var(--line-2);border:1px solid var(--line-2);
+  margin-top:14px;grid-template-columns:1fr;
+}
+@media (min-width:820px){.stats.arena-top{grid-template-columns:repeat(3,1fr)}}
+#arenaOut .stat .v{font-size:clamp(18px,2.4vw,26px);word-break:break-word}
+
+.board{margin-top:26px;border-top:1px solid var(--line)}
+.brow{
+  display:grid;align-items:center;gap:14px;
+  grid-template-columns:minmax(0,1.6fr) minmax(90px,1fr) repeat(4,minmax(0,.8fr));
+}
+.bhead{
+  padding:12px 0 10px;font-family:var(--mono);font-size:9.5px;
+  letter-spacing:.16em;text-transform:uppercase;color:var(--ink-4);
+  border-bottom:1px solid var(--line-2);
+}
+.bhead .n{text-align:right}
+.ag{border-bottom:1px solid var(--line-2)}
+.ag > summary{
+  list-style:none;cursor:pointer;padding:13px 0;
+  transition:background .18s ease,padding-left .2s ease;
+}
+.ag > summary::-webkit-details-marker{display:none}
+.ag > summary:hover{background:rgba(255,255,255,.028);padding-left:10px}
+.ag[open] > summary{background:rgba(255,255,255,.028)}
+.ag.dirty > summary{background:rgba(229,53,43,.05)}
+.ag.mine{border-left:2px solid var(--signal);padding-left:12px;margin-left:-14px}
+
+.ag .ag-who{display:flex;align-items:baseline;gap:10px;min-width:0}
+.ag .ag-who i{
+  font-family:var(--mono);font-style:normal;font-size:11px;color:var(--ink-4);
+  width:14px;flex:none;
+}
+.ag .ag-who b{font-size:14.5px;font-weight:500;color:var(--ink);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ag .ag-who em.dq{
+  font-family:var(--mono);font-style:normal;font-size:9px;letter-spacing:.12em;
+  text-transform:uppercase;color:#fff;background:var(--stop);
+  padding:2px 6px;flex:none;
+}
+/* The bar sits in a track rather than floating on its own, so the score is
+   always at the right edge of the column and the proportion stays honest at
+   every width -- a bar that was itself the flex item pushed 100.0 off the row
+   on a phone. */
+.ag .score{display:flex;align-items:center;gap:10px;min-width:0}
+.ag .score .bar{
+  flex:1;min-width:0;height:4px;background:rgba(255,255,255,.07);
+}
+.ag .score i{display:block;height:100%;background:var(--ink-4);
+  transition:background .18s}
+.ag .score u{flex:none;
+  font-family:var(--mono);font-size:12.5px;text-decoration:none;color:var(--ink);
+  font-variant-numeric:tabular-nums;
+}
+.ag:first-of-type .score i{background:var(--signal)}
+.ag.dirty .score i{background:var(--stop)}
+.ag .brow > .n{
+  font-family:var(--mono);font-size:12px;text-align:right;color:var(--ink-2);
+  font-variant-numeric:tabular-nums;white-space:nowrap;
+}
+.ag-body{padding:4px 0 22px;display:grid;gap:14px}
+.ag .dq-why{
+  font-family:var(--mono);font-size:11.5px;line-height:1.65;color:var(--signal);
+  max-width:72ch;
+}
+.ag-nums{
+  display:grid;gap:1px;background:var(--line-2);border:1px solid var(--line-2);
+  grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+}
+.ag-nums div{background:var(--bg);padding:9px 12px;display:flex;
+  justify-content:space-between;gap:12px;font-family:var(--mono);font-size:11px}
+.ag-nums span{color:var(--ink-4);text-transform:uppercase;letter-spacing:.08em}
+.ag-nums b{color:var(--ink-2);font-weight:400;font-variant-numeric:tabular-nums}
+
+/* Below the header's width the row stops being a row. Name, then the score
+   bar on its own line, then the four numbers as a labelled 2x2 -- addressed by
+   `> .n` rather than by nth-of-type, which counts every span in the row and
+   put the first number underneath the score bar. */
+@media (max-width:880px){
+  .bhead{display:none}
+  .brow{grid-template-columns:1fr 1fr;gap:9px 16px}
+  .ag > summary{padding:15px 0}
+  .ag .ag-who{grid-column:1/-1}
+  .ag .score{grid-column:1/-1}
+  .ag .brow > .n{
+    text-align:left;font-size:12px;color:var(--ink-2);white-space:normal;
+  }
+  .ag .brow > .n::before{
+    content:attr(data-k);display:block;color:var(--ink-4);font-size:9px;
+    letter-spacing:.14em;text-transform:uppercase;margin-bottom:2px;
+  }
+  .ag.mine{margin-left:0;padding-left:10px}
+  .ag-nums{grid-template-columns:1fr}
 }
 .matrix{display:grid;gap:7px;margin-top:22px}
 .mx{display:grid;grid-template-columns:120px 1fr 58px;gap:12px;align-items:center}

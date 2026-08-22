@@ -82,7 +82,7 @@ lands on the wordmark.
 of its current intensity, and push the energy outward so the centre stays calm.
 Target: the background is *noticed second*.
 
-### P1 — The Arena table is nine columns wide, one of which is a paragraph
+### ~~P1 — The Arena table is nine columns wide, one of which is a paragraph~~ **FIXED**
 
 `renderArena()` renders rank, agent, thesis, score, economic value,
 unauthorised, trust, autonomy, asked — and the thesis is a full sentence inside
@@ -93,6 +93,12 @@ column three of row one.
 **Fix:** headline metrics first (who won, REMIT score, unauthorised, autonomy),
 then compact rows, then details on demand. Preserve every number and every
 ranking; move the secondary ones behind an expansion.
+
+**Done.** Verdict sentence, three stat cards, one grid row per agent with the
+score as a bar in a track, thesis behind a disclosure, labelled 2×2 below
+880px. Every number kept and nine more surfaced; the ranking is untouched and
+the fact that Frugal buyer beats REMIT is now stated in words. Measured at
+1440/1024/768/390 by `tests/test_opening_browser.py`. FAILURES #36.
 
 ### P1 — No inspector for a stopped decision
 
@@ -136,8 +142,8 @@ holding to: numbers, ids, clauses, hashes — yes. Sentences — no.
 
 - [ ] No orange anywhere in `web/`
 - [ ] The wordmark is read before the light
-- [ ] Arena: winner, REMIT and the unsafe agent identifiable in one glance
-- [ ] Arena rows do not overflow at 1440, 1024 or 390
+- [x] Arena: winner, REMIT and the unsafe agent identifiable in one glance
+- [x] Arena rows do not overflow at 1440, 1024 or 390 — asserted, not eyeballed
 - [ ] Every metric keeps a definition a reviewer can reach
 - [ ] "Why did REMIT stop this?" answers in four numbers
 - [ ] `prefers-reduced-motion` still lands everything on its end state

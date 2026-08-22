@@ -170,8 +170,11 @@ authentication-bypass rate (which is currently **100%** — see B1).
 
 See `docs/UI_AUDIT.md` for the full pass. Summary:
 
-- **P1** The Arena table shows nine columns including a full sentence of prose
-  per row. It overflows and buries the finding.
+- ~~**P1** The Arena table shows nine columns including a full sentence of prose
+  per row. It overflows and buries the finding.~~ **CLOSED.** Rebuilt as a
+  leaderboard: verdict, three headline numbers, grid rows, thesis on demand.
+  Ranking and every metric preserved; collisions now asserted at four widths.
+  FAILURES #36.
 - **P1** The background glow contains `rgba(255,86,40,.26)` — an orange — and
   `.g1` sits at `.62` opacity, which is why the hero reads as a red wash rather
   than as typography on a dark field.
@@ -250,7 +253,7 @@ Ordered by the brief's phases, filtered by what this repository actually needs.
 | ✅ 2 | **Approval flow walkable in the UI**, including replay and cart-mutation rejection as visible steps | **P0** | G1 — it is the hero demo and it is currently invisible |
 | 3 | **"Why did REMIT stop this?" inspector** | P1 | E, and it is cheap |
 | 4 | **Mutation corpus** (Layer C): one axis at a time, invariant per axis | P1 | D2 |
-| 5 | **Arena information architecture**: headline metrics, compact rows, details on demand | P1 | E1 |
+| ✅ 5 | **Arena information architecture**: headline metrics, compact rows, details on demand | P1 | E1 |
 | 6 | **Background: remove the orange, drop the intensity behind type** | P1 | E2 |
 | 7 | **Explicit CORS + `Idempotency-Key`** | P1 | B2, B4 |
 | 8 | **Security invariants file**, machine-readable, one executable test each | P1 | Brief §34 |

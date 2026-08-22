@@ -1034,6 +1034,19 @@ async function renderFrontier() {
 }
 
 /* ═════════════════════════ 02 · the arena ══════════════════════════════ */
+/* ── the arena leaderboard ────────────────────────────────────────────────
+   This was a nine-column table, one of whose columns was a full sentence of
+   prose per row. Two things went wrong at once. `td { white-space: nowrap }`
+   applies to that sentence, so it ran on one line straight across the numbers
+   to its right and out of the viewport -- the screenshots show "walks right up
+   t" and then nothing. And the actual finding, that the frugal agent beat the
+   growth hacker AND beat REMIT, was buried in column three of row one.
+
+   So: the verdict in words, three numbers that carry the argument, then one
+   row per agent with the score as a bar you can compare at a glance, and the
+   thesis behind a disclosure rather than in a table cell. Every number that
+   was on the page is still on the page. Nothing was rounded, reordered or
+   quietly dropped -- including the part that is unflattering to REMIT. */
 async function renderArena() {
   const out = $("#arenaOut");
   if (!out) return;
@@ -1044,29 +1057,95 @@ async function renderArena() {
     return;
   }
   const win = a.agents[0];
-  out.innerHTML = `<div class="tw"><table class="arena">
-    <thead><tr><th>#</th><th>agent</th><th class="n">REMIT score</th>
-      <th class="n">economic value</th><th class="n">unauthorised</th>
-      <th class="n">trust</th><th class="n">autonomy</th><th class="n">asked</th></tr></thead>
-    <tbody>${a.agents.map(r => `<tr class="${r.clean ? "" : "dirty"}">
-      <td>${r.rank}</td>
-      <td><b>${esc(r.name)}</b><span class="thesis">${esc(r.thesis)}</span></td>
-      <td class="n"><b>${r.remit_score.toFixed(1)}</b></td>
-      <td class="n">${R2(r.economic_value_paise)}</td>
-      <td class="n ${r.unauthorized_paise ? "bad" : "good"}">${R2(r.unauthorized_paise)}</td>
-      <td class="n">${r.trust.toFixed(2)}</td>
-      <td class="n">${(r.autonomy * 100).toFixed(0)}%</td>
-      <td class="n">${r.escalations}</td></tr>
-      ${r.clean ? "" : `<tr class="dq"><td></td><td colspan="7">disqualified from first
-        place — moved ${R2(r.unauthorized_paise)} across ${r.unauthorized_txns}
-        transactions nobody authorised</td></tr>`}`).join("")}
-    </tbody></table></div>
-    <p class="cf-story">${esc(win.name)} takes the room: ${R2(win.economic_value_paise)}
-      of authorised value at ${(win.autonomy * 100).toFixed(0)}% autonomy, asking
-      ${win.escalations} times across ${a.corpus_size} journeys.</p>
+  const remit = a.agents.find(r => r.key === "remit_default") || a.agents[0];
+  const worst = [...a.agents].sort(
+    (x, y) => y.unauthorized_paise - x.unauthorized_paise)[0];
+  const top = Math.max(...a.agents.map(r => r.remit_score)) || 1;
+
+  const card = (k, v, n, cls = "") => `<div class="stat">
+    <span class="k">${k}</span><span class="v ${cls}">${v}</span>
+    <span class="n">${n}</span></div>`;
+
+  out.innerHTML = `
+    <div class="arena-verdict">
+      <b>${esc(win.name)}</b> takes the room — and it is not the agent that earned
+      the most. ${esc(worst.name)} made ${R2(worst.revenue_paise)} in revenue and
+      placed ${worst.rank}th, because ${R2(worst.unauthorized_paise)} of it was
+      never authorised by anybody.
+    </div>
+
+    <div class="stats arena-top">
+      ${card("winner", esc(win.name), `REMIT score ${win.remit_score.toFixed(1)} ·
+        ${R2(win.economic_value_paise)} authorised · asked ${win.escalations} times`)}
+      ${card("REMIT, balanced", remit.remit_score.toFixed(1),
+        `${ordinal(remit.rank)} of ${a.agents.length} · ${R2(remit.economic_value_paise)}
+         · ₹0.00 unauthorised`)}
+      ${card("the control arm", R2(worst.unauthorized_paise),
+        `${esc(worst.name)} · ${worst.unauthorized_txns} transactions nobody
+         authorised · disqualified`, "bad")}
+    </div>
+
+    <div class="board" role="table" aria-label="agent leaderboard">
+      <div class="brow bhead" role="row">
+        <span role="columnheader">agent</span>
+        <span role="columnheader">REMIT score</span>
+        <span class="n" role="columnheader">economic value</span>
+        <span class="n" role="columnheader">unauthorised</span>
+        <span class="n" role="columnheader">autonomy</span>
+        <span class="n" role="columnheader">asked</span>
+      </div>
+      ${a.agents.map(r => `<details class="ag ${r.clean ? "" : "dirty"}
+        ${r.key === "remit_default" ? "mine" : ""}">
+        <summary>
+          <span class="brow" role="row">
+            <span class="ag-who"><i>${r.rank}</i><b>${esc(r.name)}</b>
+              ${r.clean ? "" : '<em class="dq">disqualified</em>'}</span>
+            <span class="score">
+              <span class="bar"><i style="width:${
+                Math.max(1.5, r.remit_score / top * 100).toFixed(1)}%"></i></span>
+              <u>${r.remit_score.toFixed(1)}</u></span>
+            <span class="n" data-k="value">${R2(r.economic_value_paise)}</span>
+            <span class="n ${r.unauthorized_paise ? "bad" : "good"}"
+              data-k="unauthorised">${R2(r.unauthorized_paise)}</span>
+            <span class="n" data-k="autonomy">${(r.autonomy * 100).toFixed(0)}%</span>
+            <span class="n" data-k="asked">${r.escalations}</span>
+          </span>
+        </summary>
+        <div class="ag-body">
+          <p class="thesis">${esc(r.thesis)}</p>
+          ${r.clean ? "" : `<p class="dq-why">Cannot place first: moved
+            ${R2(r.unauthorized_paise)} across ${r.unauthorized_txns} transactions
+            nobody authorised. The score subtracts that money rather than
+            counting it, which is why ${R2(r.revenue_paise)} of revenue becomes
+            ${R2(r.economic_value_paise)} of economic value.</p>`}
+          <div class="ag-nums">
+            <div><span>revenue</span><b>${R2(r.revenue_paise)}</b></div>
+            <div><span>merchant margin</span><b>${R2(r.margin_paise)}</b></div>
+            <div><span>trust</span><b>${r.trust.toFixed(2)}</b></div>
+            <div><span>transactions</span><b>${r.transactions}</b></div>
+            <div><span>average order</span><b>${R2(r.aov_paise)}</b></div>
+            <div><span>conversion</span><b>${(r.conversion * 100).toFixed(1)}%</b></div>
+            <div><span>mean drift</span><b>${r.mean_drift.toFixed(4)}</b></div>
+            <div><span>abstained</span><b>${r.abstentions}</b></div>
+            <div><span>p95 decision</span><b>${r.p95_latency_ms.toFixed(2)}ms</b></div>
+          </div>
+        </div>
+      </details>`).join("")}
+    </div>
+
+    <p class="cf-story">Frugal buyer wins by never proposing anything, which is a
+      real result and an uncomfortable one: it beats REMIT because REMIT sometimes
+      buys the wrong thing, not because REMIT lets money escape. Both moved
+      ₹0.00 nobody authorised. The gap between them is ${(win.remit_score - remit.remit_score).toFixed(1)}
+      points of value, not of trust.</p>
     <p class="meta-line">${esc(a.method)}</p>
-    <p class="meta-line">${esc(a.scoring)}</p>`;
+    <p class="meta-line">${esc(a.scoring)}</p>
+    <p class="meta-line short">${a.agents.length} agents · ${a.corpus_size} journeys each ·
+      open a row for the thesis and the rest of its numbers</p>`;
 }
+
+const ordinal = n => n + (["th", "st", "nd", "rd"][(n % 100 - 20) % 10] ||
+                          ["th", "st", "nd", "rd"][n % 100] || "th");
 
 /* ═════════════════════════ 06 · the lab ════════════════════════════════ */
 async function renderLab() {
