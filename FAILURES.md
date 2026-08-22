@@ -1247,6 +1247,17 @@ likely to see the broken frame is the person opening the submission.
 not through GSAP — it has to be true whether or not the CDN answered, and true
 on the very next paint rather than on the next animation frame.
 
+**And then the fix's own failure mode.** Verifying it on the live site produced
+a black rectangle, because that tab reported `hidden` and never stopped. Some
+contexts do: a headless capture, a prerender, an embedded view, a tab restored
+into the background. Waiting forever for a visibilitychange that never comes is
+a worse failure than the pile-up the guard exists to prevent — one is an ugly
+frame, the other is no page at all. So the wait has a way out: after eight
+seconds the page arrives regardless, without the animation nobody was watching.
+
+Both halves have a test, and the second one exists because the first fix
+briefly made things worse in a way I would not have noticed from the suite.
+
 **What it changed.** Three of the entries in this file are browser-behaviour
 bugs (#15, #23, #31) and all three were found by looking at the page. Looking at
 the page is not a test. `tests/test_opening_browser.py` now drives a real

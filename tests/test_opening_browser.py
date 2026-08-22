@@ -149,6 +149,27 @@ def test_the_opening_runs_from_the_top_once_the_tab_is_looked_at(site, browser):
     ctx.close()
 
 
+def test_a_tab_that_is_never_looked_at_still_gets_the_page(site, browser):
+    """The failure mode the fix above could have introduced.
+
+    Holding the opening at zero is right only if the wait can end. Some
+    contexts report hidden and never stop -- a headless capture, a prerender,
+    an embedded view, a tab restored into the background -- and a page that
+    waits forever for a visibilitychange that never comes shows those a black
+    rectangle. That is worse than the pile-up the guard exists to prevent.
+    """
+    ctx = browser.new_context(viewport={"width": 1440, "height": 900})
+    ctx.add_init_script(HIDE)                # and never cleared
+    pg = ctx.new_page()
+    pg.goto(site, wait_until="domcontentloaded")
+    pg.wait_for_function("document.body.dataset.intro === 'done'", timeout=20000)
+    pg.wait_for_timeout(1200)
+    assert pg.locator("#intro").count() == 0, (
+        "a tab that is never looked at is still waiting behind the opening")
+    assert pg.locator("#askForm").count() == 1
+    ctx.close()
+
+
 def test_the_hero_offers_the_walkthrough(site, browser):
     """G2: a reviewer landing after the opening had eight rooms and no
     suggestion. The approval walk-through is the thing to press first."""

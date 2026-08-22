@@ -108,6 +108,15 @@ function opening() {
       el.style.opacity = "";
       opening();
     }, { once: true });
+    // And a way out of the wait. Some contexts report hidden and never stop:
+    // a headless capture, a prerender, an embedded view, a tab restored into
+    // the background. Waiting forever for a visibilitychange that never comes
+    // leaves those staring at a black page -- which is a worse failure than
+    // the pile-up this branch exists to prevent. So the page arrives anyway,
+    // without the animation nobody was watching. done() is idempotent and
+    // opening() re-entering after the node is gone is a no-op.
+    setTimeout(() => { if (document.hidden) { el.style.opacity = ""; done(); } },
+               8000);
     return;
   }
   // The backstop. If anything below throws, hangs, or GSAP never arrives, the
