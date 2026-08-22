@@ -4,10 +4,10 @@
 deployment. Every claim below is either a file:line or a command anyone can
 re-run. Nothing here is aspirational.*
 
-**Audited at:** `main`, 22 August 2026
+**Audited at:** `main`, 22 August 2026 · *updated after the control-plane and protocol passes*
 **Live:** https://remit-vvug.onrender.com (Razorpay **test mode**, real orders)
-**Suites run:** `pytest -q` (392 passed) · `eval/run_eval.py` · `eval/matrix.py`
-(260/260) · `eval/attacks.py` (22/23) · `eval/arena.py` · `eval/frontier.py`
+**Suites run:** `pytest -q` (643 passed) · `eval/run_eval.py` · `eval/matrix.py`
+(260/260) · `eval/attacks.py` (32/32) · `eval/arena.py` · `eval/frontier.py`
 
 ---
 
@@ -282,3 +282,67 @@ live deployment rather than only in the suite. What is left is P1 and below,
 and the largest of those is not a bug: every corpus in this repository was
 written by its author, and no amount of engineering makes that go away — it
 gets named, not solved (D1).
+
+---
+
+## Addendum — what changed after this audit was written
+
+*This document ranked the work. This section records what the work then found,
+because an audit that is not revisited is a snapshot somebody will quote as
+current.*
+
+### Closed since
+
+| Item | Was | Now |
+|---|---|---|
+| B1 · caller-supplied identity | **P0** | closed — signed session principal, no identity field in any request model |
+| G1 · approval flow unwalkable | **P0** | closed — five presses in room 01, each a real POST |
+| E1 · Arena information architecture | P1 | closed — leaderboard, measured at four widths |
+| E2 · orange in the background | P1 | closed |
+| **Revocation** | absent | closed — two scopes, persisted, actor-bound, checked twice per journey |
+| **Authority state machine** | absent | closed — 14 states, transition table, driven by the payment path |
+| **Ledger separation** | P1 | closed — one database, one connection |
+| **Property testing** | 2 scalar properties | 14 generative properties over intents, amounts, currencies, walks and carts |
+| **Protocol / `/v1`** | absent | closed — ten routes, six nouns, no engine of its own |
+| **External integration** | absent | closed — an agent importing `json` and `urllib` |
+| **Model independence** | claimed | enforced — four interpreters, identical verdicts, 13 fields stripped |
+| **Observability** | 3/10 | JSON per decision, per-stage p50/p95/p99 with sample counts |
+| **Scale** | undocumented | measured: 289 → 59 req/s under concurrency, bottleneck named |
+| **Recovery** | untested | restart tested against a real file for eight properties |
+
+### Found by doing the work, not by reading the code
+
+Six defects, none of which a re-read would have surfaced. Each has a FAILURES
+entry and a regression test:
+
+| # | What | Found by |
+|---|---|---|
+| 37 | The fault lab wrote to the shared catalog — any visitor could reprice the merchant permanently | asking what the *next* visitor sees |
+| 38 | `/api/replay` ran live journeys under a hardcoded shared identity, with exposure fixed at zero, and called itself pure | writing `test_no_payment_path_bypasses_authorization` |
+| 39 | `CUR-001` could never fire, while `"under $5,000"` parsed as ₹5,000 | asking which clauses had ever been exercised |
+| 42 | Negation **inverted** — `"not white"` asked for white | supporting negative intent at all |
+| 44 | A lost update in the authority machine; an un-drained cursor; `IntegrityError` is not the exception raised under contention | running two of them at once |
+| 45 | **Restarting the process charged the customer twice** — re-seeding bumped `catalog_version`, which is in the idempotency key | killing the app object and booting a second one |
+
+### Still open, and why
+
+| Open | Status |
+|---|---|
+| Independent evaluation | **not fixable by volume.** Every corpus is the author's. Named in four documents |
+| Multi-tenancy | not built. One `user_id` column |
+| Production identity | `principal_from_upstream()` named and deliberately unwritten — writing it without an IdP behind it would be theatre |
+| Payment FSM: `CANCELLED` / `REFUNDED` / `DISPUTED` | not modelled. REMIT has never processed a refund and will not pretend to |
+| `LLMCompiler` against a live key | unmeasured. `RuleCompiler` decides everywhere, and `/health` says so |
+| Neural embedder comparison | the model host is unreachable from this build environment |
+| Cross-replica rate limiting, backups, DR, tracing | infrastructure. `PRODUCTION_GAPS.md` |
+
+### The verdict, restated
+
+The trust core was good and the surface around it was not. That is the ordinary
+shape of a security problem and it is why the useful work was writing tests that
+drive the whole surface and then ask the database a question, rather than
+reading the code again.
+
+**Prototype readiness: 51/100.** Ten PASS, nine PARTIAL, three FAIL
+(`FINAL_SCORECARD.md`). The three FAILs are tenancy, production identity and
+independent evaluation — and only the first two can be fixed by working harder.

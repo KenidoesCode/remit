@@ -432,3 +432,103 @@ the roadmap and is not built.
 **The wider lesson, recorded because it will happen again.** The pure,
 replayable, well-tested core was undone by untested glue. Purity protects the
 function; it does not protect the arguments.
+
+---
+
+## ADR-036 — The protocol is a projection, never a second implementation
+
+**Context.** `/v1` had to be real enough for an external agent to integrate
+against, and REMIT already had a working engine reachable only through its own
+website.
+
+**Decision.** Every `/v1` route calls `journey.run`. `remit/v1.py` builds views
+and nothing else — no verdict is computed there, no cart is priced, no order is
+created.
+
+**Why.** A protocol with its own code path will disagree with the engine, and
+the disagreement is the first thing an integrator finds. Two tests hold the
+line: one asserts both surfaces return an identical verdict and identical
+failed-clause list for the same sentence; the other greps `v1.py` for
+`authorize(`, `create_order`, `compute_drift(`, `price_cart(` and `assess(`.
+
+**Cost.** The projection layer is dumber than it could be — it cannot, for
+example, evaluate an action against a stored intent id without the utterance,
+because the authority is bound to the words that created it. That is a
+limitation of the design and it is the correct one.
+
+---
+
+## ADR-037 — Revocation is forward-only
+
+**Context.** "Can I stop it?" is the question people ask before handing an
+agent money. The obvious implementation also unwinds what already happened.
+
+**Decision.** Revocation stops what has not executed. It does not reverse a
+completed payment. Revoking after execution is allowed, recorded, and changes
+nothing about the transaction.
+
+**Why.** Reversing settled money is a refund: a different operation, with a
+different authority, different rails and different accounting. A control plane
+that quietly unwinds completed payments is one nobody can reason about, and the
+first time it is wrong it is wrong about somebody's money in the direction that
+cannot be undone.
+
+**Cost.** A person who revokes expecting a refund does not get one. The
+response says so in its own text rather than leaving them to find out.
+
+---
+
+## ADR-038 — The authority machine is checked twice, and one check can never fire
+
+**Context.** Revocation is enforced by `AUTH-003` at decision time. The
+interesting revocation is the one that lands *between* the decision and the
+execution.
+
+**Decision.** Check again immediately before the payment is created, even
+though a single process-wide lock makes that interleaving impossible today.
+
+**Why.** A control that is correct only because of a lock it does not own is
+not a control. The day this runs in two processes is not the day to discover
+that the guarantee depended on a mutex somewhere else in the file.
+
+**Cost.** One query per journey that can never return anything in the current
+deployment, and a comment explaining why it is there — which is cheaper than
+the alternative by a wide margin.
+
+---
+
+## ADR-039 — Observability stops at the process boundary
+
+**Context.** Observability scored 3/10 and the obvious fix is a `/metrics`
+endpoint and an OpenTelemetry exporter.
+
+**Decision.** One JSON log line per decision and per-stage percentiles served
+from memory. No metrics endpoint, no tracing exporter, no log shipping.
+
+**Why.** A Prometheus route nobody scrapes is decoration, and a trace with one
+span is a log line. Both would look like observability without being any. The
+honest artefact is the measurement plus a list of what production would need,
+which is `docs/OBSERVABILITY.md`.
+
+**Cost.** A reviewer looking for `/metrics` will not find one. They will find a
+document explaining that decision, which is the trade I want.
+
+---
+
+## ADR-040 — The demonstration is computed, and allowed to disagree with me
+
+**Context.** "A limit is not an authority" is the central claim. The easy
+version is a table of hand-written rows.
+
+**Decision.** One mandate is held fixed, candidates are derived from the
+catalog's own relations table, and every row is re-decided by the real drift
+engine and the real 22 clauses on a throwaway instance.
+
+**Why.** A demonstration that cannot come out the other way is not evidence. If
+REMIT starts allowing the laptop stand, that table will say so — and a test
+asserts the gap between the two columns still exists, so the day the argument
+stops being true, the build goes red rather than the page going quiet.
+
+**Cost.** Two wrong versions before this one, both recorded in the commit: rows
+that each carried their own mandate, and a synthetic baseline that skipped the
+ranking and made the honest case look like a refusal.

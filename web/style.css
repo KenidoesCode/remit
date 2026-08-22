@@ -944,3 +944,42 @@ button.atk.broke .atk-r{color:var(--ink)}
   color:var(--ink-4);
 }
 .who-fuel::before{content:"⚡ ";color:var(--signal)}
+
+/* ── a limit is not an authority ────────────────────────────────────────────
+   The central conceptual argument. Two columns: what a spending limit can see
+   (a number) and what REMIT decided (the real pipeline, on a throwaway). The
+   gap between them is the product. */
+.lim-head{margin-top:26px}
+.lim-said{font-size:clamp(17px,2.4vw,22px);color:var(--ink);margin-top:10px;
+  letter-spacing:-.015em}
+.lim-score{
+  display:grid;gap:1px;background:var(--line-2);border:1px solid var(--line-2);
+  margin-top:20px;grid-template-columns:1fr;
+}
+@media (min-width:680px){.lim-score{grid-template-columns:1fr 1fr}}
+.lim-score > div{background:var(--bg);padding:18px 20px;display:flex;
+  align-items:baseline;gap:12px;flex-wrap:wrap}
+.lim-score b{font-family:var(--mono);font-size:30px;color:var(--stop);
+  font-variant-numeric:tabular-nums;line-height:1}
+.lim-score .ok b{color:var(--ink)}
+.lim-score span{font-size:13px;color:var(--ink-3)}
+
+.lim-rows{margin-top:20px;display:grid;gap:1px;background:var(--line-2);
+  border:1px solid var(--line-2)}
+.lim-row{background:var(--bg);padding:16px 18px;display:grid;gap:10px;
+  grid-template-columns:1fr;align-items:start}
+@media (min-width:820px){
+  .lim-row{grid-template-columns:1fr auto}
+  .lim-clause{grid-column:1/-1}
+}
+.lim-row.auto{background:rgba(255,255,255,.022)}
+.lim-what{display:grid;gap:4px;min-width:0}
+.lim-what > .mono{font-size:12.5px;color:var(--ink);word-break:break-word}
+.lim-why{font-size:12.5px;color:var(--ink-3)}
+.lim-picked{font-family:var(--mono);font-size:11.5px;color:var(--ink-4)}
+.lim-verdicts{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.lim-v{font-family:var(--mono);font-size:10px;letter-spacing:.1em;
+  text-transform:uppercase;padding:4px 8px;border:1px solid var(--line);
+  color:var(--ink-3);white-space:nowrap}
+.lim-v.yes{color:var(--stop);border-color:rgba(255,59,47,.4)}
+.lim-clause{font-size:11px;color:var(--ink-4);letter-spacing:.05em}

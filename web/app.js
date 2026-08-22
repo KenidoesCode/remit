@@ -1043,6 +1043,65 @@ async function renderFrontier() {
 }
 
 /* ═════════════════════════ 02 · the arena ══════════════════════════════ */
+/* ══════════════ a limit is not an authority ══════════════════════════════
+   The central conceptual argument, computed rather than illustrated.
+
+   One mandate, then six things an agent might actually do with it -- every one
+   under the stated amount, and therefore permitted by a spending limit. REMIT
+   decides each for real. The difference between the two columns is the whole
+   product, and because none of it is hardcoded, the table stays honest if the
+   engine changes its mind. */
+async function renderLimits(utterance) {
+  const host = $("#limitsOut");
+  if (!host) return;
+  host.innerHTML = '<div class="skel"></div>';
+  let d;
+  try { d = await api("/api/limit-vs-authority", utterance ? { utterance } : {}); }
+  catch (e) { host.innerHTML = couldNotLoad("the comparison", "renderLimits"); return; }
+  if (d.error) { host.innerHTML = `<p class="meta-line">${esc(d.detail || d.error)}</p>`; return; }
+
+  const R2n = p => p == null ? "—" : R2(p);
+  const s = d.summary;
+
+  host.innerHTML = `
+    <div class="lim-head">
+      <span class="kicker">the mandate</span>
+      <p class="lim-said">“${esc(d.mandate.utterance)}”</p>
+      <p class="meta-line">ceiling ${R2n(d.mandate.ceiling_paise)} ·
+        asked for ${esc((d.mandate.requested || []).join(", ") || "—")}</p>
+      <p class="meta-line short">${esc(d.mandate.note || "")}</p>
+    </div>
+
+    <div class="lim-score">
+      <div><b>${s.a_limit_would_allow}</b><span>of ${s.of} allowed by a spending limit</span></div>
+      <div class="ok"><b>${s.remit_allows_alone}</b><span>of ${s.of} REMIT lets the agent do alone</span></div>
+    </div>
+
+    <div class="lim-rows">
+      ${d.rows.map(r => `<div class="lim-row ${r.remit === "AUTO" ? "auto" : "held"}">
+        <div class="lim-what">
+          <span class="mono">${esc(r.product)}</span>
+          <span class="lim-why">${esc(r.why)}</span>
+          <span class="lim-picked">${esc(r.category || "")} · ${R2n(r.total_paise)}
+            · drift ${r.drift}${r.drifted_on && r.drifted_on.length
+              ? " on " + r.drifted_on.map(esc).join(", ") : ""}</span>
+        </div>
+        <div class="lim-verdicts">
+          <span class="lim-v limit ${r.a_limit_allows ? "yes" : "no"}"
+            title="a spending limit only sees the number">
+            limit ${r.a_limit_allows ? "allows" : "blocks"}</span>
+          <span class="badge ${esc(r.remit === "AUTO" ? "AUTO" : r.remit === "DENY" ? "DENY" : "STEP_UP")}">${esc(r.remit)}</span>
+        </div>
+        ${r.failed && r.failed.length
+          ? `<p class="lim-clause mono">${r.failed.map(esc).join(" · ")}</p>` : ""}
+      </div>`).join("")}
+    </div>
+    <p class="meta-line">${esc(d.point)}</p>
+    <p class="meta-line short">run on a fresh in-memory instance; nothing on this
+      deployment changed and no money moved</p>`;
+}
+window.renderLimits = renderLimits;
+
 /* ═══════════════════ executive mode ══════════════════════════════════════
    Room 00. A reviewer who opens this page has between five and sixty seconds
    before deciding whether the rest of it is worth reading, and every one of
@@ -1730,7 +1789,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   await Promise.allSettled([
     renderNumbers(), renderFailures(), renderWho(),
     renderArena(), renderFrontier(), renderLab(), renderAudit(), renderAttacks(),
-    renderCompare(),
+    renderCompare(), renderLimits(),
   ]);
 
   // the counterfactual room takes its own sentence

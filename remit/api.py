@@ -742,6 +742,163 @@ def decisions(limit: int = 40):
             r["policy"] = json.loads(r["policy"])
         return rows
 
+class LimitRequest(BaseModel):
+    utterance: str = Field(default="buy running shoes under 5000",
+                           max_length=2000)
+
+
+@api.post("/api/limit-vs-authority")
+def limit_vs_authority(req: LimitRequest, request: Request):
+    """The whole argument, computed rather than illustrated.
+
+    ONE mandate, held fixed. Then a list of things the AGENT might do with it --
+    every one under the stated amount, and therefore permitted by a spending
+    limit, which can only ask *how much*.
+
+    The important design detail: each candidate is re-decided against the
+    ORIGINAL envelope. That is what makes this the real argument rather than a
+    trick. The first version of this endpoint ran each row as its own
+    utterance, so each row got its own mandate -- and "buy 4 running shoes
+    under 50000" came back AUTO. Correct, and beside the point: nobody asked
+    for running shoes. The human said laptop.
+
+    Nothing is scripted to a verdict. Every row runs through the same drift
+    engine and the same 22 clauses on a throwaway instance. If REMIT starts
+    allowing the laptop stand, this table will say so.
+    """
+    with LOCK:
+        from .domain.cart import line_from, new_cart, price_cart
+        from .domain.drift import compute_drift
+        from .domain.risk import assess
+        from .exec.razorpay import FakeGateway
+        from .policy.authorize import authorize as _authorize
+
+        now = utcnow()
+        sub = build(now=now, gateway=FakeGateway())
+        who = principal(request)
+
+        # Row one is a REAL journey, not a synthetic cart: what REMIT actually
+        # did with this sentence, ranking and all. The alternatives are then
+        # re-decided against that same envelope. Building row one synthetically
+        # got it wrong -- the ranking is part of how the agent answers a term,
+        # and skipping it made the honest case look like a refusal.
+        baseline = sub.journey.run(utterance=req.utterance, user_id=who + "_m",
+                                   now=now, exposure=Exposure(),
+                                   accept_offers="in_envelope")
+        env = baseline.intent
+        if env is None:
+            return JSONResponse(
+                {"error": "not_grounded",
+                 "detail": "this catalog cannot answer that request"},
+                status_code=422)
+        ceiling = env.ceiling_paise()
+        cver = sub.catalog.version()
+
+        # What an agent could plausibly put in the cart under this mandate.
+        # Found by searching the catalog rather than pinned to product ids --
+        # a demonstration hardcoded to a SKU is a demonstration that rots.
+        def find(term):
+            hits = sub.catalog.search(terms=[term], limit=1)
+            return hits[0] if hits else None
+
+        # Candidates are DERIVED, not hardcoded: what the human asked for,
+        # then what the merchant would like to attach to it (the real relations
+        # table), then something from a different category entirely. A
+        # demonstration pinned to product ids is a demonstration that rots the
+        # first time the catalog moves.
+        wanted = (env.product_terms or [""])[0]
+        asked = sub.catalog.search(terms=[wanted], limit=1,
+                                   max_price_paise=ceiling)
+        asked = asked[0] if asked else None
+        picked, rows = [], []
+
+        plan = []
+        if baseline.selected is not None:
+            asked = baseline.selected
+            rows.append({
+                "product": asked.name, "category": asked.category,
+                "why": "the thing that was actually asked for",
+                "total_paise": baseline.totals.total_paise,
+                "a_limit_allows": True,
+                "remit": baseline.authorization.verdict.value,
+                "failed": list(baseline.authorization.failed),
+                "drift": round(baseline.drift.score, 3),
+                "drifted_on": sorted(k for k, v in baseline.drift.dimensions.items() if v),
+                "reason": baseline.authorization.reason[:180],
+            })
+            picked.append(asked)
+        if asked is not None:
+            for kind, why in (("cross_sell", "what the merchant would attach to it"),
+                              ("upsell", "the more expensive version")):
+                for rel, _reason, _s in sub.catalog.relations(asked.product_id,
+                                                              kind)[:1]:
+                    plan.append((rel, why))
+        for other in sub.catalog.search(limit=40):
+            if asked is None or other.category != asked.category:
+                plan.append((other, "a different category entirely"))
+                break
+
+        for p, why in plan:
+            if any(q.product_id == p.product_id for q in picked):
+                continue
+            picked.append(p)
+
+            cart = new_cart(env.intent_id, env.version, cver, now)
+            cart.lines.append(line_from(p, 1, origin="agent",
+                                        accepted_by="agent",
+                                        reason="what the agent chose"))
+            totals = price_cart(cart, sub.catalog)
+            drift = compute_drift(env=env, cart=cart, totals=totals,
+                                  catalog_version=cver)
+            risk = assess(
+                env=env, total_paise=totals.total_paise, drift=drift,
+                exposure=Exposure(), now=now,
+                parse_confidence=float(
+                    sub.journey.calibrator(env.parse_confidence)),
+                friction_floor_paise=sub.policy.limits["friction_floor_paise"],
+                friction_bps=sub.policy.limits["friction_bps"],
+                session_cap_paise=sub.policy.limits["session_exposure_paise"],
+                daily_cap_paise=sub.policy.limits["daily_exposure_paise"],
+                velocity_cap_1h=sub.policy.limits["velocity_1h"])
+            auth = _authorize(env=env, cart=cart, totals=totals, drift=drift,
+                              risk=risk, exposure=Exposure(),
+                              policy=sub.policy, now=now, catalog_version=cver)
+            under = ceiling is not None and totals.total_paise <= ceiling
+            rows.append({
+                "product": p.name, "category": p.category, "why": why,
+                "total_paise": totals.total_paise,
+                # a spending limit sees a number, and nothing else
+                "a_limit_allows": bool(under),
+                "remit": auth.verdict.value,
+                "failed": list(auth.failed),
+                "drift": round(drift.score, 3),
+                "drifted_on": sorted(k for k, v in drift.dimensions.items() if v),
+                "reason": auth.reason[:180],
+            })
+
+        return {
+            "mandate": {
+                "utterance": req.utterance,
+                "ceiling_paise": ceiling,
+                "requested": list(env.product_terms),
+                "category": env.category,
+                "note": ("one mandate, held fixed. Every row below is the same "
+                         "human sentence with a different thing in the cart."),
+            },
+            "rows": rows,
+            "summary": {
+                "a_limit_would_allow": sum(1 for x in rows if x["a_limit_allows"]),
+                "remit_allows_alone": sum(1 for x in rows if x["remit"] == "AUTO"),
+                "of": len(rows),
+            },
+            "point": ("every row a limit allows is under the number the human "
+                      "said. That is the only question a limit can ask. The "
+                      "rows REMIT stops are under the number and are not what "
+                      "was asked for."),
+            "sandboxed": True,
+        }
+
+
 @api.get("/api/executive")
 def executive():
     """One screen, seven numbers, no jargon.
