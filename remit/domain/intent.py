@@ -29,7 +29,17 @@ class IntentEnvelope(BaseModel):
     version: int = 1
     utterance: str
     category: str | None = None
-    product_terms: list[str] = []      # the noun the human actually said
+    product_terms: list[str] = []      # every noun the human actually said
+    requested_items: list[dict] = []   # those nouns grouped into THINGS:
+                                       # [{"terms":[...], "category":..., ...}]
+                                       # "rice and cooking oil" is two entries;
+                                       # "waterproof trail shoes" is one entry
+                                       # with three terms. The cart owes the
+                                       # human one line per entry.
+    ungrounded: list[str] = []         # words this catalog has no answer for.
+                                       # Kept in the envelope on purpose: what
+                                       # the agent could NOT do for you is part
+                                       # of what you authorised.
     max_price_paise: Paise | None = None        # per-unit ceiling if stated
     max_total_paise: Paise | None = None        # all-in ceiling if stated
     currency: str = "INR"

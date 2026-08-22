@@ -45,21 +45,33 @@ class PaymentStore:
 
     def create(self, *, cart_id: str, intent_id: str, idem_key: str,
                amount_paise: int, now: datetime,
-               correlation_id: str | None = None) -> tuple[str, bool]:
+               correlation_id: str | None = None,
+               user_id: str = "") -> tuple[str, bool]:
         """Returns (payment_id, created). created=False means this exact
         intent+cart was already paid for -- the caller must NOT retry."""
         row = self.db.execute(
             "SELECT payment_id FROM payments WHERE idem_key=?", (idem_key,)).fetchone()
         if row:
+            # The replay is the point: the same basket must not be bought
+            # twice. But it is being replayed under a NEW correlation id, and
+            # every downstream lookup -- the checkout endpoint above all --
+            # keys on that id. Leaving the row pointing at the first journey
+            # made the browser draw a Pay button whose order it could not then
+            # find, and answer the click with "a STEP_UP or DENY has nothing
+            # to pay" on a journey the engine had just approved. FAILURES #20.
+            if correlation_id:
+                self.db.execute(
+                    "UPDATE payments SET correlation_id=? WHERE payment_id=?",
+                    (correlation_id, row["payment_id"]))
             return row["payment_id"], False
         pid = "pay_" + uuid.uuid4().hex[:18]
         try:
             self.db.execute(
                 "INSERT INTO payments (payment_id, cart_id, intent_id, idem_key,"
-                " amount_paise, state, correlation_id, created_at, updated_at)"
-                " VALUES (?,?,?,?,?,?,?,?,?)",
+                " amount_paise, state, correlation_id, user_id, created_at,"
+                " updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
                 (pid, cart_id, intent_id, idem_key, amount_paise, "CREATED",
-                 correlation_id,
+                 correlation_id, user_id,
                  now.isoformat(), now.isoformat()))
         except sqlite3.IntegrityError:
             row = self.db.execute(

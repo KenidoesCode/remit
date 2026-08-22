@@ -42,6 +42,21 @@ from ..policy.authorize import Authorization, Policy, Verdict, authorize
 from ..tools.broker import ToolBroker
 
 
+# A network timeout talking to a payment gateway is the one error that must
+# not be treated as a failure: the order may exist. httpx raises its own
+# TimeoutException, which is NOT a subclass of the built-in TimeoutError, so
+# the only branch that ever reached this handler was the fake gateway's
+# injected fault -- a real Razorpay read-timeout was classified FAILED,
+# terminal, and the reconciler (which only revisits UNKNOWN) never looked at
+# it again. FAILURES #22.
+AMBIGUOUS: tuple[type[BaseException], ...] = (TimeoutError,)
+try:                                    # pragma: no cover - import shape only
+    import httpx as _httpx
+    AMBIGUOUS = (TimeoutError, _httpx.TimeoutException, _httpx.NetworkError)
+except Exception:                       # httpx absent in a pure-offline install
+    pass
+
+
 @dataclass
 class JourneyResult:
     correlation_id: str
@@ -139,6 +154,56 @@ class Journey:
             (env.intent_id, env.version, env.model_dump_json(), now.isoformat(),
              reason, env.envelope_hash))
 
+    def _candidates(self, env: IntentEnvelope, item: dict,
+                    ignore_budget: bool = False) -> list[Product]:
+        """Everything that answers ONE requested item.
+
+        The grammar said "waterproof trail shoes" is one thing described three
+        ways, so the first attempt requires a product to answer all three. If
+        nothing does, the grouping was the parser's guess and not the human's
+        meaning -- "diapers baby wipes" with no comma between them is two
+        things -- so we fall back to matching the terms independently.
+
+        Grammar proposes; the catalog disposes. What we never do is widen to
+        the category and buy something that answers none of the words.
+        """
+        terms = [t for t in item.get("terms") or [] if t]
+        cat = item.get("category")
+        base = {"max_price_paise": None if ignore_budget else env.max_price_paise,
+                "required": env.required_attributes,
+                "excluded": env.excluded_attributes,
+                "merchants": env.merchant_constraints or None}
+        found: list[Product] = []
+        if terms:
+            found = self.broker.call(
+                "search_products",
+                {"category": cat, "terms": terms, "match_all_terms": True} | base,
+                actor="model")
+            if not found and len(terms) > 1:
+                seen: set[str] = set()
+                for t in terms:
+                    for p in self.broker.call(
+                            "search_products",
+                            {"category": cat, "terms": [t],
+                             "match_all_terms": True} | base, actor="model"):
+                        if p.product_id not in seen:
+                            seen.add(p.product_id)
+                            found.append(p)
+            if not found and cat:
+                # The words did not land, but the shelf did. Search the shelf
+                # WITHOUT the category filter's help so the terms still have to
+                # do the work; if that is also empty the answer is "we do not
+                # stock it", which is a real answer.
+                found = self.broker.call(
+                    "search_products",
+                    {"category": None, "terms": terms,
+                     "match_all_terms": False} | base, actor="model")
+        elif cat:
+            found = self.broker.call(
+                "search_products", {"category": cat, "terms": None} | base,
+                actor="model")
+        return found
+
     # ---------- the journey ----------
     def run(self, *, utterance: str, user_id: str, now: datetime,
             exposure: Exposure | None = None,
@@ -170,59 +235,104 @@ class Journey:
         self._graph(env.intent_id, cid, "intent", None,
                     {"category": env.category, "ceiling": env.ceiling_paise()}, now)
 
-        # 2. SEARCH + RANK ----------------------------------------------
-        products = self.broker.call(
-            "search_products", {
-                "category": env.category,
-                "terms": env.product_terms,
-                "max_price_paise": env.max_price_paise,
-                "required": env.required_attributes,
-                "excluded": env.excluded_attributes,
-                "merchants": env.merchant_constraints or None},
-            actor="model")
-        term_fallback = False
-        if not products and env.product_terms:
-            # The human named something this catalog does not stock. We do NOT
-            # silently substitute: we widen to the category, mark the fallback,
-            # and let the product_match drift dimension flag that the cart does
-            # not contain the thing that was asked for.
-            products = self.broker.call(
-                "search_products", {
-                    "category": env.category, "terms": None,
-                    "max_price_paise": env.max_price_paise,
-                    "required": env.required_attributes,
-                    "excluded": env.excluded_attributes,
-                    "merchants": env.merchant_constraints or None},
-                actor="model")
-            term_fallback = bool(products)
+        # 2. SEARCH + SELECT, ONCE PER REQUESTED ITEM -------------------
+        # The human said "rice and cooking oil". That is two things, and the
+        # cart owes them two lines. The old code kept one noun and silently
+        # dropped the rest -- not refused, dropped -- which is the quietest way
+        # an agent can fail you: you get a bill that looks right and a delivery
+        # that is short. FAILURES #16.
+        requested = env.requested_items or [
+            {"terms": env.product_terms, "category": env.category,
+             "surface": (env.product_terms or ["it"])[0], "how": "exact"}]
+        picks: list[tuple[Product, dict, str, float]] = []
+        unfulfilled: list[str] = []
+        over_budget: list[dict] = []
+        searched = 0
+        for it in requested:
+            found = self._candidates(env, it)
+            if not found:
+                # Before saying "we do not stock that", check whether we stock
+                # it and it is simply dearer than the human allowed. Those are
+                # completely different sentences and the human deserves the
+                # right one -- "the cheapest sunscreen is Rs 749, you said 500"
+                # is useful; "we do not stock sunscreen" is false. FAILURES #19.
+                any_price = self._candidates(env, it, ignore_budget=True)
+                if any_price:
+                    cheapest = min(any_price, key=lambda p: p.price_paise)
+                    over_budget.append({
+                        "surface": it.get("surface") or (it["terms"] or [""])[0],
+                        "cheapest_paise": cheapest.price_paise,
+                        "cheapest_name": cheapest.name,
+                        "ceiling_paise": env.max_price_paise})
+            searched += len(found)
+            ranked_i = rank(found, env.objective, env.max_price_paise,
+                            terms=it.get("terms"))
+            if not ranked_i:
+                unfulfilled.append(it.get("surface") or (it["terms"] or [""])[0])
+                continue
+            p, sc, why = ranked_i[0]
+            picks.append((p, it, why, sc))
+            if len(requested) == 1:
+                r.candidates = [{"product_id": q.product_id, "name": q.name,
+                                 "price_paise": q.price_paise, "score": s2,
+                                 "why": w2} for q, s2, w2 in ranked_i[:8]]
+        if len(requested) > 1:
+            r.candidates = [{"product_id": p.product_id, "name": p.name,
+                             "price_paise": p.price_paise, "score": sc,
+                             "why": f"for {it.get('surface')!r}: {why}"}
+                            for p, it, why, sc in picks]
+
+        if over_budget:
             r.telemetry = dict(r.telemetry) | {
-                "term_fallback": term_fallback,
-                "term_fallback_note": (
-                    f"no product named {env.product_terms[0]!r}; widened to the "
-                    f"'{env.category}' category")}
+                "over_budget": over_budget,
+                "over_budget_note": "; ".join(
+                    f"the cheapest {o['surface']} is {rupees(o['cheapest_paise'])}"
+                    f" ({o['cheapest_name']}),"
+                    f" above the {rupees(o['ceiling_paise'] or 0)} you allowed"
+                    for o in over_budget)}
+        if unfulfilled:
+            # We do NOT substitute. A catalog that cannot answer "helicopter"
+            # says so; it does not hand over a yoga mat and hope. The shortfall
+            # travels into telemetry, into drift, and into the sentence the
+            # human reads. See ADR-031.
+            r.telemetry = dict(r.telemetry) | {
+                "unfulfilled": unfulfilled,
+                "unfulfilled_note": (
+                    "this catalog has nothing that answers "
+                    + ", ".join(repr(x) for x in unfulfilled)
+                    + "; REMIT does not substitute")}
         self._event("PRODUCT_SEARCH", cid,
-                    {"results": len(products), "term_fallback": term_fallback}, now)
-        self._graph(env.intent_id, cid, "search", "intent", {"results": len(products)}, now)
-        ranked = rank(products, env.objective, env.max_price_paise)
-        r.candidates = [{"product_id": p.product_id, "name": p.name,
-                         "price_paise": p.price_paise, "score": s, "why": w}
-                        for p, s, w in ranked[:8]]
-        if not ranked:
+                    {"results": searched, "requested_items": len(requested),
+                     "fulfilled": len(picks), "unfulfilled": unfulfilled}, now)
+        self._graph(env.intent_id, cid, "search", "intent",
+                    {"results": searched, "unfulfilled": len(unfulfilled)}, now)
+        if not picks:
             self._event("EXCEPTION", cid, {"why": "no product matched the intent"}, now)
-            r.note = "no product matched the intent"
+            if over_budget:
+                r.note = r.telemetry["over_budget_note"]
+            elif unfulfilled:
+                r.note = "this catalog does not stock " + ", ".join(unfulfilled)
+            else:
+                r.note = "no product matched the intent"
             r.latency_ms = (time.perf_counter() - t0) * 1000
             return r
 
         # 3. SELECT ------------------------------------------------------
-        sel, score, why = ranked[0]
+        sel, _first_item, why, score = picks[0]
         r.selected, r.why_selected = sel, why
         self._event("PRODUCT_SELECTED", cid,
-                    {"product_id": sel.product_id, "score": score}, now)
+                    {"product_id": sel.product_id, "score": score,
+                     "lines": len(picks)}, now)
         self._graph(env.intent_id, cid, "selection", "search",
                     {"product_id": sel.product_id, "price": sel.price_paise}, now)
 
         cart = new_cart(env.intent_id, env.version, self.catalog.version(), now)
-        cart.add(line_from(sel, env.quantity, "primary", "intent", why))
+        # One line per thing asked for. Quantity only multiplies when a single
+        # thing was asked for -- "2x earbuds" is two earbuds, but "rice and oil"
+        # is one of each, not two of each.
+        for p, it, w, _s in picks:
+            cart.add(line_from(p, env.quantity if len(picks) == 1 else 1,
+                               "primary", "intent", w))
 
         # 4. REVENUE ENGINE ---------------------------------------------
         offers = self.revenue.propose(env, cart)
@@ -396,7 +506,8 @@ class Journey:
             revocation_epoch=cart.catalog_version)
         pid, created = self.payments.create(
             cart_id=cart.cart_id, intent_id=env.intent_id, idem_key=idem,
-            amount_paise=totals.total_paise, now=now, correlation_id=cid)
+            amount_paise=totals.total_paise, now=now, correlation_id=cid,
+            user_id=user_id)
         r.payment_id = pid
         if not created:
             row = self.payments.get(pid)
@@ -418,7 +529,7 @@ class Journey:
                  "notes": {"intent_id": env.intent_id, "cart_id": cart.cart_id,
                            "correlation_id": cid}},
                 actor="orchestrator", authorization=authorization_state)
-        except TimeoutError as e:
+        except AMBIGUOUS as e:
             self.payments.transition(pid, "UNKNOWN", now, f"timeout: {e}")
             r.payment_state = "UNKNOWN"
             r.note = ("AMBIGUOUS: the order may exist. Reconciler owns this; "

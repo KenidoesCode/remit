@@ -19,6 +19,25 @@ const GL = window.REMITGL;
 
 class NoEngine extends Error {}
 
+/* Every visitor is their own account.
+   The whole site used to shop as "usr_demo". Exposure, velocity and
+   idempotency are all keyed on the user, so every visitor inherited every
+   previous visitor's spending: after twelve journeys the velocity clause --
+   a hard clause -- refused everything for everyone, and the site looked like
+   it had no payment gateway at all. One id per browser tab fixes the blast
+   radius. sessionStorage is wrapped because a private window can throw on
+   read, and an identity is not worth a blank page. FAILURES #21. */
+const USER_ID = (() => {
+  const fresh = "usr_" + Math.random().toString(36).slice(2, 12);
+  try {
+    const k = "remit.uid";
+    const had = sessionStorage.getItem(k);
+    if (had) return had;
+    sessionStorage.setItem(k, fresh);
+  } catch (e) { /* private mode: an in-memory id is still an id */ }
+  return fresh;
+})();
+
 async function api(path, body) {
   const r = await fetch(path, body ? {
     method: "POST", headers: { "content-type": "application/json" },
@@ -219,7 +238,8 @@ function verdictPanel(d) {
     <p class="said">${esc(a.reason)}</p>
     ${a.counterfactual ? `<p class="meta-line">↳ ${esc(a.counterfactual)}</p>` : ""}
     ${(d.telemetry.notes || []).map(n => `<p class="meta-line">note: ${esc(n)}</p>`).join("")}
-    ${d.telemetry.term_fallback_note ? `<p class="meta-line">note: ${esc(d.telemetry.term_fallback_note)}</p>` : ""}
+    ${d.telemetry.unfulfilled_note ? `<p class="meta-line short">↳ ${esc(d.telemetry.unfulfilled_note)}</p>` : ""}
+    ${d.telemetry.over_budget_note ? `<p class="meta-line short">↳ ${esc(d.telemetry.over_budget_note)}</p>` : ""}
     ${clauseGrid(a)}
     ${dr ? dimRow(dr) : ""}
     ${dr && dr.reasons.length ? `<ul class="why">${dr.reasons.map(r => `<li>${esc(r)}</li>`).join("")}</ul>` : ""}
@@ -277,6 +297,35 @@ function renderAct2(d) {
       </table></div>
       <p class="meta-line">payment ${esc(d.payment_state)}${d.order_id ? " · " + esc(d.order_id) : ""}
         ${d.replayed ? " · replayed, idempotent" : ""}</p>`;
+    if (d.payment_state === "AWAITING_HUMAN") {
+      // The other half of the thesis. REMIT stopping the agent is only useful
+      // if the person it stopped for can say yes. Until this existed, a
+      // step-up was a dead end in the interface -- six of the ten example
+      // sentences on this page could never reach a payment, and the honest
+      // conclusion for anyone trying them was that there was no gateway.
+      // FAILURES #23.
+      // Say why in words the person can act on. A clause id is an audit
+      // artefact -- it belongs in the grid above, not in the sentence that
+      // asks someone for money.
+      const failed = (d.authorization.clauses || []).filter(c => !c.passed);
+      const worst = (d.drift && d.drift.reasons && d.drift.reasons[0]) ||
+        (failed[0] && failed[0].detail) ||
+        d.authorization.reason ||
+        "the agent was not confident enough to act alone";
+      h += `<div class="stepup">
+        <div class="su-head">REMIT stopped here and is asking you</div>
+        <p class="su-why">${esc(worst)}</p>
+        <p class="su-what">You are approving <strong>${R2(d.totals.total_paise)}</strong>
+          for ${d.cart.lines.length} item${d.cart.lines.length === 1 ? "" : "s"}
+          — ${esc(d.cart.lines.map(l => l.name).join(", "))}.</p>
+        <div class="su-actions">
+          <button id="confirmBtn" class="cta">Approve — this is what I meant</button>
+          <button id="declineBtn" class="ghost">No, that is not what I asked for</button>
+        </div>
+        <p class="meta-line">Approving re-runs the same decision with your consent
+          recorded. Nothing was reserved and no order exists until you press it.</p>
+      </div>`;
+    }
     if (d.order_id && ["CREATED", "AUTHORIZED"].includes(d.payment_state)) {
       h += `<div class="pay"><button id="payBtn" class="cta">Pay ${R2(d.totals.total_paise)}
         with Razorpay<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 8h11M9 4l4 4-4 4"
@@ -288,6 +337,16 @@ function renderAct2(d) {
   $("#act2Out").innerHTML = h;
   const pb = $("#payBtn");
   if (pb) pb.addEventListener("click", () => pay(d.correlation_id));
+  const cb = $("#confirmBtn");
+  if (cb) cb.addEventListener("click", () => {
+    cb.disabled = true; cb.textContent = "approving…";
+    ask(d.intent.utterance, true);
+  });
+  const db = $("#declineBtn");
+  if (db) db.addEventListener("click", () => {
+    db.disabled = true;
+    ask(d.intent.utterance, false);
+  });
   if (!REDUCED) {
     gsap.fromTo("#act2Out .panel, #act2Out .card, #act2Out .offer, #act2Out .tw",
       { opacity: 0, y: 18 },
@@ -740,12 +799,16 @@ const EXAMPLES = [
   "das hazaar ka backpack buy karo",
 ];
 
-async function ask(utterance) {
+async function ask(utterance, humanConfirms) {
   const btn = $("#askBtn"); btn.disabled = true;
   $("#act2Out").innerHTML = '<div class="skel"></div>';
   wire([["dispatch", "compiling the sentence into an intent envelope…"]]);
   try {
-    const d = await api("/api/shop", { utterance, accept_offers: "in_envelope" });
+    const d = await api("/api/shop", {
+      utterance, accept_offers: "in_envelope", user_id: USER_ID,
+      ...(humanConfirms === null || humanConfirms === undefined
+          ? {} : { human_confirms: humanConfirms }),
+    });
     STATE.journey = d;
     const env = d.intent || {};
     STATE.ceiling = env.max_total_paise ||

@@ -24,7 +24,30 @@ from typing import Protocol
 
 from ..money import Paise
 from .amounts import AmountCandidate, best_ceiling
+from .grounding import Lexicon, ground
 from ..domain.intent import IntentEnvelope, new_intent
+
+_DEFAULT_LEXICON: Lexicon | None = None
+
+
+def default_lexicon() -> Lexicon:
+    """The lexicon of a freshly seeded catalog.
+
+    Only for callers that have no database of their own -- unit tests and the
+    calibration script. Everything on the live path is handed the lexicon of
+    the catalog it is actually shopping, because a grounder that knows words
+    for products the merchant does not stock is a grounder that lies.
+    """
+    global _DEFAULT_LEXICON
+    if _DEFAULT_LEXICON is None:
+        from datetime import timezone
+        from ..db import connect
+        from ..domain.catalog import Catalog
+        from ..seed.catalog_seed import seed
+        db = connect(":memory:")
+        seed(db, datetime(2026, 1, 1, tzinfo=timezone.utc))
+        _DEFAULT_LEXICON = Lexicon.from_db(db, Catalog(db).version())
+    return _DEFAULT_LEXICON
 
 CATEGORY_WORDS = {
     "running shoes": ["running shoe", "running shoes", "runners", "jogging shoe",
@@ -73,8 +96,13 @@ OBJECTIVES = {
     "best_rated": ["best rated", "highest rated", "top rated", "best reviews", "best one"],
     "fastest_delivery": ["fastest", "quickest", "urgent", "today", "asap", "jaldi"],
 }
-BUY_WORDS = ["buy", "purchase", "order", "checkout", "pay for", "get me", "kharid",
-             "book"]
+# What counts as "the human told the agent to spend money". Kept literal and
+# auditable: AUTH-001 is a hard clause, and a person saying "i need shampoo
+# under 300" to a shopping agent has authorised a purchase as plainly as one
+# who says "buy". Refusing that is not caution, it is a broken product.
+BUY_WORDS = ["buy", "purchase", "order", "checkout", "pay for", "get me",
+             "kharid", "book", "i need", "we need", "need ", "want ", "grab",
+             "pick up", "add to cart", "le lo", "chahiye", "mangwa", "de do"]
 PREMIUM_WORDS = ["premium", "high end", "flagship", "pro ", "top of the line"]
 QTY = re.compile(r"\b([1-9][0-9]?)\s*(?:x|pcs?|pieces?|pairs?|units?)\b", re.I)
 
@@ -87,35 +115,76 @@ class IntentCompiler(Protocol):
 class RuleCompiler:
     """Deterministic. Returns (envelope, telemetry). None means ABSTAIN --
     a first-class outcome that lands on the risk-coverage curve, never an
-    exception and never a guess."""
+    exception and never a guess.
+
+    Grounding is delegated to `intent.grounding`, which derives its vocabulary
+    from the catalog rather than from a list I maintain by hand. That is the
+    difference between a demo that answers the eight sentences its author
+    thought of and a system whose vocabulary is exactly the set of things a
+    merchant actually sells.
+    """
+
+    def __init__(self, lexicon: Lexicon | None = None):
+        self._lex = lexicon
+
+    @property
+    def lexicon(self) -> Lexicon:
+        return self._lex if self._lex is not None else default_lexicon()
 
     def compile(self, utterance: str, user_id: str, now: datetime
                 ) -> tuple[IntentEnvelope | None, dict]:
         u = utterance.lower()
         conf = 1.0
+        grounding_penalty = 0.0
         notes: list[str] = []
 
-        category = None
-        terms: list[str] = []
-        for cat, words in CATEGORY_WORDS.items():
-            hits = [wd for wd in words if wd in u]
-            if hits:
-                category = cat
-                # Two kinds of category. If the category name is ITSELF a product
-                # type ("running shoes"), then "runners" and "running shoe" are
-                # just synonyms for it and the canonical term is the category.
-                # If the category is a bucket ("fitness accessories"), the noun
-                # the human said IS the constraint ("yoga mat"), and losing it
-                # is how an agent buys a gym towel for someone who asked for a
-                # yoga mat.
-                if cat in words:
-                    terms = [cat]
-                else:
-                    terms = [max(hits, key=len)]
-                break
-        if category is None:
+        # ONE SPAN, ONE CONSUMER.
+        #
+        # The amount extractor owns "under Rs 2,500" and the objective parser
+        # owns "fastest delivery". Leaving those spans in the text for the
+        # grounder to read as well is double-counting, and it is how "purchase
+        # foot cream under 900, fastest delivery option" came to mean "and also
+        # a delivery, and also an option, neither of which we stock".
+        masked = utterance
+        for c in ([top_probe] if (top_probe := best_ceiling(utterance)[0]) else []):
+            masked = masked.replace(c.surface, " ")
+        for words in OBJECTIVES.values():
+            for wd in words:
+                masked = re.sub(re.escape(wd), " ", masked, flags=re.I)
+        g = ground(masked, self.lexicon)
+        items = g.items
+        terms = g.all_terms
+        cats = {i.category for i in items if i.category}
+        category = cats.pop() if len(cats) == 1 else None
+
+        if not items:
             notes.append("no recognisable category")
             conf -= 0.45
+        else:
+            fuzzy = [i.surface for i in items if i.how == "fuzzy"]
+            if fuzzy:
+                # A forgiven typo is still a guess about what someone meant.
+                # It is allowed to shop; it is not allowed to be as sure as a
+                # word that was spelled correctly. Applied AFTER the amount
+                # clamp below, because min() would otherwise swallow it and a
+                # misspelling would come out exactly as certain as a correct
+                # one -- which is the sort of quiet lie a calibration curve
+                # cannot recover from.
+                notes.append("read " + ", ".join(
+                    f"{i.surface!r} as {i.terms[0]!r}" for i in items
+                    if i.how == "fuzzy"))
+                grounding_penalty += 0.08 * len(fuzzy)
+            if g.ungrounded:
+                # The half we cannot fill is not a rounding error. Saying so
+                # here is what lets the cart be short of what was asked for
+                # without the human discovering it at the doorstep.
+                notes.append(
+                    "nothing in this catalog answers " +
+                    ", ".join(repr(w) for w in g.ungrounded[:3]))
+                conf -= 0.15
+            if len(items) > 1:
+                notes.append(f"{len(items)} separate items requested: " +
+                             ", ".join(i.surface for i in items))
 
         top, alts = best_ceiling(utterance)
         ceiling: Paise | None = top.paise if top else None
@@ -129,6 +198,8 @@ class RuleCompiler:
                     f"{len(alts)} competing amount(s): "
                     + ", ".join(f"Rs {a.rupees()}" for a in alts))
                 conf -= 0.12 * len(alts)
+
+        conf -= grounding_penalty
 
         objective = "best_value"
         for obj, words in OBJECTIVES.items():
@@ -146,12 +217,18 @@ class RuleCompiler:
         # the human is charged. We take the CONSERVATIVE reading -- a total
         # ceiling -- unless the utterance says otherwise, and we record the
         # ambiguity and cut confidence rather than choosing silently.
+        #
+        # The same reasoning covers a multi-item request. "rice and cooking oil
+        # under 500" is five hundred rupees of shopping, not five hundred each.
         per_unit_markers = ("each", "per pair", "per unit", "apiece", "a piece",
                             "per piece", "ek ka")
-        ceiling_is_per_unit = qty == 1 or any(wd in u for wd in per_unit_markers)
+        multi = len(items) > 1
+        ceiling_is_per_unit = (qty == 1 and not multi) or any(
+            wd in u for wd in per_unit_markers)
         if ceiling is not None and not ceiling_is_per_unit:
+            what = f"{len(items)} items" if multi else f"quantity {qty}"
             notes.append(
-                f"quantity {qty} with one stated amount: reading Rs {ceiling // 100} "
+                f"{what} with one stated amount: reading Rs {ceiling // 100} "
                 f"as a TOTAL ceiling, not per-unit")
             conf -= 0.15
 
@@ -168,30 +245,31 @@ class RuleCompiler:
                  "form": c.form} for c in ([top] + alts if top else [])],
             "rejected_amounts": [
                 {"paise": a.paise, "surface": a.surface} for a in alts],
+            "grounding": [i.dict() for i in items],
+            "ungrounded": g.ungrounded, "unrecognised_words": g.noise,
+            "lexicon_size": len(self.lexicon.phrases),
             "notes": notes, "raw_confidence": round(conf, 4),
             "compiler": "rule",
         }
         # Abstain when there is nothing to shop FOR.
         #
-        # The old condition also required a missing amount, which meant
-        # "buy a helicopter under 500000" -- no category, no product term, a
-        # perfectly clear budget -- fell through into a catalog-wide search and
-        # came back with a yoga mat. An unrecognised noun plus a large number is
-        # the single most dangerous input this system can receive, and it was
-        # the one input that skipped the boundary entirely. FAILURES.md #13.
-        #
         # A stated amount is not a reason to buy something. It is only a limit
-        # on what may be spent once there is a thing to buy.
-        if category is None and not terms:
+        # on what may be spent once there is a thing to buy. "buy a helicopter
+        # under 500000" -- no groundable noun, a perfectly clear budget -- used
+        # to fall through into a catalog-wide search and come back with a yoga
+        # mat. FAILURES.md #13.
+        if not items:
             notes.append("nothing in the utterance names something this catalog sells")
-            return None, telemetry | {"abstained": True,
-                                      "reason": "no groundable product"}
-        if category is None and ceiling is None:
-            return None, telemetry | {"abstained": True}
+            return None, telemetry | {
+                "abstained": True, "reason": "no groundable product",
+                "unstocked": g.ungrounded}
 
         env = new_intent(
             user_id=user_id, utterance=utterance, now=now,
             category=category, product_terms=terms,
+            requested_items=[i.dict() for i in items],
+            ungrounded=g.ungrounded,
+            merchant_constraints=g.merchants,
             max_price_paise=ceiling if ceiling_is_per_unit else None,
             max_total_paise=None if ceiling_is_per_unit else ceiling,
             currency="INR",

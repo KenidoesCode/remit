@@ -143,22 +143,55 @@ def compute_drift(*, env: IntentEnvelope, cart: Cart, totals: Totals,
                 f"selected item is in '{primary.category}', the human asked for "
                 f"'{env.category}'")
 
-    # --- did we buy the thing they actually named? ---
-    if not env.product_terms or primary is None:
+    # --- did we buy the things they actually named? ---
+    #
+    # This used to look at ONE cart line and ask whether it answered ANY of the
+    # words in the utterance. Both halves were wrong once a person could ask
+    # for two things: a cart holding only cooking oil answered "oil", scored
+    # zero drift, and the rice the human also asked for was never mentioned
+    # again. Coverage is per REQUESTED ITEM, and an item nobody bought is an
+    # item that drifted. FAILURES #16.
+    requested = env.requested_items or (
+        [{"terms": env.product_terms, "surface": env.product_terms[0]}]
+        if env.product_terms else [])
+    if not requested or not cart.lines:
         skipped.append("product_match")
     else:
-        # Same predicate the catalog used to allow this product to be
-        # selected at all. A stricter test here does not make the system
-        # safer -- it makes two components disagree about one question, and
-        # the human pays for the disagreement with an interruption.
-        hit = term_answers(name=primary.name, category=primary.category,
-                           attributes=list(primary.attributes),
-                           terms=env.product_terms)
-        dims["product_match"] = 0.0 if hit else 1.0
-        if not hit:
+        primaries = [l for l in cart.lines if l.origin == "primary"] or cart.lines
+        missed: list[str] = []
+        for it in requested:
+            terms = [t for t in (it.get("terms") or []) if t]
+            if not terms:
+                continue
+            # Same predicate the catalog used to allow the product to be
+            # selected at all. A stricter test here does not make the system
+            # safer -- it makes two components disagree about one question, and
+            # the human pays for the disagreement with an interruption.
+            # FAILURES #14.
+            answered = any(
+                term_answers(name=l.name, category=l.category,
+                             attributes=list(getattr(l, "attributes", [])),
+                             terms=terms)
+                for l in primaries)
+            if not answered:
+                missed.append(str(it.get("surface") or terms[0]))
+        # Deliberately NOT counted here: words the catalog has no entry for at
+        # all. It is tempting -- "buy a ferrari and some rice" did get you only
+        # the rice -- but a word REMIT cannot parse is not evidence that the
+        # cart is wrong, and treating it as such turned 87 correct purchases
+        # into interruptions because someone said "fastest delivery option" or
+        # a prompt-injection string got appended to their sentence. An unknown
+        # word is reported to the human in words; it does not spend their
+        # attention. What DOES count is an item that grounded to a real term
+        # and still never reached the cart -- that is a shortfall REMIT caused.
+        # ADR-032, FAILURES #18.
+        n = max(len([i for i in requested if i.get("terms")]), 1)
+        dims["product_match"] = min(1.0, len(missed) / n)
+        if missed:
             reasons.append(
-                f"the human asked for {env.product_terms[0]!r}; the cart contains "
-                f"{primary.name!r}")
+                "asked for " + ", ".join(repr(m) for m in missed)
+                + "; the cart does not contain "
+                + ("it" if len(missed) == 1 else "them"))
 
     # --- merchant ---
     if not env.merchant_constraints:
@@ -171,8 +204,13 @@ def compute_drift(*, env: IntentEnvelope, cart: Cart, totals: Totals,
             reasons.append(f"merchant(s) {bad} outside the authorised list")
 
     # --- quantity ---
+    # One primary line per requested item, each in the authorised quantity.
+    # Comparing the line count against env.quantity was right when a cart could
+    # only ever hold one thing; with "rice and cooking oil" it reported a
+    # quantity breach for delivering exactly what was asked for.
     qty = sum(l.qty for l in cart.lines if l.origin == "primary")
-    dims["quantity"] = max(0.0, min(1.0, abs(qty - env.quantity) / max(env.quantity, 1)))
+    want = env.quantity * max(len(env.requested_items or [1]), 1)
+    dims["quantity"] = max(0.0, min(1.0, abs(qty - want) / max(want, 1)))
     if qty != env.quantity:
         reasons.append(f"quantity {qty} differs from the authorised {env.quantity}")
 

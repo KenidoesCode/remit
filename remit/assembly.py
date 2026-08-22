@@ -17,6 +17,7 @@ from .exec.payments import PaymentStore
 from .exec.razorpay import FakeGateway, PaymentGateway, RazorpayTestClient
 from .exec.recon import Reconciler
 from .exec.webhooks import WebhookProcessor
+from .intent.grounding import Lexicon
 from .intent.shopping import LLMCompiler, RuleCompiler
 from .ledger.chain import Ledger
 from .paths import POLICY as PATHS_POLICY
@@ -101,14 +102,16 @@ def build(*, db_path: str = ":memory:", policy_path: str | None = None,
     if gateway is None:
         gateway = RazorpayTestClient() if live else FakeGateway()
 
-    compiler = RuleCompiler()
+    compiler = RuleCompiler(lexicon=Lexicon.from_db(db, catalog.version()))
     if use_llm:
         try:
             import anthropic  # noqa
             key = os.environ.get("ANTHROPIC_API_KEY")
             if key:
                 compiler = LLMCompiler(client=anthropic.Anthropic(api_key=key),
-                                       fallback=RuleCompiler())
+                                       fallback=RuleCompiler(
+                                           lexicon=Lexicon.from_db(
+                                               db, catalog.version())))
         except Exception:
             pass   # degradation always moves toward MORE friction
 
@@ -139,13 +142,16 @@ def _register_tools(broker: ToolBroker, catalog: Catalog, gw: PaymentGateway) ->
                                      "max_price_paise": {"type": ["integer", "null"]},
                                      "required": {"type": "array"},
                                      "excluded": {"type": "array"},
-                                     "merchants": {"type": ["array", "null"]}}},
+                                     "merchants": {"type": ["array", "null"]},
+                                     "match_all_terms": {"type": "boolean"}}},
         output_schema={"type": "array"}, financial=False, risk="none",
         requires_authority=False, version="1.0.0",
         fn=lambda category=None, max_price_paise=None, required=None,
-                  excluded=None, merchants=None, terms=None: catalog.search(
+                  excluded=None, merchants=None, terms=None,
+                  match_all_terms=False: catalog.search(
                       category=category, max_price_paise=max_price_paise,
                       required=required, excluded=excluded, merchants=merchants,
+                      match_all_terms=match_all_terms,
                       terms=terms)))
 
     broker.register(Tool(

@@ -68,8 +68,10 @@ CREATE TABLE IF NOT EXISTS payments (
   payment_id TEXT PRIMARY KEY, cart_id TEXT NOT NULL, intent_id TEXT NOT NULL,
   idem_key TEXT NOT NULL UNIQUE, amount_paise INTEGER NOT NULL,
   state TEXT NOT NULL, order_id TEXT, correlation_id TEXT,
+  user_id TEXT NOT NULL DEFAULT '',
   created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
   unknown_since TEXT);
+CREATE INDEX IF NOT EXISTS idx_payments_user ON payments(user_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_payments_corr ON payments(correlation_id);
 
 CREATE TABLE IF NOT EXISTS payment_transitions (
@@ -111,4 +113,21 @@ def connect(path: str | Path = "remit.sqlite") -> sqlite3.Connection:
     db.row_factory = sqlite3.Row
     db.execute("PRAGMA journal_mode=WAL")
     db.executescript(SCHEMA)
+    _migrate(db)
     return db
+
+
+def _migrate(db: sqlite3.Connection) -> None:
+    """Add columns that a database created by an older build will not have.
+
+    Render keeps the SQLite file across deploys, so a schema change that only
+    exists in CREATE TABLE reaches a fresh container and never reaches the
+    running one. Cheap, idempotent, and it runs on every connect."""
+    for table, column, decl in (
+            ("payments", "user_id", "TEXT NOT NULL DEFAULT ''"),
+            ("payments", "correlation_id", "TEXT"),
+            ("products", "restricted", "TEXT"),
+    ):
+        have = {r["name"] for r in db.execute(f"PRAGMA table_info({table})")}
+        if column not in have:
+            db.execute(f"ALTER TABLE {table} ADD COLUMN {column} {decl}")

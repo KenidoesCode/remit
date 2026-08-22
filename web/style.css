@@ -587,3 +587,27 @@ body:not([data-intro="done"]) #glow{visibility:hidden}
 @media (prefers-reduced-motion:reduce){
   #webshot .w1,#webshot .w2{stroke-dasharray:none!important;stroke-dashoffset:0!important}
 }
+
+/* ───────────────────── the step-up: where a person decides ──────────────
+   Deliberately the loudest block on the page. Everything else here explains
+   a decision REMIT already made; this is the one place a human makes it. */
+.stepup{
+  margin-top:26px;border:1px solid var(--signal);border-radius:2px;
+  padding:20px 22px 18px;background:rgba(229,53,43,.045);
+}
+.su-head{
+  font-family:var(--m);font-size:11px;letter-spacing:.18em;text-transform:uppercase;
+  color:var(--signal);margin-bottom:10px;
+}
+.su-why{font-family:var(--s);font-size:15px;color:var(--ink);margin:0 0 6px}
+.su-what{font-family:var(--s);font-size:13.5px;color:var(--i2);margin:0 0 16px}
+.su-what strong{color:var(--ink)}
+.su-actions{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.su-actions .ghost{
+  background:none;border:1px solid var(--i4);color:var(--i2);
+  font-family:var(--s);font-size:13px;padding:11px 16px;border-radius:2px;
+  cursor:pointer;transition:border-color .18s,color .18s;
+}
+.su-actions .ghost:hover{border-color:var(--ink);color:var(--ink)}
+.su-actions button[disabled]{opacity:.5;cursor:default}
+.meta-line.short{color:var(--signal)}

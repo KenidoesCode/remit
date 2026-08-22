@@ -11,6 +11,7 @@ import uuid
 from dataclasses import dataclass
 from datetime import datetime
 
+from .buyer.journey import AMBIGUOUS as _AMBIGUOUS
 from .exec.idempotency import idempotency_key, receipt_for
 from .exec.razorpay import PaymentGateway
 from .intent.compiler import Catalog, IntentCompiler
@@ -97,7 +98,7 @@ class Gateway:
                 amount_paise=intent.computed_amount_paise,
                 receipt=receipt_for(key),
                 notes={"remit_id": remit.remit_id, "trace_id": trace_id})
-        except TimeoutError as e:
+        except _AMBIGUOUS as e:
             # The order may or may not exist. Never retry blind, never
             # auto-refund. RBI allows T+5 for exactly this state.
             self.ledger.append("EXCEPTION", trace_id,

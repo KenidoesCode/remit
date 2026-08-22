@@ -182,7 +182,7 @@ def authorize(*, env: IntentEnvelope, cart: Cart, totals: Totals,
     # of thing an agent may not decide alone, so it is a soft failure that
     # forces the human into the loop rather than a number that can be tuned
     # until it stops firing.
-    restricted = [(l.product_id, l.restricted) for l in cart.lines
+    restricted = [(l.name, l.restricted) for l in cart.lines
                   if getattr(l, "restricted", None)]
     check("RESTRICT-001", (not integrity) or not restricted,
           ("requires a person: " + ", ".join(f"{pid} ({kind})"

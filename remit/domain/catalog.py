@@ -8,6 +8,7 @@ and testable, not an afterthought.
 from __future__ import annotations
 
 import json
+import re
 import sqlite3
 from datetime import datetime
 
@@ -55,7 +56,7 @@ class Merchant(BaseModel):
 
 
 def term_answers(*, name: str, category: str, attributes: list[str],
-                 terms: list[str]) -> bool:
+                 terms: list[str], require_all: bool = False) -> bool:
     """THE predicate for 'does this product answer the noun the human said?'
 
     Exported deliberately. The catalog uses it to decide what may be selected,
@@ -70,10 +71,11 @@ def term_answers(*, name: str, category: str, attributes: list[str],
     name = name.lower()
     cat = category.lower()
     attrs = {a.lower().replace("-", " ") for a in attributes}
-    for t in terms:
+
+    def one(t: str) -> bool:
         t = t.lower().strip()
         if not t:
-            continue
+            return True if require_all else False
         singular = t[:-1] if t.endswith("s") else t
         if t in name or singular in name:
             return True
@@ -81,12 +83,22 @@ def term_answers(*, name: str, category: str, attributes: list[str],
             return True
         if t in attrs or singular in attrs:
             return True
-    return False
+        return False
+
+    real = [t for t in terms if t and t.strip()]
+    if not real:
+        return False
+    # `require_all` is how ONE requested item is matched: "waterproof trail
+    # shoes" is a conjunction and a product must answer all three words. The
+    # default OR behaviour is for asking the looser question "does this cart
+    # line answer ANYTHING the human said", which is what drift needs.
+    return all(map(one, real)) if require_all else any(map(one, real))
 
 
-def _matches_terms(p: "Product", terms: list[str]) -> bool:
+def _matches_terms(p: "Product", terms: list[str], require_all: bool = False) -> bool:
     return term_answers(name=p.name, category=p.category,
-                        attributes=p.attributes, terms=terms)
+                        attributes=p.attributes, terms=terms,
+                        require_all=require_all)
 
 
 def _prod(r: sqlite3.Row) -> Product:
@@ -128,7 +140,8 @@ class Catalog:
     def search(self, *, category: str | None = None, max_price_paise: Paise | None = None,
                required: list[str] | None = None, excluded: list[str] | None = None,
                merchants: list[str] | None = None, in_stock: bool = True,
-               terms: list[str] | None = None, limit: int = 40) -> list[Product]:
+               terms: list[str] | None = None, match_all_terms: bool = False,
+               limit: int = 40) -> list[Product]:
         q = "SELECT * FROM products WHERE active=1"
         args: list = []
         if category:
@@ -154,7 +167,7 @@ class Catalog:
                 continue
             if exc and attrs & exc:
                 continue
-            if tset and not _matches_terms(p, tset):
+            if tset and not _matches_terms(p, tset, match_all_terms):
                 continue
             out.append(p)
         return out[:limit]
@@ -210,8 +223,27 @@ def _norm(v: float, lo: float, hi: float) -> float:
     return max(0.0, min(1.0, (v - lo) / (hi - lo)))
 
 
-def rank(products: list[Product], objective: str, budget_paise: Paise | None
-         ) -> list[tuple[Product, float, str]]:
+_TRAIL = re.compile(
+    r"(\(.*?\)|\b\d+(\.\d+)?\s*(kg|g|gm|ml|l|ltr|mg|pack|pcs|w|mah|m)?\b|"
+    r"\b(black|blue|slate|ember|mist|ink|white|xl|pro|lite|refill|wide|knit)\b|"
+    r"\s-\s.*$)", re.I)
+
+
+def _head(name: str) -> list[str]:
+    """The last content word of a product name.
+
+    English puts the head noun last: a "Buds Case" is a case, a "Pulse Buds" is
+    buds, a "Dog Bowl" is a bowl. Someone who says "headphones" wants the
+    second and not the first, and no amount of price-and-rating scoring will
+    work that out on its own -- "Buds Case" is cheaper, so best_value picked it
+    and REMIT then refused the whole purchase for drift. FAILURES #17.
+    """
+    cleaned = _TRAIL.sub(" ", name.lower())
+    return [t for t in re.findall(r"[a-z]+", cleaned) if len(t) > 1]
+
+
+def rank(products: list[Product], objective: str, budget_paise: Paise | None,
+         terms: list[str] | None = None) -> list[tuple[Product, float, str]]:
     """Deterministic ranking. The LLM does not score products.
 
     Kept explicit and cheap so the same ranking is reproducible in eval,
@@ -243,6 +275,27 @@ def rank(products: list[Product], objective: str, budget_paise: Paise | None
             why = "best balance of rating, price and delivery in your budget"
         if budget_paise and p.price_paise > budget_paise:
             score -= 1.0
+        # Being the thing that was named beats being cheap. The bonus is large
+        # enough to outrank a price gap and small enough that it never lets a
+        # product through a budget it does not fit.
+        if terms:
+            toks = _head(p.name)
+            for t in terms:
+                t = t.lower().strip()
+                if not t or not toks:
+                    continue
+                words = t.split()
+                # Compare like with like: a one-word term against the head noun,
+                # a two-word term against the final pair. Widening the window
+                # for a single word is how "buds" matched "Buds Case" and the
+                # accessory outranked the product.
+                tail = " ".join(toks[-len(words):])
+                sing = t[:-1] if t.endswith("s") else t
+                if tail == t or tail == sing or (
+                        len(words) == 1 and toks[-1] in (t, sing)):
+                    score += 0.35
+                    why = f"named {t!r} directly; " + why
+                    break
         out.append((p, round(score, 4), why))
     out.sort(key=lambda t: -t[1])
     return out

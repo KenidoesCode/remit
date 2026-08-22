@@ -12,41 +12,41 @@
       "duplicate_payments": 0,
       "webhook_state_violations": 0,
       "abstention_accuracy": 1.0,
-      "no_decision_reached": 78
+      "no_decision_reached": 127
     },
     "guardrails": {
-      "needs_human_precision": 0.6073,
+      "needs_human_precision": 0.6489,
       "needs_human_recall": 1.0,
       "false_negatives_dangerous": 0,
-      "false_positives_friction": 130,
-      "blocked_value": "\u20b9843,925.26",
-      "blocked_value_paise": 84392526
+      "false_positives_friction": 99,
+      "blocked_value": "\u20b91,074,242.43",
+      "blocked_value_paise": 107424243
     },
     "quality": {
-      "category_accuracy": 1.0,
+      "category_accuracy": 0.93,
       "ceiling_exact_match": 1.0,
       "quantity_accuracy": 1.0,
-      "authority_accuracy": 0.9612,
+      "authority_accuracy": 1.0,
       "amount_error_distribution": {
-        "exact": 393
+        "exact": 448
       },
       "amount_error_median": 0.0
     },
     "business": {
-      "revenue": "\u20b9372,629.00",
-      "revenue_paise": 37262900,
-      "merchant_margin": "\u20b9136,783.79",
-      "margin_paise": 13678379,
+      "revenue": "\u20b9348,142.00",
+      "revenue_paise": 34814200,
+      "merchant_margin": "\u20b9132,786.74",
+      "margin_paise": 13278674,
       "transactions": 129,
-      "aov": "\u20b92,888.59",
-      "aov_paise": 288859,
+      "aov": "\u20b92,698.77",
+      "aov_paise": 269877,
       "auto_rate": 0.2426,
-      "human_confirmation_rate": 0.463,
-      "denial_rate": 0.15
+      "human_confirmation_rate": 0.3852,
+      "denial_rate": 0.137
     },
     "efficiency": {
-      "latency_p50_ms": 2.45,
-      "latency_p95_ms": 3.74
+      "latency_p50_ms": 3.38,
+      "latency_p95_ms": 4.74
     }
   },
   "train": {
@@ -58,41 +58,41 @@
       "duplicate_payments": 0,
       "webhook_state_violations": 0,
       "abstention_accuracy": 1.0,
-      "no_decision_reached": 45
+      "no_decision_reached": 75
     },
     "guardrails": {
-      "needs_human_precision": 0.6188,
+      "needs_human_precision": 0.6374,
       "needs_human_recall": 1.0,
       "false_negatives_dangerous": 0,
-      "false_positives_friction": 77,
-      "blocked_value": "\u20b9496,201.19",
-      "blocked_value_paise": 49620119
+      "false_positives_friction": 62,
+      "blocked_value": "\u20b9654,224.12",
+      "blocked_value_paise": 65422412
     },
     "quality": {
-      "category_accuracy": 1.0,
+      "category_accuracy": 0.924,
       "ceiling_exact_match": 1.0,
       "quantity_accuracy": 1.0,
-      "authority_accuracy": 0.9429,
+      "authority_accuracy": 1.0,
       "amount_error_distribution": {
-        "exact": 237
+        "exact": 271
       },
       "amount_error_median": 0.0
     },
     "business": {
-      "revenue": "\u20b9213,305.00",
-      "revenue_paise": 21330500,
-      "merchant_margin": "\u20b978,703.18",
-      "margin_paise": 7870318,
-      "transactions": 75,
-      "aov": "\u20b92,844.06",
-      "aov_paise": 284406,
-      "auto_rate": 0.2377,
-      "human_confirmation_rate": 0.4568,
-      "denial_rate": 0.1667
+      "revenue": "\u20b9195,142.00",
+      "revenue_paise": 19514200,
+      "merchant_margin": "\u20b975,121.89",
+      "margin_paise": 7512189,
+      "transactions": 76,
+      "aov": "\u20b92,567.65",
+      "aov_paise": 256765,
+      "auto_rate": 0.2407,
+      "human_confirmation_rate": 0.392,
+      "denial_rate": 0.1358
     },
     "efficiency": {
-      "latency_p50_ms": 2.39,
-      "latency_p95_ms": 3.5
+      "latency_p50_ms": 3.33,
+      "latency_p95_ms": 4.7
     }
   },
   "dev": {
@@ -104,41 +104,41 @@
       "duplicate_payments": 0,
       "webhook_state_violations": 0,
       "abstention_accuracy": 1.0,
-      "no_decision_reached": 17
+      "no_decision_reached": 23
     },
     "guardrails": {
-      "needs_human_precision": 0.6232,
+      "needs_human_precision": 0.678,
       "needs_human_recall": 1.0,
       "false_negatives_dangerous": 0,
-      "false_positives_friction": 26,
-      "blocked_value": "\u20b9187,018.93",
-      "blocked_value_paise": 18701893
+      "false_positives_friction": 19,
+      "blocked_value": "\u20b9243,440.65",
+      "blocked_value_paise": 24344065
     },
     "quality": {
-      "category_accuracy": 1.0,
+      "category_accuracy": 0.9451,
       "ceiling_exact_match": 1.0,
       "quantity_accuracy": 1.0,
-      "authority_accuracy": 0.978,
+      "authority_accuracy": 1.0,
       "amount_error_distribution": {
-        "exact": 78
+        "exact": 90
       },
       "amount_error_median": 0.0
     },
     "business": {
-      "revenue": "\u20b964,187.00",
-      "revenue_paise": 6418700,
-      "merchant_margin": "\u20b923,087.68",
-      "margin_paise": 2308768,
-      "transactions": 22,
-      "aov": "\u20b92,917.59",
-      "aov_paise": 291759,
-      "auto_rate": 0.2037,
-      "human_confirmation_rate": 0.4722,
-      "denial_rate": 0.1667
+      "revenue": "\u20b975,912.00",
+      "revenue_paise": 7591200,
+      "merchant_margin": "\u20b928,681.16",
+      "margin_paise": 2868116,
+      "transactions": 26,
+      "aov": "\u20b92,919.69",
+      "aov_paise": 291969,
+      "auto_rate": 0.2407,
+      "human_confirmation_rate": 0.3704,
+      "denial_rate": 0.1759
     },
     "efficiency": {
-      "latency_p50_ms": 2.46,
-      "latency_p95_ms": 3.39
+      "latency_p50_ms": 3.47,
+      "latency_p95_ms": 5.12
     }
   },
   "test": {
@@ -150,41 +150,41 @@
       "duplicate_payments": 0,
       "webhook_state_violations": 0,
       "abstention_accuracy": 1.0,
-      "no_decision_reached": 16
+      "no_decision_reached": 29
     },
     "guardrails": {
-      "needs_human_precision": 0.55,
+      "needs_human_precision": 0.6538,
       "needs_human_recall": 1.0,
       "false_negatives_dangerous": 0,
-      "false_positives_friction": 27,
-      "blocked_value": "\u20b9160,705.14",
-      "blocked_value_paise": 16070514
+      "false_positives_friction": 18,
+      "blocked_value": "\u20b9176,577.66",
+      "blocked_value_paise": 17657766
     },
     "quality": {
-      "category_accuracy": 1.0,
+      "category_accuracy": 0.9326,
       "ceiling_exact_match": 1.0,
       "quantity_accuracy": 1.0,
       "authority_accuracy": 1.0,
       "amount_error_distribution": {
-        "exact": 78
+        "exact": 87
       },
       "amount_error_median": 0.0
     },
     "business": {
-      "revenue": "\u20b995,137.00",
-      "revenue_paise": 9513700,
-      "merchant_margin": "\u20b934,992.93",
-      "margin_paise": 3499293,
-      "transactions": 32,
-      "aov": "\u20b92,973.03",
-      "aov_paise": 297303,
-      "auto_rate": 0.2963,
-      "human_confirmation_rate": 0.4722,
-      "denial_rate": 0.0833
+      "revenue": "\u20b977,088.00",
+      "revenue_paise": 7708800,
+      "merchant_margin": "\u20b928,983.69",
+      "margin_paise": 2898369,
+      "transactions": 27,
+      "aov": "\u20b92,855.11",
+      "aov_paise": 285511,
+      "auto_rate": 0.25,
+      "human_confirmation_rate": 0.3796,
+      "denial_rate": 0.1019
     },
     "efficiency": {
-      "latency_p50_ms": 2.68,
-      "latency_p95_ms": 4.39
+      "latency_p50_ms": 3.38,
+      "latency_p95_ms": 4.43
     }
   },
   "by_bucket": {
@@ -193,9 +193,9 @@
       "unauthorized_paise": 0,
       "false_negatives": 0,
       "auto": 5,
-      "step_up": 24,
+      "step_up": 26,
       "deny": 0,
-      "abstain": 2
+      "abstain": 0
     },
     "browse": {
       "n": 31,
@@ -203,24 +203,24 @@
       "false_negatives": 0,
       "auto": 0,
       "step_up": 0,
-      "deny": 29,
-      "abstain": 2
+      "deny": 26,
+      "abstain": 0
     },
     "code_mixed": {
       "n": 46,
       "unauthorized_paise": 0,
       "false_negatives": 0,
-      "auto": 14,
-      "step_up": 12,
-      "deny": 18,
+      "auto": 17,
+      "step_up": 13,
+      "deny": 0,
       "abstain": 0
     },
     "competing_amounts": {
       "n": 26,
       "unauthorized_paise": 0,
       "false_negatives": 0,
-      "auto": 10,
-      "step_up": 16,
+      "auto": 4,
+      "step_up": 20,
       "deny": 0,
       "abstain": 0
     },
@@ -230,17 +230,17 @@
       "false_negatives": 0,
       "auto": 0,
       "step_up": 0,
-      "deny": 20,
+      "deny": 19,
       "abstain": 0
     },
     "greedy_upsell": {
       "n": 41,
       "unauthorized_paise": 0,
       "false_negatives": 0,
-      "auto": 7,
-      "step_up": 31,
+      "auto": 6,
+      "step_up": 26,
       "deny": 0,
-      "abstain": 3
+      "abstain": 0
     },
     "injection": {
       "n": 31,
@@ -255,10 +255,10 @@
       "n": 156,
       "unauthorized_paise": 0,
       "false_negatives": 0,
-      "auto": 73,
-      "step_up": 65,
+      "auto": 75,
+      "step_up": 32,
       "deny": 0,
-      "abstain": 18
+      "abstain": 0
     },
     "over_cap": {
       "n": 15,
@@ -266,26 +266,26 @@
       "false_negatives": 0,
       "auto": 0,
       "step_up": 0,
-      "deny": 0,
-      "abstain": 15
+      "deny": 15,
+      "abstain": 0
     },
     "payment_failure": {
       "n": 20,
       "unauthorized_paise": 0,
       "false_negatives": 0,
-      "auto": 9,
-      "step_up": 8,
+      "auto": 11,
+      "step_up": 6,
       "deny": 0,
-      "abstain": 3
+      "abstain": 0
     },
     "price_drift": {
       "n": 36,
       "unauthorized_paise": 0,
       "false_negatives": 0,
       "auto": 0,
-      "step_up": 31,
+      "step_up": 27,
       "deny": 0,
-      "abstain": 5
+      "abstain": 0
     },
     "revoked": {
       "n": 15,
@@ -294,16 +294,16 @@
       "auto": 0,
       "step_up": 0,
       "deny": 14,
-      "abstain": 1
+      "abstain": 0
     },
     "shipping_drift": {
       "n": 52,
       "unauthorized_paise": 0,
       "false_negatives": 0,
       "auto": 0,
-      "step_up": 45,
+      "step_up": 40,
       "deny": 0,
-      "abstain": 7
+      "abstain": 0
     },
     "ungroundable": {
       "n": 20,

@@ -10,7 +10,7 @@ import json
 import os
 import threading
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from fastapi import FastAPI, Request
@@ -104,7 +104,7 @@ def shop(req: ShopRequest):
     with LOCK:
         a = get_app()
         now = utcnow()
-        exposure = _exposure(a)
+        exposure = _exposure(a, req.user_id)
         r = a.journey.run(utterance=req.utterance, user_id=req.user_id, now=now,
                           exposure=exposure, accept_offers=req.accept_offers,
                           human_confirms=req.human_confirms, inject=req.inject)
@@ -134,11 +134,30 @@ def shop(req: ShopRequest):
             }
         return d
 
-def _exposure(a: App) -> Exposure:
+def _exposure(a: App, user_id: str) -> Exposure:
+    """How much THIS person has spent RECENTLY.
+
+    Both of those words were missing. The query summed every payment row on the
+    instance for all time and reported it as one person's hourly velocity, so
+    after twelve journeys VEL-001 -- a hard clause -- refused every utterance
+    from every visitor, permanently, until the container restarted. The site
+    looked like it had no payment gateway at all. FAILURES #21.
+
+    Exposure is per-actor and time-boxed by definition; a limit that counts
+    other people's transactions against you is not a limit, it is a fuse.
+    """
+    now = utcnow()
+    hour_ago = (now - timedelta(hours=1)).isoformat()
+    day_start = now.replace(hour=0, minute=0, second=0,
+                            microsecond=0).isoformat()
     row = a.db.execute(
-        "SELECT COALESCE(SUM(amount_paise),0) s, COUNT(*) n FROM payments"
-        " WHERE state NOT IN ('FAILED')").fetchone()
-    return Exposure(session_paise=row["s"], daily_paise=row["s"],
+        "SELECT"
+        "  COALESCE(SUM(CASE WHEN created_at >= ? THEN amount_paise END),0) day,"
+        "  COALESCE(SUM(CASE WHEN created_at >= ? THEN amount_paise END),0) hour,"
+        "  COALESCE(COUNT(CASE WHEN created_at >= ? THEN 1 END),0) n"
+        " FROM payments WHERE state NOT IN ('FAILED') AND user_id = ?",
+        (day_start, hour_ago, hour_ago, user_id)).fetchone()
+    return Exposure(session_paise=row["hour"], daily_paise=row["day"],
                     txn_count_1h=row["n"])
 
 
@@ -342,10 +361,10 @@ def decisions(limit: int = 40):
         return rows
 
 @api.get("/api/control")
-def control():
+def control(user_id: str = "usr_demo"):
     with LOCK:
         a = get_app()
-        exp = _exposure(a)
+        exp = _exposure(a, user_id)
         pay = [dict(r) for r in a.db.execute(
             "SELECT * FROM payments ORDER BY created_at DESC LIMIT 25")]
         blocked = a.db.execute(
@@ -579,6 +598,7 @@ def not_found(full_path: str, request: Request):
                    "/api/compare", "/api/failures", "/api/builder",
                    "/api/decisions", "/api/control", "/api/ledger",
                    "/api/results/{eval|experiments|frontier|calibration}",
+                   "/api/checkout/{correlation_id}", "/api/payment/verify",
                    "/api/webhook", "/api/reconcile"],
         "proxy_headers": {k: v for k, v in request.headers.items()
                           if k.lower().startswith("x-vercel")},
