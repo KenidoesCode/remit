@@ -157,6 +157,23 @@ def principal(request: Request) -> str:
     return pid
 
 
+def actor(request: Request):
+    """The full principal: who, which tenant, what role.
+
+    `principal()` returns the id, which is what every existing money-path query
+    already scopes on. This returns the identity ALONGSIDE its tenant and role,
+    because "who is asking" and "what they are allowed to do" are different
+    questions and answering them with one string is how privilege escalation
+    gets built.
+
+    Resolved from the directory rather than from anything the caller sends. A
+    tenant a caller can set is a tenant a caller can set to somebody else's --
+    the exact shape of FAILURES #32, one level up.
+    """
+    a = get_app()
+    return a.directory.resolve(principal(request), utcnow())
+
+
 class ReplayRequest(BaseModel):
     correlation_id: str
     ceiling_paise: int
@@ -237,10 +254,12 @@ def shop(req: ShopRequest, request: Request):
         # Refused faults are named in the response rather than dropped, because
         # a fault silently discarded looks like a fault that was survived.
         inject, refused = scrub(req.inject, shared=True)
+        me = a.directory.resolve(who, now)
         r = a.journey.run(utterance=req.utterance, user_id=who, now=now,
                           exposure=exposure, accept_offers=req.accept_offers,
                           human_confirms=req.human_confirms,
-                          approval_token=req.approval_token, inject=inject)
+                          approval_token=req.approval_token, inject=inject,
+                          tenant_id=me.tenant_id)
         d = r.dict()
         if refused:
             d["refused_faults"] = refused
@@ -1146,8 +1165,10 @@ def checkout(correlation_id: str, request: Request):
         row = a.db.execute(
             "SELECT p.payment_id, p.amount_paise, p.state, p.order_id"
             " FROM payments p WHERE p.correlation_id=? AND p.user_id=?"
+            " AND p.tenant_id=?"
             " ORDER BY rowid DESC LIMIT 1",
-            (correlation_id, principal(request))).fetchone()
+            (correlation_id, principal(request),
+             actor(request).tenant_id)).fetchone()
         if row is None or not row["order_id"]:
             return JSONResponse(
                 {"error": "no authorised order for that journey",

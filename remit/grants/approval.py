@@ -46,6 +46,7 @@ CREATE TABLE IF NOT EXISTS approvals (
   currency TEXT NOT NULL,
   merchants TEXT NOT NULL,
   correlation_id TEXT,
+  tenant_id TEXT NOT NULL DEFAULT 'tnt_default',
   created_at TEXT NOT NULL,
   expires_at TEXT NOT NULL,
   used_at TEXT);

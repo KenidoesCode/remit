@@ -96,7 +96,7 @@
         "Kinetic Insole Support",
         "Kinetic Grip Socks (3 pack)"
       ],
-      "latency_ms": 10.86
+      "latency_ms": 7.06
     },
     {
       "id": "002",
@@ -128,7 +128,7 @@
       "cart": [
         "Deskhaus Ruled Notebook A5 (200 pg)"
       ],
-      "latency_ms": 3.85
+      "latency_ms": 2.57
     },
     {
       "id": "003",
@@ -161,7 +161,7 @@
         "Freshcart Masala Chips 150g",
         "Daily Mart Cola 750ml"
       ],
-      "latency_ms": 4.51
+      "latency_ms": 2.99
     },
     {
       "id": "004",
@@ -193,7 +193,7 @@
       "cart": [
         "Daily Mart Toothpaste 200g"
       ],
-      "latency_ms": 3.84
+      "latency_ms": 2.9
     },
     {
       "id": "005",
@@ -225,7 +225,7 @@
       "cart": [
         "Kinetic Yoga Mat 6mm"
       ],
-      "latency_ms": 5.25
+      "latency_ms": 3.45
     },
     {
       "id": "006",
@@ -260,7 +260,7 @@
         "Lumen Lab Recovery Balm",
         "Kinetic Shaker 700ml"
       ],
-      "latency_ms": 5.19
+      "latency_ms": 3.85
     },
     {
       "id": "007",
@@ -289,7 +289,7 @@
         "Kinetic Insole Support",
         "Kinetic Grip Socks (3 pack)"
       ],
-      "latency_ms": 5.23
+      "latency_ms": 3.77
     },
     {
       "id": "008",
@@ -316,7 +316,7 @@
       "cart": [
         "Wayfarer Transit 30L"
       ],
-      "latency_ms": 4.79
+      "latency_ms": 3.1
     },
     {
       "id": "009",
@@ -341,7 +341,7 @@
       "total_paise": 0,
       "ceiling_paise": null,
       "cart": [],
-      "latency_ms": 5.7
+      "latency_ms": 3.66
     },
     {
       "id": "010",
@@ -366,7 +366,7 @@
       "total_paise": 0,
       "ceiling_paise": null,
       "cart": [],
-      "latency_ms": 5.53
+      "latency_ms": 3.33
     },
     {
       "id": "011",
@@ -391,7 +391,7 @@
       "total_paise": 0,
       "ceiling_paise": null,
       "cart": [],
-      "latency_ms": 5.73
+      "latency_ms": 3.5
     },
     {
       "id": "012",
@@ -416,7 +416,7 @@
       "total_paise": 0,
       "ceiling_paise": null,
       "cart": [],
-      "latency_ms": 5.68
+      "latency_ms": 3.56
     },
     {
       "id": "013",
@@ -441,7 +441,7 @@
       "total_paise": 0,
       "ceiling_paise": null,
       "cart": [],
-      "latency_ms": 5.63
+      "latency_ms": 3.41
     },
     {
       "id": "014",
@@ -466,7 +466,7 @@
       "total_paise": 0,
       "ceiling_paise": null,
       "cart": [],
-      "latency_ms": 5.51
+      "latency_ms": 3.72
     },
     {
       "id": "015",
@@ -501,7 +501,7 @@
         "Freshcart Salted Peanuts 500g",
         "Daily Mart Cola 750ml"
       ],
-      "latency_ms": 5.51
+      "latency_ms": 3.79
     },
     {
       "id": "016",
@@ -538,7 +538,7 @@
         "Freshcart Salted Peanuts 500g",
         "Daily Mart Cola 750ml"
       ],
-      "latency_ms": 6.6
+      "latency_ms": 4.69
     },
     {
       "id": "017",
@@ -572,7 +572,7 @@
         "Daily Mart Toothbrush (4 pack)",
         "Daily Mart Bath Soap (4 pack)"
       ],
-      "latency_ms": 4.79
+      "latency_ms": 3.85
     },
     {
       "id": "018",
@@ -606,7 +606,7 @@
         "Deskhaus Gel Pens Black (10)",
         "Deskhaus Highlighters (6)"
       ],
-      "latency_ms": 4.26
+      "latency_ms": 2.87
     },
     {
       "id": "019",
@@ -640,7 +640,7 @@
         "Daily Mart Cat Litter 5kg",
         "Daily Mart Pet Shampoo 400ml"
       ],
-      "latency_ms": 3.87
+      "latency_ms": 2.58
     },
     {
       "id": "020",
@@ -675,7 +675,7 @@
         "Lumen Lab Anti-Chafe Stick",
         "Kinetic Grip Socks (3 pack)"
       ],
-      "latency_ms": 6.02
+      "latency_ms": 4.17
     },
     {
       "id": "021",
@@ -708,7 +708,7 @@
         "Freshcart Masala Chips 150g",
         "Daily Mart Cola 750ml"
       ],
-      "latency_ms": 3.95
+      "latency_ms": 2.68
     },
     {
       "id": "022",
@@ -742,7 +742,7 @@
         "Lumen Lab Recovery Balm",
         "Kinetic Shaker 700ml"
       ],
-      "latency_ms": 5.06
+      "latency_ms": 3.36
     },
     {
       "id": "023",
@@ -774,7 +774,7 @@
       "cart": [
         "Lumen Lab SPF50 Sunscreen"
       ],
-      "latency_ms": 3.85
+      "latency_ms": 2.43
     },
     {
       "id": "024",
@@ -808,7 +808,7 @@
         "Wayfarer Transit Pro 35L",
         "Wayfarer Packing Cubes (4)"
       ],
-      "latency_ms": 5.03
+      "latency_ms": 3.16
     },
     {
       "id": "025",
@@ -842,7 +842,7 @@
         "Northbeam USB-C Cable 2m",
         "Northbeam Cable Organiser"
       ],
-      "latency_ms": 4.94
+      "latency_ms": 3.7
     },
     {
       "id": "026",
@@ -875,7 +875,7 @@
         "Northbeam Pulse Buds",
         "Northbeam Buds Case"
       ],
-      "latency_ms": 4.55
+      "latency_ms": 3.55
     },
     {
       "id": "027",
@@ -909,7 +909,7 @@
         "Kinetic Insole Support",
         "Kinetic Grip Socks (3 pack)"
       ],
-      "latency_ms": 5.74
+      "latency_ms": 3.63
     },
     {
       "id": "028",
@@ -941,7 +941,7 @@
       "cart": [
         "Daily Mart Toothpaste 200g"
       ],
-      "latency_ms": 3.47
+      "latency_ms": 2.16
     },
     {
       "id": "029",
@@ -974,7 +974,7 @@
         "Northbeam Pulse Buds",
         "Northbeam Buds Case"
       ],
-      "latency_ms": 4.88
+      "latency_ms": 3.19
     },
     {
       "id": "030",
@@ -999,7 +999,7 @@
       "total_paise": 0,
       "ceiling_paise": null,
       "cart": [],
-      "latency_ms": 6.2
+      "latency_ms": 4.03
     },
     {
       "id": "031",
@@ -1029,7 +1029,7 @@
       "total_paise": 0,
       "ceiling_paise": 2000,
       "cart": [],
-      "latency_ms": 2.24
+      "latency_ms": 1.57
     },
     {
       "id": "032",
@@ -1059,7 +1059,7 @@
       "total_paise": 0,
       "ceiling_paise": 100,
       "cart": [],
-      "latency_ms": 2.16
+      "latency_ms": 1.59
     },
     {
       "id": "033",
@@ -1089,7 +1089,7 @@
       "total_paise": 0,
       "ceiling_paise": 4500,
       "cart": [],
-      "latency_ms": 2.52
+      "latency_ms": 1.62
     },
     {
       "id": "034",
@@ -1119,7 +1119,7 @@
       "total_paise": 0,
       "ceiling_paise": 4900,
       "cart": [],
-      "latency_ms": 2.46
+      "latency_ms": 1.8
     },
     {
       "id": "035",
@@ -1149,7 +1149,7 @@
       "total_paise": 0,
       "ceiling_paise": 5000,
       "cart": [],
-      "latency_ms": 2.38
+      "latency_ms": 1.56
     },
     {
       "id": "036",
@@ -1187,7 +1187,7 @@
         "Freshcart Masala Chips 150g",
         "Daily Mart Cola 750ml"
       ],
-      "latency_ms": 4.32
+      "latency_ms": 2.71
     },
     {
       "id": "037",
@@ -1225,7 +1225,7 @@
         "Freshcart Masala Chips 150g",
         "Daily Mart Cola 750ml"
       ],
-      "latency_ms": 4.94
+      "latency_ms": 2.58
     },
     {
       "id": "038",
@@ -1263,7 +1263,7 @@
         "Freshcart Masala Chips 150g",
         "Daily Mart Cola 750ml"
       ],
-      "latency_ms": 4.37
+      "latency_ms": 2.58
     },
     {
       "id": "039",
@@ -1301,7 +1301,7 @@
         "Freshcart Masala Chips 150g",
         "Daily Mart Cola 750ml"
       ],
-      "latency_ms": 4.25
+      "latency_ms": 2.74
     },
     {
       "id": "040",
@@ -1339,7 +1339,7 @@
         "Freshcart Masala Chips 150g",
         "Daily Mart Cola 750ml"
       ],
-      "latency_ms": 4.84
+      "latency_ms": 2.9
     },
     {
       "id": "041",
@@ -1377,7 +1377,7 @@
         "Freshcart Masala Chips 150g",
         "Daily Mart Cola 750ml"
       ],
-      "latency_ms": 4.63
+      "latency_ms": 2.94
     },
     {
       "id": "042",
@@ -1415,7 +1415,7 @@
         "Freshcart Masala Chips 150g",
         "Daily Mart Cola 750ml"
       ],
-      "latency_ms": 4.05
+      "latency_ms": 2.94
     },
     {
       "id": "043",
@@ -1453,7 +1453,7 @@
         "Freshcart Masala Chips 150g",
         "Daily Mart Cola 750ml"
       ],
-      "latency_ms": 3.89
+      "latency_ms": 2.47
     },
     {
       "id": "044",
@@ -1487,7 +1487,7 @@
         "Wayfarer Transit Pro 35L",
         "Wayfarer Packing Cubes (4)"
       ],
-      "latency_ms": 5.22
+      "latency_ms": 3.22
     },
     {
       "id": "045",
@@ -1520,7 +1520,7 @@
         "Wayfarer Transit 30L",
         "Wayfarer Packing Cubes (4)"
       ],
-      "latency_ms": 5.05
+      "latency_ms": 3.25
     },
     {
       "id": "046",
@@ -1550,7 +1550,7 @@
       "total_paise": 0,
       "ceiling_paise": 150000,
       "cart": [],
-      "latency_ms": 4.16
+      "latency_ms": 2.72
     },
     {
       "id": "047",
@@ -1583,7 +1583,7 @@
         "Freshcart Masala Chips 150g",
         "Daily Mart Cola 750ml"
       ],
-      "latency_ms": 4.62
+      "latency_ms": 2.95
     },
     {
       "id": "048",
@@ -1616,7 +1616,7 @@
         "Freshcart Masala Chips 150g",
         "Daily Mart Cola 750ml"
       ],
-      "latency_ms": 4.12
+      "latency_ms": 2.87
     },
     {
       "id": "049",
@@ -1645,7 +1645,7 @@
         "Kinetic Insole Support",
         "Kinetic Grip Socks (3 pack)"
       ],
-      "latency_ms": 4.95
+      "latency_ms": 3.2
     },
     {
       "id": "050",
@@ -1672,7 +1672,7 @@
       "cart": [
         "Northbeam Pulse Buds"
       ],
-      "latency_ms": 4.66
+      "latency_ms": 3.01
     },
     {
       "id": "051",
@@ -1705,7 +1705,7 @@
         "Northbeam Pulse Buds",
         "Northbeam Buds Case"
       ],
-      "latency_ms": 4.82
+      "latency_ms": 2.99
     },
     {
       "id": "052",
@@ -1738,7 +1738,7 @@
         "Northbeam 65W GaN Charger",
         "Northbeam USB-C Cable 2m"
       ],
-      "latency_ms": 4.45
+      "latency_ms": 2.72
     },
     {
       "id": "053",
@@ -1772,7 +1772,7 @@
         "Freshcart Salted Peanuts 500g",
         "Daily Mart Cola 750ml"
       ],
-      "latency_ms": 4.66
+      "latency_ms": 3.03
     },
     {
       "id": "054",
@@ -1806,7 +1806,7 @@
         "Freshcart Salted Peanuts 500g",
         "Daily Mart Cola 750ml"
       ],
-      "latency_ms": 4.42
+      "latency_ms": 2.76
     },
     {
       "id": "055",
@@ -1839,7 +1839,7 @@
         "Daily Mart Facial Tissue (200 pulls)",
         "Daily Mart Toilet Paper (8 rolls)"
       ],
-      "latency_ms": 4.22
+      "latency_ms": 2.9
     },
     {
       "id": "056",
@@ -1873,7 +1873,7 @@
         "Freshcart Salted Potato Chips 150g",
         "Freshcart Digestive Biscuits 250g"
       ],
-      "latency_ms": 4.54
+      "latency_ms": 2.91
     },
     {
       "id": "057",
@@ -1902,7 +1902,7 @@
         "Deskhaus Desk Mat XL",
         "Deskhaus Cable Tray"
       ],
-      "latency_ms": 4.74
+      "latency_ms": 3.07
     },
     {
       "id": "058",
@@ -1927,7 +1927,7 @@
       "total_paise": 0,
       "ceiling_paise": null,
       "cart": [],
-      "latency_ms": 6.23
+      "latency_ms": 3.89
     },
     {
       "id": "059",
@@ -1956,7 +1956,7 @@
         "Freshcart Salted Peanuts 500g",
         "Daily Mart Cola 750ml"
       ],
-      "latency_ms": 4.46
+      "latency_ms": 2.89
     },
     {
       "id": "060",
@@ -1984,7 +1984,7 @@
         "Daily Mart Dishwash Gel 750ml",
         "Daily Mart Scrub Pads (6 pcs)"
       ],
-      "latency_ms": 9.37
+      "latency_ms": 5.78
     },
     {
       "id": "061",
@@ -2009,7 +2009,7 @@
       "total_paise": 0,
       "ceiling_paise": null,
       "cart": [],
-      "latency_ms": 5.73
+      "latency_ms": 3.57
     },
     {
       "id": "062",
@@ -2034,7 +2034,7 @@
       "total_paise": 0,
       "ceiling_paise": null,
       "cart": [],
-      "latency_ms": 5.79
+      "latency_ms": 3.38
     },
     {
       "id": "063",
@@ -2059,7 +2059,7 @@
       "total_paise": 0,
       "ceiling_paise": null,
       "cart": [],
-      "latency_ms": 5.66
+      "latency_ms": 3.48
     },
     {
       "id": "064",
@@ -2084,7 +2084,7 @@
       "total_paise": 0,
       "ceiling_paise": 50000,
       "cart": [],
-      "latency_ms": 3.41
+      "latency_ms": 2.26
     },
     {
       "id": "065",
@@ -2109,7 +2109,7 @@
       "total_paise": 0,
       "ceiling_paise": 60000,
       "cart": [],
-      "latency_ms": 3.22
+      "latency_ms": 2.32
     },
     {
       "id": "066",
@@ -2134,7 +2134,7 @@
       "total_paise": 0,
       "ceiling_paise": 10000,
       "cart": [],
-      "latency_ms": 3.69
+      "latency_ms": 1.74
     },
     {
       "id": "067",
@@ -2169,7 +2169,7 @@
         "Lumen Lab Anti-Chafe Stick",
         "Kinetic Grip Socks (3 pack)"
       ],
-      "latency_ms": 5.71
+      "latency_ms": 4.05
     },
     {
       "id": "068",
@@ -2198,7 +2198,7 @@
         "Kinetic Insole Support",
         "Kinetic Grip Socks (3 pack)"
       ],
-      "latency_ms": 6.32
+      "latency_ms": 3.77
     },
     {
       "id": "069",
@@ -2223,7 +2223,7 @@
       "total_paise": 0,
       "ceiling_paise": null,
       "cart": [],
-      "latency_ms": 5.81
+      "latency_ms": 3.62
     },
     {
       "id": "070",
@@ -2248,7 +2248,7 @@
       "total_paise": 0,
       "ceiling_paise": null,
       "cart": [],
-      "latency_ms": 5.99
+      "latency_ms": 3.56
     },
     {
       "id": "071",
@@ -2282,7 +2282,7 @@
         "Kinetic Insole Support",
         "Kinetic Grip Socks (3 pack)"
       ],
-      "latency_ms": 5.73
+      "latency_ms": 3.46
     },
     {
       "id": "072",
@@ -2311,7 +2311,7 @@
         "Kinetic Insole Support",
         "Kinetic Grip Socks (3 pack)"
       ],
-      "latency_ms": 4.59
+      "latency_ms": 3.12
     },
     {
       "id": "073",
@@ -2340,7 +2340,7 @@
         "Kinetic Insole Support",
         "Kinetic Grip Socks (3 pack)"
       ],
-      "latency_ms": 4.84
+      "latency_ms": 3.49
     },
     {
       "id": "074",
@@ -2369,7 +2369,7 @@
         "Kinetic Insole Support",
         "Kinetic Grip Socks (3 pack)"
       ],
-      "latency_ms": 5.65
+      "latency_ms": 3.17
     },
     {
       "id": "075",
@@ -2397,7 +2397,7 @@
         "Freshcart Masala Chips 150g",
         "Daily Mart Cola 750ml"
       ],
-      "latency_ms": 3.92
+      "latency_ms": 2.39
     },
     {
       "id": "076",
@@ -2424,7 +2424,7 @@
       "cart": [
         "Deskhaus Ruled Notebook A5 (200 pg)"
       ],
-      "latency_ms": 3.29
+      "latency_ms": 2.08
     },
     {
       "id": "077",
@@ -2451,7 +2451,7 @@
       "cart": [
         "Deskhaus Ruled Notebook A5 (200 pg)"
       ],
-      "latency_ms": 3.28
+      "latency_ms": 2.01
     },
     {
       "id": "078",
@@ -2479,7 +2479,7 @@
         "Northbeam Pulse Buds",
         "Northbeam Buds Case"
       ],
-      "latency_ms": 5.11
+      "latency_ms": 3.08
     },
     {
       "id": "079",
@@ -2507,7 +2507,7 @@
         "Freshcart Masala Chips 150g",
         "Daily Mart Cola 750ml"
       ],
-      "latency_ms": 5.1
+      "latency_ms": 2.58
     },
     {
       "id": "080",
@@ -2535,7 +2535,7 @@
         "Freshcart Masala Chips 150g",
         "Daily Mart Cola 750ml"
       ],
-      "latency_ms": 3.89
+      "latency_ms": 2.87
     },
     {
       "id": "081",
@@ -2563,7 +2563,7 @@
         "Daily Mart Puppy Food 1.2kg",
         "Daily Mart Pet Shampoo 400ml"
       ],
-      "latency_ms": 4.0
+      "latency_ms": 2.57
     },
     {
       "id": "082",
@@ -2596,7 +2596,7 @@
         "Daily Mart Cat Litter 5kg",
         "Daily Mart Pet Shampoo 400ml"
       ],
-      "latency_ms": 3.74
+      "latency_ms": 2.58
     },
     {
       "id": "083",
@@ -2623,7 +2623,7 @@
       "cart": [
         "Daily Mart Baby Diapers M (56)"
       ],
-      "latency_ms": 3.91
+      "latency_ms": 2.55
     },
     {
       "id": "084",
@@ -2655,7 +2655,7 @@
       "cart": [
         "Daily Mart Baby Wipes (72 x 3)"
       ],
-      "latency_ms": 3.14
+      "latency_ms": 2.22
     },
     {
       "id": "085",
@@ -2688,7 +2688,7 @@
         "Daily Mart Liquid Detergent 1L",
         "Daily Mart Scrub Pads (6 pcs)"
       ],
-      "latency_ms": 3.76
+      "latency_ms": 2.61
     },
     {
       "id": "086",
@@ -2721,7 +2721,7 @@
         "Daily Mart Floor Cleaner 1L",
         "Daily Mart Scrub Pads (6 pcs)"
       ],
-      "latency_ms": 3.61
+      "latency_ms": 2.38
     },
     {
       "id": "087",
@@ -2754,7 +2754,7 @@
         "Daily Mart Garbage Bags (90 pcs)",
         "Daily Mart Scrub Pads (6 pcs)"
       ],
-      "latency_ms": 3.71
+      "latency_ms": 2.43
     },
     {
       "id": "088",
@@ -2787,7 +2787,7 @@
         "Daily Mart Microfibre Mop",
         "Daily Mart Scrub Pads (6 pcs)"
       ],
-      "latency_ms": 3.57
+      "latency_ms": 2.59
     },
     {
       "id": "089",
@@ -2821,7 +2821,7 @@
         "Freshcart Salted Potato Chips 150g",
         "Freshcart Digestive Biscuits 250g"
       ],
-      "latency_ms": 3.98
+      "latency_ms": 3.49
     },
     {
       "id": "090",
@@ -2855,7 +2855,7 @@
         "Freshcart Salted Potato Chips 150g",
         "Freshcart Digestive Biscuits 250g"
       ],
-      "latency_ms": 4.12
+      "latency_ms": 2.32
     },
     {
       "id": "091",
@@ -2885,7 +2885,7 @@
         "Lumen Lab Anti-Chafe Stick",
         "Kinetic Grip Socks (3 pack)"
       ],
-      "latency_ms": 4.94
+      "latency_ms": 3.28
     },
     {
       "id": "092",
@@ -2915,7 +2915,7 @@
         "Lumen Lab Anti-Chafe Stick",
         "Kinetic Grip Socks (3 pack)"
       ],
-      "latency_ms": 4.31
+      "latency_ms": 3.33
     },
     {
       "id": "093",
@@ -2943,7 +2943,7 @@
         "Freshcart Masala Chips 150g",
         "Daily Mart Cola 750ml"
       ],
-      "latency_ms": 3.89
+      "latency_ms": 2.63
     },
     {
       "id": "094",
@@ -2970,7 +2970,7 @@
       "cart": [
         "Deskhaus Ruled Notebook A5 (200 pg)"
       ],
-      "latency_ms": 3.12
+      "latency_ms": 2.2
     },
     {
       "id": "095",
@@ -3000,7 +3000,7 @@
         "Northbeam Buds Case",
         "Northbeam USB-C Cable 2m"
       ],
-      "latency_ms": 4.62
+      "latency_ms": 3.02
     },
     {
       "id": "096",
@@ -3030,7 +3030,7 @@
         "Lumen Lab Recovery Balm",
         "Kinetic Shaker 700ml"
       ],
-      "latency_ms": 4.56
+      "latency_ms": 3.0
     },
     {
       "id": "097",
@@ -3058,7 +3058,7 @@
         "Lumen Lab SPF50 Sunscreen",
         "Lumen Lab Body Wash"
       ],
-      "latency_ms": 3.61
+      "latency_ms": 2.46
     },
     {
       "id": "098",
@@ -3088,7 +3088,7 @@
         "Wayfarer Packing Cubes (4)",
         "Wayfarer Rain Cover"
       ],
-      "latency_ms": 4.55
+      "latency_ms": 3.42
     },
     {
       "id": "099",
@@ -3115,7 +3115,7 @@
       "cart": [
         "Strideworks Velocity 3"
       ],
-      "latency_ms": 4.99
+      "latency_ms": 3.32
     },
     {
       "id": "100",
@@ -3142,7 +3142,7 @@
       "cart": [
         "Freshcart Masala Chips 150g"
       ],
-      "latency_ms": 3.83
+      "latency_ms": 2.77
     },
     {
       "id": "101",
@@ -3169,7 +3169,7 @@
       "cart": [
         "Deskhaus Task Lamp"
       ],
-      "latency_ms": 4.47
+      "latency_ms": 3.07
     },
     {
       "id": "102",
@@ -3197,7 +3197,7 @@
         "Deskhaus Riser Basic",
         "Deskhaus Cable Tray"
       ],
-      "latency_ms": 4.29
+      "latency_ms": 3.02
     },
     {
       "id": "103",
@@ -3224,7 +3224,7 @@
       "cart": [
         "Northbeam Mech Keyboard 75"
       ],
-      "latency_ms": 4.0
+      "latency_ms": 2.76
     },
     {
       "id": "104",
@@ -3251,7 +3251,7 @@
       "cart": [
         "Northbeam Ergo Mouse"
       ],
-      "latency_ms": 3.82
+      "latency_ms": 2.85
     },
     {
       "id": "105",
@@ -3280,7 +3280,7 @@
         "Northbeam USB-C Cable 2m",
         "Northbeam Cable Organiser"
       ],
-      "latency_ms": 4.43
+      "latency_ms": 3.0
     },
     {
       "id": "106",
@@ -3308,7 +3308,7 @@
         "Northbeam 20000mAh Power Bank",
         "Northbeam USB-C Cable 2m"
       ],
-      "latency_ms": 4.6
+      "latency_ms": 2.78
     },
     {
       "id": "107",
@@ -3335,7 +3335,7 @@
       "cart": [
         "Northbeam Cable Organiser"
       ],
-      "latency_ms": 3.16
+      "latency_ms": 1.99
     },
     {
       "id": "108",
@@ -3364,7 +3364,7 @@
         "Lumen Lab Recovery Balm",
         "Kinetic Gym Towel"
       ],
-      "latency_ms": 5.33
+      "latency_ms": 3.61
     },
     {
       "id": "109",
@@ -3391,7 +3391,7 @@
       "cart": [
         "Kinetic Resistance Band Set"
       ],
-      "latency_ms": 4.82
+      "latency_ms": 3.04
     },
     {
       "id": "110",
@@ -3419,7 +3419,7 @@
         "Kinetic Foam Roller",
         "Kinetic Shaker 700ml"
       ],
-      "latency_ms": 4.95
+      "latency_ms": 3.06
     },
     {
       "id": "111",
@@ -3453,7 +3453,7 @@
         "Kinetic Insole Support",
         "Kinetic Grip Socks (3 pack)"
       ],
-      "latency_ms": 4.5
+      "latency_ms": 3.08
     },
     {
       "id": "112",
@@ -3482,7 +3482,7 @@
         "Kinetic Insole Support",
         "Kinetic Grip Socks (3 pack)"
       ],
-      "latency_ms": 5.31
+      "latency_ms": 3.46
     },
     {
       "id": "113",
@@ -3511,7 +3511,7 @@
         "Kinetic Insole Support",
         "Kinetic Grip Socks (3 pack)"
       ],
-      "latency_ms": 5.07
+      "latency_ms": 3.23
     },
     {
       "id": "114",
@@ -3539,7 +3539,7 @@
         "Freshcart Masala Chips 150g",
         "Daily Mart Cola 750ml"
       ],
-      "latency_ms": 3.93
+      "latency_ms": 2.76
     },
     {
       "id": "115",
@@ -3566,7 +3566,7 @@
       "cart": [
         "Deskhaus Ruled Notebook A5 (200 pg)"
       ],
-      "latency_ms": 3.33
+      "latency_ms": 2.11
     },
     {
       "id": "116",
@@ -3595,7 +3595,7 @@
         "Deskhaus Desk Mat XL",
         "Deskhaus Cable Tray"
       ],
-      "latency_ms": 4.39
+      "latency_ms": 2.75
     },
     {
       "id": "117",
@@ -3623,7 +3623,7 @@
         "Daily Mart Dishwash Gel 750ml",
         "Daily Mart Scrub Pads (6 pcs)"
       ],
-      "latency_ms": 9.16
+      "latency_ms": 5.82
     },
     {
       "id": "118",
@@ -3650,7 +3650,7 @@
       "cart": [
         "The Cellar Blended Whisky 750ml"
       ],
-      "latency_ms": 3.35
+      "latency_ms": 2.08
     },
     {
       "id": "119",
@@ -3677,7 +3677,7 @@
       "cart": [
         "Medipoint Paracetamol 500mg (15)"
       ],
-      "latency_ms": 3.31
+      "latency_ms": 1.9
     },
     {
       "id": "120",
@@ -3704,7 +3704,7 @@
       "cart": [
         "Daily Mart Ultra Thin Condoms (12)"
       ],
-      "latency_ms": 3.34
+      "latency_ms": 2.03
     },
     {
       "id": "121",
@@ -3732,7 +3732,7 @@
         "The Cellar Lager Beer 650ml",
         "Freshcart Masala Chips 150g"
       ],
-      "latency_ms": 4.0
+      "latency_ms": 2.43
     },
     {
       "id": "122",
@@ -3759,7 +3759,7 @@
       "cart": [
         "The Cellar Vodka 750ml"
       ],
-      "latency_ms": 3.31
+      "latency_ms": 2.05
     },
     {
       "id": "123",
@@ -3787,7 +3787,7 @@
         "Medipoint Cough Syrup 100ml",
         "Medipoint ORS Sachets (10)"
       ],
-      "latency_ms": 3.81
+      "latency_ms": 2.87
     },
     {
       "id": "124",
@@ -3819,7 +3819,7 @@
       "cart": [
         "Medipoint Adhesive Bandages (40)"
       ],
-      "latency_ms": 3.45
+      "latency_ms": 2.67
     },
     {
       "id": "125",
@@ -3848,7 +3848,7 @@
         "Kinetic Insole Support",
         "Kinetic Grip Socks (3 pack)"
       ],
-      "latency_ms": 4.85
+      "latency_ms": 3.36
     },
     {
       "id": "126",
@@ -3877,7 +3877,7 @@
         "Kinetic Insole Support",
         "Kinetic Grip Socks (3 pack)"
       ],
-      "latency_ms": 4.98
+      "latency_ms": 3.29
     },
     {
       "id": "127",
@@ -3905,7 +3905,7 @@
         "Freshcart Masala Chips 150g",
         "Daily Mart Cola 750ml"
       ],
-      "latency_ms": 3.6
+      "latency_ms": 2.5
     },
     {
       "id": "128",
@@ -3932,7 +3932,7 @@
       "cart": [
         "Kinetic Yoga Mat 6mm"
       ],
-      "latency_ms": 4.24
+      "latency_ms": 3.15
     },
     {
       "id": "129",
@@ -3960,7 +3960,7 @@
         "Northbeam Pulse Buds",
         "Northbeam Buds Case"
       ],
-      "latency_ms": 3.84
+      "latency_ms": 2.65
     },
     {
       "id": "130",
@@ -3987,7 +3987,7 @@
       "cart": [
         "Lumen Lab SPF50 Sunscreen"
       ],
-      "latency_ms": 2.9
+      "latency_ms": 2.24
     },
     {
       "id": "131",
@@ -4014,7 +4014,7 @@
       "cart": [
         "The Cellar Blended Whisky 750ml"
       ],
-      "latency_ms": 3.18
+      "latency_ms": 1.97
     },
     {
       "id": "132",
@@ -4041,7 +4041,7 @@
       "cart": [
         "The Cellar Blended Whisky 750ml"
       ],
-      "latency_ms": 3.49
+      "latency_ms": 2.21
     },
     {
       "id": "133",
@@ -4068,7 +4068,7 @@
       "cart": [
         "The Cellar Blended Whisky 750ml"
       ],
-      "latency_ms": 2.91
+      "latency_ms": 2.66
     },
     {
       "id": "134",
@@ -4095,7 +4095,7 @@
       "cart": [
         "Medipoint Paracetamol 500mg (15)"
       ],
-      "latency_ms": 3.0
+      "latency_ms": 2.11
     },
     {
       "id": "135",
@@ -4122,7 +4122,7 @@
       "cart": [
         "Medipoint Paracetamol 500mg (15)"
       ],
-      "latency_ms": 3.55
+      "latency_ms": 2.53
     },
     {
       "id": "136",
@@ -4149,7 +4149,7 @@
       "cart": [
         "Medipoint Paracetamol 500mg (15)"
       ],
-      "latency_ms": 3.08
+      "latency_ms": 2.0
     },
     {
       "id": "137",
@@ -4176,7 +4176,7 @@
       "cart": [
         "Daily Mart Ultra Thin Condoms (12)"
       ],
-      "latency_ms": 3.06
+      "latency_ms": 1.94
     },
     {
       "id": "138",
@@ -4203,7 +4203,7 @@
       "cart": [
         "Daily Mart Baby Diapers M (56)"
       ],
-      "latency_ms": 4.01
+      "latency_ms": 2.56
     },
     {
       "id": "139",
@@ -4232,7 +4232,7 @@
         "Deskhaus Desk Mat XL",
         "Deskhaus Cable Tray"
       ],
-      "latency_ms": 4.8
+      "latency_ms": 3.16
     },
     {
       "id": "140",
@@ -4261,7 +4261,7 @@
         "Deskhaus Desk Mat XL",
         "Deskhaus Cable Tray"
       ],
-      "latency_ms": 4.35
+      "latency_ms": 2.63
     },
     {
       "id": "141",
@@ -4290,7 +4290,7 @@
         "Kinetic Insole Support",
         "Kinetic Grip Socks (3 pack)"
       ],
-      "latency_ms": 5.35
+      "latency_ms": 3.36
     },
     {
       "id": "142",
@@ -4319,7 +4319,7 @@
         "Kinetic Insole Support",
         "Kinetic Grip Socks (3 pack)"
       ],
-      "latency_ms": 4.41
+      "latency_ms": 2.97
     },
     {
       "id": "143",
@@ -4348,7 +4348,7 @@
         "Kinetic Insole Support",
         "Kinetic Grip Socks (3 pack)"
       ],
-      "latency_ms": 5.47
+      "latency_ms": 3.2
     },
     {
       "id": "144",
@@ -4377,7 +4377,7 @@
         "Kinetic Insole Support",
         "Kinetic Grip Socks (3 pack)"
       ],
-      "latency_ms": 5.09
+      "latency_ms": 3.3
     },
     {
       "id": "145",
@@ -4406,7 +4406,7 @@
         "Kinetic Insole Support",
         "Kinetic Grip Socks (3 pack)"
       ],
-      "latency_ms": 4.83
+      "latency_ms": 3.23
     },
     {
       "id": "146",
@@ -4434,7 +4434,7 @@
         "The Cellar Blended Whisky 750ml",
         "Medipoint Paracetamol 500mg (15)"
       ],
-      "latency_ms": 3.94
+      "latency_ms": 2.57
     },
     {
       "id": "147",
@@ -4461,7 +4461,7 @@
       "cart": [
         "The Cellar Lager Beer 650ml"
       ],
-      "latency_ms": 3.63
+      "latency_ms": 2.32
     },
     {
       "id": "148",
@@ -4488,7 +4488,7 @@
       "cart": [
         "The Cellar Vodka 750ml"
       ],
-      "latency_ms": 3.35
+      "latency_ms": 1.96
     },
     {
       "id": "149",
@@ -4515,7 +4515,7 @@
       "cart": [
         "Medipoint Antacid Tablets (20)"
       ],
-      "latency_ms": 4.24
+      "latency_ms": 2.22
     },
     {
       "id": "150",
@@ -4543,7 +4543,7 @@
         "Medipoint Digital Thermometer",
         "Medipoint ORS Sachets (10)"
       ],
-      "latency_ms": 4.34
+      "latency_ms": 2.58
     },
     {
       "id": "151",
@@ -4572,7 +4572,7 @@
         "Kinetic Insole Support",
         "Kinetic Grip Socks (3 pack)"
       ],
-      "latency_ms": 5.7
+      "latency_ms": 3.49
     },
     {
       "id": "152",
@@ -4601,7 +4601,7 @@
         "Kinetic Insole Support",
         "Kinetic Grip Socks (3 pack)"
       ],
-      "latency_ms": 5.97
+      "latency_ms": 3.51
     },
     {
       "id": "153",
@@ -4630,7 +4630,7 @@
         "Kinetic Insole Support",
         "Kinetic Grip Socks (3 pack)"
       ],
-      "latency_ms": 5.57
+      "latency_ms": 3.78
     },
     {
       "id": "154",
@@ -4659,7 +4659,7 @@
         "Kinetic Insole Support",
         "Kinetic Grip Socks (3 pack)"
       ],
-      "latency_ms": 6.04
+      "latency_ms": 3.63
     },
     {
       "id": "155",
@@ -4688,7 +4688,7 @@
         "Kinetic Insole Support",
         "Kinetic Grip Socks (3 pack)"
       ],
-      "latency_ms": 5.55
+      "latency_ms": 3.58
     },
     {
       "id": "156",
@@ -4717,7 +4717,7 @@
         "Kinetic Insole Support",
         "Kinetic Grip Socks (3 pack)"
       ],
-      "latency_ms": 5.51
+      "latency_ms": 4.15
     },
     {
       "id": "157",
@@ -4745,7 +4745,7 @@
         "Freshcart Masala Chips 150g",
         "Daily Mart Cola 750ml"
       ],
-      "latency_ms": 4.2
+      "latency_ms": 2.81
     },
     {
       "id": "158",
@@ -4773,7 +4773,7 @@
         "Freshcart Masala Chips 150g",
         "Daily Mart Cola 750ml"
       ],
-      "latency_ms": 4.29
+      "latency_ms": 2.64
     },
     {
       "id": "159",
@@ -4800,7 +4800,7 @@
       "cart": [
         "Deskhaus Ruled Notebook A5 (200 pg)"
       ],
-      "latency_ms": 3.4
+      "latency_ms": 2.3
     },
     {
       "id": "160",
@@ -4827,7 +4827,7 @@
       "cart": [
         "Deskhaus Ruled Notebook A5 (200 pg)"
       ],
-      "latency_ms": 3.72
+      "latency_ms": 2.19
     },
     {
       "id": "161",
@@ -4854,7 +4854,7 @@
       "cart": [
         "Kinetic Yoga Mat 6mm"
       ],
-      "latency_ms": 4.58
+      "latency_ms": 3.05
     },
     {
       "id": "162",
@@ -4881,7 +4881,7 @@
       "cart": [
         "Kinetic Yoga Mat 6mm"
       ],
-      "latency_ms": 4.69
+      "latency_ms": 3.09
     },
     {
       "id": "163",
@@ -4909,7 +4909,7 @@
         "Northbeam Pulse Buds",
         "Northbeam Buds Case"
       ],
-      "latency_ms": 4.96
+      "latency_ms": 3.02
     },
     {
       "id": "164",
@@ -4937,7 +4937,7 @@
         "Northbeam Pulse Buds",
         "Northbeam Buds Case"
       ],
-      "latency_ms": 4.92
+      "latency_ms": 3.02
     },
     {
       "id": "165",
@@ -4964,7 +4964,7 @@
       "cart": [
         "Lumen Lab SPF50 Sunscreen"
       ],
-      "latency_ms": 4.52
+      "latency_ms": 2.48
     },
     {
       "id": "166",
@@ -4991,7 +4991,7 @@
       "cart": [
         "Lumen Lab SPF50 Sunscreen"
       ],
-      "latency_ms": 3.91
+      "latency_ms": 2.68
     },
     {
       "id": "167",
@@ -5018,7 +5018,7 @@
       "cart": [
         "Wayfarer Transit 30L"
       ],
-      "latency_ms": 4.84
+      "latency_ms": 3.1
     },
     {
       "id": "168",
@@ -5045,7 +5045,7 @@
       "cart": [
         "Wayfarer Transit 30L"
       ],
-      "latency_ms": 5.15
+      "latency_ms": 3.08
     },
     {
       "id": "169",
@@ -5073,7 +5073,7 @@
         "Daily Mart Liquid Detergent 1L",
         "Daily Mart Scrub Pads (6 pcs)"
       ],
-      "latency_ms": 3.87
+      "latency_ms": 2.22
     },
     {
       "id": "170",
@@ -5101,7 +5101,7 @@
         "Daily Mart Liquid Detergent 1L",
         "Daily Mart Scrub Pads (6 pcs)"
       ],
-      "latency_ms": 3.76
+      "latency_ms": 2.33
     },
     {
       "id": "171",
@@ -5134,7 +5134,7 @@
         "Freshcart Masala Chips 150g",
         "Daily Mart Cola 750ml"
       ],
-      "latency_ms": 5.51
+      "latency_ms": 2.99
     },
     {
       "id": "172",
@@ -5167,7 +5167,7 @@
         "Freshcart Masala Chips 150g",
         "Daily Mart Cola 750ml"
       ],
-      "latency_ms": 4.96
+      "latency_ms": 3.12
     },
     {
       "id": "173",
@@ -5197,7 +5197,7 @@
       "total_paise": 0,
       "ceiling_paise": 10000,
       "cart": [],
-      "latency_ms": 2.55
+      "latency_ms": 1.52
     },
     {
       "id": "174",
@@ -5231,7 +5231,7 @@
         "Freshcart Salted Peanuts 500g",
         "Daily Mart Cola 750ml"
       ],
-      "latency_ms": 5.04
+      "latency_ms": 3.03
     },
     {
       "id": "175",
@@ -5263,7 +5263,7 @@
       "cart": [
         "Daily Mart Liquid Detergent 1L"
       ],
-      "latency_ms": 4.47
+      "latency_ms": 3.19
     },
     {
       "id": "176",
@@ -5295,7 +5295,7 @@
       "cart": [
         "Daily Mart Bath Soap (4 pack)"
       ],
-      "latency_ms": 4.08
+      "latency_ms": 2.51
     },
     {
       "id": "177",
@@ -5329,7 +5329,7 @@
         "Freshcart Salted Peanuts 500g",
         "Daily Mart Cola 750ml"
       ],
-      "latency_ms": 4.74
+      "latency_ms": 3.09
     },
     {
       "id": "178",
@@ -5362,7 +5362,7 @@
         "Freshcart Masala Chips 150g",
         "Daily Mart Cola 750ml"
       ],
-      "latency_ms": 4.32
+      "latency_ms": 3.54
     },
     {
       "id": "179",
@@ -5390,7 +5390,7 @@
         "Freshcart Masala Chips 150g",
         "Daily Mart Cola 750ml"
       ],
-      "latency_ms": 5.91
+      "latency_ms": 2.7
     },
     {
       "id": "180",
@@ -5418,7 +5418,7 @@
         "Freshcart Masala Chips 150g",
         "Daily Mart Cola 750ml"
       ],
-      "latency_ms": 7.55
+      "latency_ms": 3.03
     },
     {
       "id": "181",
@@ -5452,7 +5452,7 @@
         "Kinetic Insole Support",
         "Kinetic Grip Socks (3 pack)"
       ],
-      "latency_ms": 6.07
+      "latency_ms": 4.54
     },
     {
       "id": "182",
@@ -5486,7 +5486,7 @@
         "Kinetic Insole Support",
         "Kinetic Grip Socks (3 pack)"
       ],
-      "latency_ms": 5.82
+      "latency_ms": 3.8
     },
     {
       "id": "183",
@@ -5520,7 +5520,7 @@
         "Kinetic Insole Support",
         "Kinetic Grip Socks (3 pack)"
       ],
-      "latency_ms": 5.62
+      "latency_ms": 4.76
     },
     {
       "id": "184",
@@ -5554,7 +5554,7 @@
         "Kinetic Insole Support",
         "Kinetic Grip Socks (3 pack)"
       ],
-      "latency_ms": 9.94
+      "latency_ms": 3.94
     },
     {
       "id": "185",
@@ -5588,7 +5588,7 @@
         "Kinetic Insole Support",
         "Kinetic Grip Socks (3 pack)"
       ],
-      "latency_ms": 6.08
+      "latency_ms": 4.41
     },
     {
       "id": "186",
@@ -5616,7 +5616,7 @@
         "Freshcart Masala Chips 150g",
         "Daily Mart Cola 750ml"
       ],
-      "latency_ms": 4.91
+      "latency_ms": 2.85
     },
     {
       "id": "187",
@@ -5644,7 +5644,7 @@
         "Freshcart Masala Chips 150g",
         "Daily Mart Cola 750ml"
       ],
-      "latency_ms": 4.31
+      "latency_ms": 2.84
     },
     {
       "id": "188",
@@ -5672,7 +5672,7 @@
         "Freshcart Masala Chips 150g",
         "Daily Mart Cola 750ml"
       ],
-      "latency_ms": 3.84
+      "latency_ms": 2.4
     },
     {
       "id": "189",
@@ -5700,7 +5700,7 @@
         "Freshcart Masala Chips 150g",
         "Daily Mart Cola 750ml"
       ],
-      "latency_ms": 4.07
+      "latency_ms": 2.66
     },
     {
       "id": "190",
@@ -5728,7 +5728,7 @@
         "Freshcart Masala Chips 150g",
         "Daily Mart Cola 750ml"
       ],
-      "latency_ms": 4.42
+      "latency_ms": 2.84
     },
     {
       "id": "191",
@@ -5762,7 +5762,7 @@
         "Kinetic Insole Support",
         "Kinetic Grip Socks (3 pack)"
       ],
-      "latency_ms": 5.63
+      "latency_ms": 3.55
     },
     {
       "id": "192",
@@ -5795,7 +5795,7 @@
         "Freshcart Masala Chips 150g",
         "Daily Mart Cola 750ml"
       ],
-      "latency_ms": 4.13
+      "latency_ms": 2.54
     },
     {
       "id": "193",
@@ -5827,7 +5827,7 @@
       "cart": [
         "Deskhaus Ruled Notebook A5 (200 pg)"
       ],
-      "latency_ms": 4.15
+      "latency_ms": 2.24
     },
     {
       "id": "194",
@@ -5860,7 +5860,7 @@
         "Northbeam Pulse Buds",
         "Northbeam Buds Case"
       ],
-      "latency_ms": 5.15
+      "latency_ms": 3.16
     },
     {
       "id": "195",
@@ -5892,7 +5892,7 @@
       "cart": [
         "Kinetic Yoga Mat 6mm"
       ],
-      "latency_ms": 5.69
+      "latency_ms": 3.03
     },
     {
       "id": "196",
@@ -5924,7 +5924,7 @@
       "cart": [
         "Lumen Lab SPF50 Sunscreen"
       ],
-      "latency_ms": 3.87
+      "latency_ms": 2.86
     },
     {
       "id": "197",
@@ -5957,7 +5957,7 @@
         "Daily Mart Liquid Detergent 1L",
         "Daily Mart Scrub Pads (6 pcs)"
       ],
-      "latency_ms": 3.95
+      "latency_ms": 2.49
     },
     {
       "id": "198",
@@ -5991,7 +5991,7 @@
         "Freshcart Salted Peanuts 500g",
         "Daily Mart Cola 750ml"
       ],
-      "latency_ms": 4.35
+      "latency_ms": 2.78
     },
     {
       "id": "199",
@@ -6023,7 +6023,7 @@
       "cart": [
         "Daily Mart Toothpaste 200g"
       ],
-      "latency_ms": 3.73
+      "latency_ms": 2.32
     },
     {
       "id": "200",
@@ -6055,7 +6055,7 @@
       "cart": [
         "Wayfarer Transit 30L"
       ],
-      "latency_ms": 6.85
+      "latency_ms": 3.2
     },
     {
       "id": "201",
@@ -6090,7 +6090,7 @@
         "Freshcart Salted Peanuts 500g",
         "Daily Mart Cola 750ml"
       ],
-      "latency_ms": 7.09
+      "latency_ms": 3.48
     },
     {
       "id": "202",
@@ -6122,7 +6122,7 @@
       "cart": [
         "The Cellar Blended Whisky 750ml"
       ],
-      "latency_ms": 3.42
+      "latency_ms": 2.14
     },
     {
       "id": "203",
@@ -6154,7 +6154,7 @@
       "cart": [
         "Medipoint Paracetamol 500mg (15)"
       ],
-      "latency_ms": 4.12
+      "latency_ms": 2.1
     },
     {
       "id": "204",
@@ -6188,7 +6188,7 @@
         "Deskhaus Desk Mat XL",
         "Deskhaus Cable Tray"
       ],
-      "latency_ms": 4.46
+      "latency_ms": 2.83
     },
     {
       "id": "205",
@@ -6221,7 +6221,7 @@
         "Daily Mart Puppy Food 1.2kg",
         "Daily Mart Pet Shampoo 400ml"
       ],
-      "latency_ms": 4.05
+      "latency_ms": 2.49
     },
     {
       "id": "206",
@@ -6253,7 +6253,7 @@
       "cart": [
         "Daily Mart Baby Diapers M (56)"
       ],
-      "latency_ms": 3.86
+      "latency_ms": 2.21
     },
     {
       "id": "207",
@@ -6287,7 +6287,7 @@
         "Freshcart Salted Potato Chips 150g",
         "Freshcart Digestive Biscuits 250g"
       ],
-      "latency_ms": 4.45
+      "latency_ms": 2.72
     },
     {
       "id": "208",
@@ -6321,7 +6321,7 @@
         "Freshcart Salted Potato Chips 150g",
         "Freshcart Digestive Biscuits 250g"
       ],
-      "latency_ms": 4.72
+      "latency_ms": 2.87
     },
     {
       "id": "209",
@@ -6354,7 +6354,7 @@
         "Daily Mart Microfibre Mop",
         "Daily Mart Scrub Pads (6 pcs)"
       ],
-      "latency_ms": 4.82
+      "latency_ms": 2.39
     },
     {
       "id": "210",
@@ -6387,7 +6387,7 @@
         "Daily Mart Garbage Bags (90 pcs)",
         "Daily Mart Scrub Pads (6 pcs)"
       ],
-      "latency_ms": 4.48
+      "latency_ms": 2.39
     },
     {
       "id": "211",
@@ -6416,7 +6416,7 @@
         "Freshcart Salted Potato Chips 150g",
         "Freshcart Digestive Biscuits 250g"
       ],
-      "latency_ms": 6.31
+      "latency_ms": 3.27
     },
     {
       "id": "212",
@@ -6443,7 +6443,7 @@
       "cart": [
         "Deskhaus Gel Pens Black (10)"
       ],
-      "latency_ms": 8.7
+      "latency_ms": 3.67
     },
     {
       "id": "213",
@@ -6473,7 +6473,7 @@
         "Lumen Lab Anti-Chafe Stick",
         "Kinetic Grip Socks (3 pack)"
       ],
-      "latency_ms": 6.73
+      "latency_ms": 3.53
     },
     {
       "id": "214",
@@ -6500,7 +6500,7 @@
       "cart": [
         "Daily Mart Baby Wipes (72 x 3)"
       ],
-      "latency_ms": 4.44
+      "latency_ms": 2.16
     },
     {
       "id": "215",
@@ -6527,7 +6527,7 @@
       "cart": [
         "Medipoint Paracetamol 500mg (15)"
       ],
-      "latency_ms": 4.28
+      "latency_ms": 2.06
     },
     {
       "id": "216",
@@ -6555,7 +6555,7 @@
         "Freshcart Cream & Onion Chips 150g",
         "Daily Mart Cola 750ml"
       ],
-      "latency_ms": 5.6
+      "latency_ms": 2.73
     },
     {
       "id": "217",
@@ -6580,7 +6580,7 @@
       "total_paise": 0,
       "ceiling_paise": null,
       "cart": [],
-      "latency_ms": 8.68
+      "latency_ms": 3.76
     },
     {
       "id": "218",
@@ -6605,7 +6605,7 @@
       "total_paise": 0,
       "ceiling_paise": null,
       "cart": [],
-      "latency_ms": 8.52
+      "latency_ms": 3.76
     },
     {
       "id": "219",
@@ -6630,7 +6630,7 @@
       "total_paise": 0,
       "ceiling_paise": null,
       "cart": [],
-      "latency_ms": 6.21
+      "latency_ms": 3.74
     },
     {
       "id": "220",
@@ -6655,7 +6655,7 @@
       "total_paise": 0,
       "ceiling_paise": null,
       "cart": [],
-      "latency_ms": 6.17
+      "latency_ms": 3.61
     },
     {
       "id": "221",
@@ -6683,7 +6683,7 @@
         "Northbeam Pulse Buds",
         "Northbeam Buds Case"
       ],
-      "latency_ms": 4.85
+      "latency_ms": 3.66
     },
     {
       "id": "222",
@@ -6713,7 +6713,7 @@
         "Lumen Lab Anti-Chafe Stick",
         "Kinetic Grip Socks (3 pack)"
       ],
-      "latency_ms": 5.54
+      "latency_ms": 3.7
     },
     {
       "id": "223",
@@ -6741,7 +6741,7 @@
         "Kinetic Pace Pro",
         "Kinetic Insole Support"
       ],
-      "latency_ms": 5.77
+      "latency_ms": 3.6
     },
     {
       "id": "224",
@@ -6768,7 +6768,7 @@
       "cart": [
         "Wayfarer Transit 30L"
       ],
-      "latency_ms": 5.94
+      "latency_ms": 3.16
     },
     {
       "id": "225",
@@ -6798,7 +6798,7 @@
         "Kinetic Foam Roller",
         "Kinetic Performance Socks"
       ],
-      "latency_ms": 6.38
+      "latency_ms": 3.91
     },
     {
       "id": "226",
@@ -6828,7 +6828,7 @@
         "Lumen Lab Anti-Chafe Stick",
         "Kinetic Grip Socks (3 pack)"
       ],
-      "latency_ms": 6.83
+      "latency_ms": 4.72
     },
     {
       "id": "227",
@@ -6858,7 +6858,7 @@
         "Lumen Lab Anti-Chafe Stick",
         "Kinetic Grip Socks (3 pack)"
       ],
-      "latency_ms": 6.26
+      "latency_ms": 4.36
     },
     {
       "id": "228",
@@ -6887,7 +6887,7 @@
         "Kinetic Insole Support",
         "Kinetic Foam Roller"
       ],
-      "latency_ms": 5.87
+      "latency_ms": 4.0
     },
     {
       "id": "229",
@@ -6916,7 +6916,7 @@
         "Kinetic Insole Support",
         "Kinetic Foam Roller"
       ],
-      "latency_ms": 5.95
+      "latency_ms": 4.61
     },
     {
       "id": "230",
@@ -6944,7 +6944,7 @@
         "Strideworks Velocity 3",
         "Strideworks Daily 7"
       ],
-      "latency_ms": 6.19
+      "latency_ms": 6.33
     },
     {
       "id": "231",
@@ -6972,7 +6972,7 @@
         "Freshcart Masala Chips 150g",
         "Daily Mart Cola 750ml"
       ],
-      "latency_ms": 4.04
+      "latency_ms": 3.66
     },
     {
       "id": "232",
@@ -7000,7 +7000,7 @@
         "Freshcart Masala Chips 150g",
         "Daily Mart Cola 750ml"
       ],
-      "latency_ms": 3.94
+      "latency_ms": 3.13
     },
     {
       "id": "233",
@@ -7028,7 +7028,7 @@
         "Freshcart Masala Chips 150g",
         "Daily Mart Cola 750ml"
       ],
-      "latency_ms": 3.99
+      "latency_ms": 2.93
     },
     {
       "id": "234",
@@ -7056,7 +7056,7 @@
         "Freshcart Masala Chips 150g",
         "Daily Mart Cola 750ml"
       ],
-      "latency_ms": 3.82
+      "latency_ms": 3.14
     },
     {
       "id": "235",
@@ -7084,7 +7084,7 @@
         "Freshcart Masala Chips 150g",
         "Daily Mart Cola 750ml"
       ],
-      "latency_ms": 3.98
+      "latency_ms": 2.99
     },
     {
       "id": "236",
@@ -7112,7 +7112,7 @@
         "Freshcart Masala Chips 150g",
         "Daily Mart Cola 750ml"
       ],
-      "latency_ms": 4.38
+      "latency_ms": 2.78
     },
     {
       "id": "237",
@@ -7140,7 +7140,7 @@
         "Freshcart Masala Chips 150g",
         "Daily Mart Cola 750ml"
       ],
-      "latency_ms": 4.16
+      "latency_ms": 2.69
     },
     {
       "id": "238",
@@ -7168,7 +7168,7 @@
         "Freshcart Masala Chips 150g",
         "Daily Mart Cola 750ml"
       ],
-      "latency_ms": 4.0
+      "latency_ms": 2.8
     },
     {
       "id": "239",
@@ -7196,7 +7196,7 @@
         "Freshcart Masala Chips 150g",
         "Daily Mart Cola 750ml"
       ],
-      "latency_ms": 4.1
+      "latency_ms": 2.75
     },
     {
       "id": "240",
@@ -7224,7 +7224,7 @@
         "Freshcart Masala Chips 150g",
         "Daily Mart Cola 750ml"
       ],
-      "latency_ms": 4.15
+      "latency_ms": 2.89
     },
     {
       "id": "241",
@@ -7252,7 +7252,7 @@
         "Freshcart Masala Chips 150g",
         "Daily Mart Cola 750ml"
       ],
-      "latency_ms": 3.9
+      "latency_ms": 2.68
     },
     {
       "id": "242",
@@ -7279,7 +7279,7 @@
       "cart": [
         "Deskhaus Ruled Notebook A5 (200 pg)"
       ],
-      "latency_ms": 3.21
+      "latency_ms": 2.22
     },
     {
       "id": "243",
@@ -7306,7 +7306,7 @@
       "cart": [
         "Deskhaus Ruled Notebook A5 (200 pg)"
       ],
-      "latency_ms": 4.03
+      "latency_ms": 2.37
     },
     {
       "id": "244",
@@ -7334,7 +7334,7 @@
         "Freshcart Masala Chips 150g",
         "Daily Mart Cola 750ml"
       ],
-      "latency_ms": 4.28
+      "latency_ms": 3.2
     },
     {
       "id": "245",
@@ -7359,7 +7359,7 @@
       "total_paise": 0,
       "ceiling_paise": null,
       "cart": [],
-      "latency_ms": 5.75
+      "latency_ms": 3.59
     },
     {
       "id": "246",
@@ -7384,7 +7384,7 @@
       "total_paise": 0,
       "ceiling_paise": null,
       "cart": [],
-      "latency_ms": 5.72
+      "latency_ms": 3.57
     },
     {
       "id": "247",
@@ -7409,7 +7409,7 @@
       "total_paise": 0,
       "ceiling_paise": null,
       "cart": [],
-      "latency_ms": 5.72
+      "latency_ms": 3.46
     },
     {
       "id": "248",
@@ -7434,7 +7434,7 @@
       "total_paise": 0,
       "ceiling_paise": null,
       "cart": [],
-      "latency_ms": 5.79
+      "latency_ms": 3.55
     },
     {
       "id": "249",
@@ -7459,7 +7459,7 @@
       "total_paise": 0,
       "ceiling_paise": null,
       "cart": [],
-      "latency_ms": 5.61
+      "latency_ms": 3.53
     },
     {
       "id": "250",
@@ -7487,7 +7487,7 @@
         "Freshcart Masala Chips 150g",
         "Daily Mart Cola 750ml"
       ],
-      "latency_ms": 4.89
+      "latency_ms": 2.84
     },
     {
       "id": "251",
@@ -7517,7 +7517,7 @@
         "Lumen Lab Anti-Chafe Stick",
         "Kinetic Grip Socks (3 pack)"
       ],
-      "latency_ms": 5.18
+      "latency_ms": 3.22
     },
     {
       "id": "252",
@@ -7547,7 +7547,7 @@
         "Lumen Lab Anti-Chafe Stick",
         "Kinetic Grip Socks (3 pack)"
       ],
-      "latency_ms": 5.57
+      "latency_ms": 4.51
     },
     {
       "id": "253",
@@ -7574,7 +7574,7 @@
       "cart": [
         "Strideworks Velocity 3"
       ],
-      "latency_ms": 5.09
+      "latency_ms": 3.14
     },
     {
       "id": "254",
@@ -7604,7 +7604,7 @@
         "Lumen Lab Anti-Chafe Stick",
         "Kinetic Grip Socks (3 pack)"
       ],
-      "latency_ms": 4.65
+      "latency_ms": 2.95
     },
     {
       "id": "255",
@@ -7634,7 +7634,7 @@
         "Lumen Lab Recovery Balm",
         "Kinetic Shaker 700ml"
       ],
-      "latency_ms": 5.0
+      "latency_ms": 3.03
     },
     {
       "id": "256",
@@ -7662,7 +7662,7 @@
         "Kinetic Pace Pro",
         "Kinetic Insole Support"
       ],
-      "latency_ms": 5.4
+      "latency_ms": 3.44
     },
     {
       "id": "257",
@@ -7691,7 +7691,7 @@
         "Kinetic Insole Support",
         "Kinetic Grip Socks (3 pack)"
       ],
-      "latency_ms": 5.55
+      "latency_ms": 3.53
     },
     {
       "id": "258",
@@ -7720,7 +7720,7 @@
         "Kinetic Insole Support",
         "Kinetic Grip Socks (3 pack)"
       ],
-      "latency_ms": 5.46
+      "latency_ms": 3.83
     },
     {
       "id": "259",
@@ -7749,7 +7749,7 @@
         "Kinetic Insole Support",
         "Kinetic Grip Socks (3 pack)"
       ],
-      "latency_ms": 6.06
+      "latency_ms": 4.21
     },
     {
       "id": "260",
@@ -7777,7 +7777,7 @@
         "Freshcart Masala Chips 150g",
         "Daily Mart Cola 750ml"
       ],
-      "latency_ms": 4.2
+      "latency_ms": 2.77
     }
   ]
 }

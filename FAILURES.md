@@ -1828,3 +1828,108 @@ to be correct.
 
 I would have written a scaling document without this. It would have had a
 diagram in it and it would have been wrong about which box was the problem.
+
+---
+
+## 47. Everything I knew about concurrency was true of one process
+
+**What happened.** `tests/test_concurrency.py` runs forty threads and it passes.
+`tests/test_multiprocess.py` runs three *processes* and it did not.
+
+The lock in `api.py` is a `threading.RLock`. A `threading.RLock` held in
+process A means nothing whatsoever to process B. So the honest description of
+every concurrency guarantee in this repository was **"correct as long as there
+is exactly one worker"** — which is a deployment constraint wearing a
+property's clothes, and the deployment it describes is one `uvicorn` process on
+a free tier.
+
+Three separate defects, all invisible to threads, all found in the first hour
+of running real processes:
+
+### The audit chain forked
+
+```python
+prev = self.head()          # read
+h = sha(prev + body)        # compute
+self.db.execute("INSERT …") # write
+```
+
+Two writers read the same head and both link to it. The chain **forks**, and
+`verify_chain()` reports a break at the second of them — **permanently**, on an
+append-only log that cannot be repaired.
+
+The bug was always there. The process-wide lock hid it completely. It surfaced
+the first time six processes wrote at once, and it surfaced not as an error but
+as a silently broken audit trail — the worst possible way for it to appear,
+because the whole point of the chain is that it tells you when something is
+wrong.
+
+### The database was never configured for a second process
+
+`busy_timeout` was **absent**. Without it, a process that finds the database
+locked gets `database is locked` *immediately* and the request fails. Nothing
+had observed that, because nothing was running two processes. Now: WAL,
+`busy_timeout=30000`, and `synchronous=FULL` — a payment row is written before
+the gateway is called, so losing the last commit means losing the record of a
+payment that may exist.
+
+### The migration raced itself
+
+Three workers booting together all read "column absent" from `PRAGMA
+table_info` and all three `ALTER TABLE`. Two get `duplicate column name` and
+die during startup. The same read-then-write shape as the payment race, the
+chain race and the authority race — in the least interesting file in the
+system.
+
+**The fix, everywhere: `BEGIN IMMEDIATE`.** SQLite's plain `BEGIN` is
+*deferred*: the transaction becomes a writer only on its first write, and if
+another process wrote in between it fails with `SQLITE_BUSY` **and cannot be
+upgraded**. That turns every read-then-write into a race that fails after the
+decision has already been made. `BEGIN IMMEDIATE` takes the lock at the door.
+
+**What actually holds the line** — and it is not the lock, which these tests
+would pass without:
+
+```
+UNIQUE(payments.idem_key)                    one payment per meaning
+UPDATE approvals … WHERE used_at IS NULL     one redemption per token
+UPDATE authority_state … WHERE state = ?     one transition per edge
+UNIQUE(revocations.scope, target, user_id)   one kill switch per authority
+PRIMARY KEY(webhook_events.event_id)         one effect per gateway event
+```
+
+Every one of those is in the schema, which every process shares. That is the
+difference between a guarantee and a deployment note, and I had been writing
+the second while believing the first.
+
+---
+
+## 48. Two tenants, one payment, and the second one got nothing
+
+**What happened.** The first cross-tenant test written found it immediately.
+
+The idempotency key was `H(user : semantic_hash | cart | total | catalog
+version)`. No tenant. So the same principal id in two tenants **collides**:
+tenant B sends the same sentence, the key matches tenant A's payment, and B is
+told `replayed: true` — handed A's order id, charged nothing, and given
+nothing.
+
+A silent cross-tenant leak that presents to the victim as a **successful
+purchase**. That is the worst way for a leak to present, because there is no
+error to investigate and the only symptom is a customer who did not receive
+something they believe they bought.
+
+**The fix** is one line: the tenant is part of the namespace, not a filter
+applied afterwards. Filtering after the fact would have been the natural
+instinct and would not have helped — the collision happens when the key is
+computed, before any filter runs.
+
+**What it changed.** Tenancy is no longer a column, it is a rule applied in one
+place: *every row that belongs to somebody carries their tenant, and every read
+on the money path filters by it.* And roles came with it, because "who is
+asking" and "what they may do" are different questions —
+
+**an AGENT may spend and may not approve.** An agent that can approve the
+step-up it triggered has not been stopped by anything; the step-up is a
+formality with a round trip in it. That is a role check, not a policy setting,
+and it is the one line in `remit/tenancy.py` worth reading.

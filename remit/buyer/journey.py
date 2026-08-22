@@ -262,11 +262,13 @@ class Journey:
             " parent_node, ts, payload) VALUES (?,?,?,?,?,?)",
             (intent_id, cid, node, parent, now.isoformat(), json.dumps(payload)))
 
-    def _persist_intent(self, env: IntentEnvelope, now: datetime, reason: str) -> None:
+    def _persist_intent(self, env: IntentEnvelope, now: datetime, reason: str,
+                        tenant_id: str = "tnt_default") -> None:
         self.db.execute(
             "INSERT OR IGNORE INTO intents (intent_id, user_id, created_at,"
-            " current_version) VALUES (?,?,?,?)",
-            (env.intent_id, env.user_id, now.isoformat(), env.version))
+            " current_version, tenant_id) VALUES (?,?,?,?,?)",
+            (env.intent_id, env.user_id, now.isoformat(), env.version,
+             tenant_id))
         self.db.execute("UPDATE intents SET current_version=? WHERE intent_id=?",
                         (env.version, env.intent_id))
         self.db.execute(
@@ -341,7 +343,8 @@ class Journey:
             accept_offers: str = "in_envelope",   # 'none'|'in_envelope'|'all'
             human_confirms: bool | None = None,
             approval_token: str | None = None,
-            inject: dict | None = None) -> JourneyResult:
+            inject: dict | None = None,
+            tenant_id: str = "tnt_default") -> JourneyResult:
         t0 = time.perf_counter()
         inject = inject or {}
         exposure = exposure or Exposure()
@@ -378,7 +381,7 @@ class Journey:
             r.latency_ms = (time.perf_counter() - t0) * 1000
             return r
         r.intent = env
-        self._persist_intent(env, now, "created from utterance")
+        self._persist_intent(env, now, "created from utterance", tenant_id)
         if self.authority is not None:
             self.authority.open(intent_id=env.intent_id, user_id=user_id,
                                 now=now, correlation_id=cid)
@@ -708,12 +711,12 @@ class Journey:
                     {"verdict": auth.verdict.value, "failed": auth.failed}, now)
         self.db.execute(
             "INSERT INTO decisions (correlation_id, intent_id, cart_id, ts, drift,"
-            " risk, policy, verdict, policy_version, catalog_version)"
-            " VALUES (?,?,?,?,?,?,?,?,?,?)",
+            " risk, policy, verdict, policy_version, catalog_version, tenant_id)"
+            " VALUES (?,?,?,?,?,?,?,?,?,?,?)",
             (cid, env.intent_id, cart.cart_id, now.isoformat(),
              drift.model_dump_json(), risk.model_dump_json(),
              json.dumps(auth.dict()), auth.verdict.value, auth.policy_version,
-             catalog_now))
+             catalog_now, tenant_id))
 
         if auth.verdict is Verdict.DENY:
             r.note = auth.reason
@@ -799,7 +802,7 @@ class Journey:
                                           if ceiling_before else "")),
                     max_total_paise=totals.total_paise, max_price_paise=None)
                 r.intent = env
-                self._persist_intent(env, now, reason)
+                self._persist_intent(env, now, reason, tenant_id)
                 self._event("INTENT_AMENDED", cid,
                             {"version": env.version, "reason": reason,
                              "ceiling_paise": env.ceiling_paise()}, now)
@@ -835,8 +838,17 @@ class Journey:
         # one purchase, not two. FAILURES.md 2026-08-21 15:00.
         cart_sig = _sha(_canonical(sorted(
             (l.product_id, l.qty, l.unit_price_paise) for l in cart.lines)))
+        # The tenant is part of the namespace, not a filter applied afterwards.
+        #
+        # Without it, the same principal id in two tenants collides: tenant B
+        # sends the same sentence, the key matches tenant A's payment, and B is
+        # told "replayed" and receives NOTHING while A's order is returned to
+        # them. A silent cross-tenant leak that presents as a successful
+        # purchase, which is the worst way for one to present.
+        #
+        # Found by the first cross-tenant test written. FAILURES #48.
         idem = idempotency_key(
-            remit_id=f"{env.user_id}:{env.semantic_hash[:24]}",
+            remit_id=f"{tenant_id}:{env.user_id}:{env.semantic_hash[:24]}",
             intent_hash=cart_sig,
             envelope_epoch=totals.total_paise,
             revocation_epoch=cart.catalog_version)
@@ -861,7 +873,7 @@ class Journey:
         pid, created = self.payments.create(
             cart_id=cart.cart_id, intent_id=env.intent_id, idem_key=idem,
             amount_paise=totals.total_paise, now=now, correlation_id=cid,
-            user_id=user_id)
+            user_id=user_id, tenant_id=tenant_id)
         r.payment_id = pid
         if not created:
             row = self.payments.get(pid)

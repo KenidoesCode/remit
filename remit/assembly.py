@@ -19,6 +19,7 @@ from .exec.recon import Reconciler
 from .exec.webhooks import WebhookProcessor
 from .grants.approval import ApprovalStore
 from .domain.authority import AuthorityMachine
+from .tenancy import Directory
 from .grants.revocation import RevocationStore
 from .intent.grounding import Lexicon
 from .retrieval.embed import best_available
@@ -106,6 +107,7 @@ class App:
                                     # journey so the API and the decision path
                                     # cannot disagree about what is revoked
     authority: object = None        # the authority lifecycle machine
+    directory: object = None        # tenants, principals and their roles
     index: object = None            # VectorIndex over the live catalog
     embedder: object = None         # which embedder actually built it
     # The secret this instance verifies webhooks with. Exposed so that a test,
@@ -200,6 +202,7 @@ def build(*, db_path: str = ":memory:", policy_path: str | None = None,
                gateway=gateway, journey=journey, seed_info=info,
                revocations=journey.revocations,
                authority=journey.authority,
+               directory=Directory(db),
                webhook_secret=secret, index=index, embedder=embedder)
 
 

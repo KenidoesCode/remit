@@ -11,6 +11,7 @@ import sqlite3
 from datetime import datetime
 from pathlib import Path
 
+from ..db import writing
 from ..models import canonical, sha
 
 GENESIS = "0" * 64
@@ -82,16 +83,35 @@ class Ledger:
         return row[0] if row else GENESIS
 
     def append(self, kind: str, trace_id: str, payload: dict, ts: datetime) -> str:
-        prev = self.head()
-        body = canonical({"kind": kind, "trace_id": trace_id,
-                          "ts": ts.isoformat(), "payload": payload})
-        h = sha(prev + body)
-        self.db.execute(
-            "INSERT INTO events (ts, kind, trace_id, payload, prev_hash, hash)"
-            " VALUES (?,?,?,?,?,?)",
-            (ts.isoformat(), kind, trace_id, canonical(payload), prev, h),
-        )
-        return h
+        """Read the head and link to it, as ONE operation.
+
+        This read the head, computed `sha(prev + body)`, and inserted -- three
+        statements. Two writers that read the same head both link to it, and
+        the chain FORKS: `verify_chain` then reports a break at the second of
+        them, forever, on a log that is append-only and cannot be repaired.
+
+        The bug was always there. A process-wide `threading.RLock` hid it
+        completely, which is the exact shape of a guarantee that is really a
+        deployment constraint -- correct with one worker, silently wrong with
+        two. It surfaced the first time six OS processes wrote at once, and it
+        surfaced as a permanently broken audit trail rather than as an error.
+
+        `BEGIN IMMEDIATE` takes the write lock before the read, so the head a
+        writer sees is the head it links to. Not a mutex: a transaction, which
+        every process shares because it lives in the database.
+
+        FAILURES #47.
+        """
+        with writing(self.db):
+            prev = self.head()
+            body = canonical({"kind": kind, "trace_id": trace_id,
+                              "ts": ts.isoformat(), "payload": payload})
+            h = sha(prev + body)
+            self.db.execute(
+                "INSERT INTO events (ts, kind, trace_id, payload, prev_hash,"
+                " hash) VALUES (?,?,?,?,?,?)",
+                (ts.isoformat(), kind, trace_id, canonical(payload), prev, h))
+            return h
 
     def verify_chain(self) -> tuple[bool, int | None]:
         """Returns (ok, first_bad_seq)."""

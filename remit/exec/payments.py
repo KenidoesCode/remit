@@ -20,6 +20,8 @@ import sqlite3
 import uuid
 from datetime import datetime
 
+from ..db import writing
+
 LEGAL: dict[str, set[str]] = {
     # payment.captured routinely arrives without us ever seeing
     # payment.authorized -- gateways drop intermediate events. Refusing the jump
@@ -46,9 +48,31 @@ class PaymentStore:
     def create(self, *, cart_id: str, intent_id: str, idem_key: str,
                amount_paise: int, now: datetime,
                correlation_id: str | None = None,
-               user_id: str = "") -> tuple[str, bool]:
+               user_id: str = "",
+               tenant_id: str = "tnt_default") -> tuple[str, bool]:
         """Returns (payment_id, created). created=False means this exact
         intent+cart was already paid for -- the caller must NOT retry."""
+        # BEGIN IMMEDIATE around the whole read-then-write.
+        #
+        # The UNIQUE index on idem_key already made the INSERT the real
+        # serialisation point -- the IntegrityError branch below is what
+        # actually decided the race, and it is correct. What it could not do is
+        # make the SELECT and the INSERT one operation ACROSS PROCESSES: with
+        # SQLite's deferred BEGIN, a second process that wrote between them
+        # gets SQLITE_BUSY on a transaction that cannot be upgraded, and the
+        # request fails after the decision has already been made.
+        #
+        # Nothing had ever observed that, because nothing was running two
+        # processes. FAILURES #47.
+        with writing(self.db):
+            return self._create_locked(cart_id=cart_id, intent_id=intent_id,
+                                       idem_key=idem_key,
+                                       amount_paise=amount_paise, now=now,
+                                       correlation_id=correlation_id,
+                                       user_id=user_id, tenant_id=tenant_id)
+
+    def _create_locked(self, *, cart_id, intent_id, idem_key, amount_paise,
+                       now, correlation_id, user_id, tenant_id="tnt_default"):
         row = self.db.execute(
             "SELECT payment_id FROM payments WHERE idem_key=?", (idem_key,)).fetchone()
         if row:
@@ -69,10 +93,10 @@ class PaymentStore:
             self.db.execute(
                 "INSERT INTO payments (payment_id, cart_id, intent_id, idem_key,"
                 " amount_paise, state, correlation_id, user_id, created_at,"
-                " updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
+                " updated_at, tenant_id) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
                 (pid, cart_id, intent_id, idem_key, amount_paise, "CREATED",
                  correlation_id, user_id,
-                 now.isoformat(), now.isoformat()))
+                 now.isoformat(), now.isoformat(), tenant_id))
         except sqlite3.IntegrityError:
             row = self.db.execute(
                 "SELECT payment_id FROM payments WHERE idem_key=?", (idem_key,)).fetchone()

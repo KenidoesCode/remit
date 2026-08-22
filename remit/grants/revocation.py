@@ -54,6 +54,7 @@ CREATE TABLE IF NOT EXISTS revocations (
   revoked_by TEXT NOT NULL,          -- who pressed it
   reason TEXT,
   revoked_at TEXT NOT NULL,
+  tenant_id TEXT NOT NULL DEFAULT 'tnt_default',
   state_at_revocation TEXT);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_revocation_target
   ON revocations(scope, target, user_id);

@@ -132,7 +132,7 @@
       "name": "Say the same thing twice",
       "invariant": "one purchase is one payment",
       "broke": false,
-      "what_happened": "one payment row, order order_ac90d735f16c58; the second journey replayed it",
+      "what_happened": "one payment row, order order_6d23571e64403a; the second journey replayed it",
       "stopped_by": "idempotency key over (user, semantic hash, cart, total, catalog version) with a UNIQUE constraint"
     },
     {
@@ -141,7 +141,7 @@
       "name": "Six identical journeys at once",
       "invariant": "retries collapse to a single order",
       "broke": false,
-      "what_happened": "six identical journeys, one order (order_daca99c3248be6), one payment row",
+      "what_happened": "six identical journeys, one order (order_310ad9fff42bbd), one payment row",
       "stopped_by": "the UNIQUE constraint is the serialisation point"
     },
     {

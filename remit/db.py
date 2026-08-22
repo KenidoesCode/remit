@@ -6,6 +6,7 @@ Money is always paise (INTEGER). Timestamps are ISO-8601 UTC strings.
 from __future__ import annotations
 
 import sqlite3
+from contextlib import contextmanager
 from pathlib import Path
 
 SCHEMA = """
@@ -106,15 +107,98 @@ CREATE TABLE IF NOT EXISTS run_cases (
 
 
 def connect(path: str | Path = "remit.sqlite") -> sqlite3.Connection:
+    """A connection that is correct with other PROCESSES, not just other threads.
+
+    This used to say: "safe here only because every write goes through the
+    single lock in remit/api.py -- SQLite itself is not the serialisation
+    point." That was an accurate description of a process-local guarantee, and
+    a process-local guarantee is not a guarantee. A second worker, a second
+    container, or a cron job running the reconciler would each hold their own
+    lock and none of them would hold each other's.
+
+    Three settings turn that around, and they are the whole change:
+
+    · `journal_mode=WAL` -- readers do not block the writer and the writer does
+      not block readers. Already here.
+
+    · `busy_timeout` -- without it, a second process that finds the database
+      locked gets `database is locked` IMMEDIATELY and the request fails. With
+      it, that process waits. This was absent, which is why nothing had ever
+      been observed to contend: the failure mode was an exception, not a
+      corruption, and nothing was running two processes to see it.
+
+    · `synchronous=FULL` -- the default `NORMAL` in WAL mode can lose the last
+      committed transactions on power loss. For a payment row that is written
+      BEFORE the gateway is called, losing the last commit means losing the
+      record of a payment that may exist. The cost is fsync latency on write,
+      which at this volume is a decision worth making in the safe direction.
+
+    The lock in api.py stays. It is now belt over braces rather than the only
+    thing holding the trousers up: the real serialisation points are the UNIQUE
+    index on `payments.idem_key`, the predicated UPDATE on approvals, the
+    predicated UPDATE on the authority machine, and `BEGIN IMMEDIATE` for the
+    read-then-write sequences that could not be expressed as one statement.
+    """
     # check_same_thread=False because FastAPI runs sync endpoints in a
-    # threadpool. Safe here only because every write goes through the single
-    # lock in remit/api.py -- SQLite itself is not the serialisation point.
-    db = sqlite3.connect(str(path), isolation_level=None, check_same_thread=False)
+    # threadpool.
+    db = sqlite3.connect(str(path), isolation_level=None,
+                         check_same_thread=False, timeout=30.0)
     db.row_factory = sqlite3.Row
     db.execute("PRAGMA journal_mode=WAL")
+    # 30 seconds. Long enough that a contended writer waits rather than failing,
+    # short enough that a genuinely stuck writer is still an incident.
+    db.execute("PRAGMA busy_timeout=30000")
+    db.execute("PRAGMA synchronous=FULL")
+    db.execute("PRAGMA foreign_keys=ON")
     db.executescript(SCHEMA)
     _migrate(db)
     return db
+
+
+@contextmanager
+def writing(db: sqlite3.Connection):
+    """A write transaction that takes the lock at BEGIN, not at first write.
+
+    `BEGIN` in SQLite is deferred: the transaction becomes a writer only when
+    it first writes, and if another process wrote in between, the deferred
+    transaction fails with SQLITE_BUSY *and cannot be upgraded*. That turns a
+    read-then-write sequence into a race that fails at the worst moment --
+    after the read, having already decided.
+
+    `BEGIN IMMEDIATE` takes the write lock up front, so a second process waits
+    at the door rather than getting halfway in. Everything that reads a value
+    and then writes based on it belongs in here.
+
+    Reentrant: nested use joins the outer transaction rather than starting a
+    second one, because the alternative is that a helper called from inside a
+    transaction silently commits half of it.
+    """
+    if db.in_transaction:
+        yield db
+        return
+    db.execute("BEGIN IMMEDIATE")
+    try:
+        yield db
+    except BaseException:
+        db.execute("ROLLBACK")
+        raise
+    else:
+        db.execute("COMMIT")
+
+
+TENANT_COLUMNS = {
+    # table -> the column that carries the tenant. Every one of these is on the
+    # money path or the evidence path; nothing that belongs to somebody is
+    # allowed to be tenant-less.
+    "intents": "tenant_id",
+    "payments": "tenant_id",
+    "decisions": "tenant_id",
+    "carts": "tenant_id",
+    "events": "tenant_id",
+    "approvals": "tenant_id",
+    "revocations": "tenant_id",
+    "authority_state": "tenant_id",
+}
 
 
 def _migrate(db: sqlite3.Connection) -> None:
@@ -122,12 +206,60 @@ def _migrate(db: sqlite3.Connection) -> None:
 
     Render keeps the SQLite file across deploys, so a schema change that only
     exists in CREATE TABLE reaches a fresh container and never reaches the
-    running one. Cheap, idempotent, and it runs on every connect."""
+    running one. Cheap, idempotent, and it runs on every connect.
+
+    IDEMPOTENT ACROSS PROCESSES, not just across calls. This is a
+    read-then-write -- check `PRAGMA table_info`, then `ALTER TABLE` -- and
+    three workers booting at the same moment all read "column absent" and all
+    three ALTER. Two of them get `duplicate column name` and the process dies
+    during startup.
+
+    Exactly the same shape as the payment race, the chain race and the
+    authority race, in the least interesting place in the system, and it only
+    appeared once real processes started at the same instant. The transaction
+    is the fix; the tolerated exception below is the belt, for a migration that
+    lands between another process's BEGIN and this one's.
+    """
+    with writing(db):
+        _migrate_locked(db)
+
+
+def _add_column(db, table: str, column: str, decl: str) -> None:
+    have = {r["name"] for r in db.execute(f"PRAGMA table_info({table})")}
+    if not have or column in have:
+        return
+    try:
+        db.execute(f"ALTER TABLE {table} ADD COLUMN {column} {decl}")
+    except sqlite3.OperationalError as e:
+        # Another process won the race between the transaction and here. The
+        # column exists, which is the outcome we wanted; anything else is real.
+        if "duplicate column name" not in str(e):
+            raise
+
+
+def _migrate_locked(db: sqlite3.Connection) -> None:
     for table, column, decl in (
             ("payments", "user_id", "TEXT NOT NULL DEFAULT ''"),
             ("payments", "correlation_id", "TEXT"),
             ("products", "restricted", "TEXT"),
     ):
-        have = {r["name"] for r in db.execute(f"PRAGMA table_info({table})")}
+        _add_column(db, table, column, decl)
+
+    # Tenancy, added the same way and for the same reason: these tables exist
+    # in databases created before tenants did. The default is the single-tenant
+    # value rather than NULL -- a NULL tenant is a row that belongs to nobody,
+    # and a row that belongs to nobody is a row every query has to special-case
+    # forever. Some of these tables are created lazily by their own stores, so
+    # a missing table here is expected, not an error.
+    for table, column in TENANT_COLUMNS.items():
+        try:
+            have = {r["name"] for r in db.execute(f"PRAGMA table_info({table})")}
+        except sqlite3.DatabaseError:
+            continue
+        if not have:                      # table not created yet
+            continue
         if column not in have:
-            db.execute(f"ALTER TABLE {table} ADD COLUMN {column} {decl}")
+            _add_column(db, table, column,
+                        "TEXT NOT NULL DEFAULT 'tnt_default'")
+            db.execute(f"CREATE INDEX IF NOT EXISTS idx_{table}_tenant"
+                       f" ON {table}({column})")
