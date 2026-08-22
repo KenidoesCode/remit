@@ -182,10 +182,28 @@ function opening() {
 }
 
 /* ═════════════════════════ hero choreography ═══════════════════════════ */
+const HERO_IN_PLACE = "#nav,.eyebrow,.headline .in,.sub,.cta-row,.st,.tag,#glow";
+
 function heroIn() {
   if (REDUCED) {
-    gsap.set("#nav,.eyebrow,.headline .in,.sub,.cta-row,.st,.tag,#glow",
-      { opacity: 1, y: 0, x: 0, scale: 1, filter: "blur(0px)" });
+    gsap.set(HERO_IN_PLACE, { opacity: 1, y: 0, x: 0, scale: 1, filter: "blur(0px)" });
+    return;
+  }
+  // The hero is the one part of the page that animates INTO existence -- the
+  // acts all use gsap.from(), so they are visible with or without a tween, but
+  // the headline, the nav and the sub start at opacity 0 and are put there by
+  // a timeline. In a hidden tab rAF is throttled, that timeline never runs,
+  // and the page hands over to a black rectangle. That is what the opening's
+  // eight-second escape hatch delivered on the live site: the page arrived,
+  // and there was nothing in it. Same root cause as FAILURES #15 and #35, one
+  // layer further down.
+  //
+  // So: put the hero in place NOW, and take the choreography if and when
+  // somebody is actually looking. Whatever is painted while hidden is the
+  // finished hero rather than an empty one.
+  if (document.hidden) {
+    gsap.set(HERO_IN_PLACE, { opacity: 1, y: 0, x: 0, scale: 1, filter: "blur(0px)" });
+    document.addEventListener("visibilitychange", () => heroIn(), { once: true });
     return;
   }
   gsap.set("#glow", { opacity: 0, scale: 1.06 });

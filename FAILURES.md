@@ -1255,8 +1255,22 @@ a worse failure than the pile-up the guard exists to prevent — one is an ugly
 frame, the other is no page at all. So the wait has a way out: after eight
 seconds the page arrives regardless, without the animation nobody was watching.
 
-Both halves have a test, and the second one exists because the first fix
-briefly made things worse in a way I would not have noticed from the suite.
+**And then one layer further down.** The escape hatch worked and delivered a
+black rectangle. The page had arrived — `#intro` gone, `data-intro="done"`, the
+walk-through rendered, every act in the DOM — and the hero was empty, because
+the hero is the one region of the page that animates *into* existence. The acts
+all use `gsap.from()`, so they are visible with or without a tween. The
+headline, the nav and the sub start at `opacity: 0` and are put there by a
+timeline, and in a hidden tab that timeline never runs.
+
+Same root cause as #15 and as the paragraph above it, three layers deep: **rAF
+is not a delivery mechanism for content.** Anything that must exist has to
+exist without an animation frame; the animation is allowed to change how it
+arrives, never whether. `heroIn()` now puts the hero in place immediately when
+the tab is hidden and takes the choreography if and when somebody looks.
+
+Each of the three halves has a test, and the second and third exist because the
+previous fix made things worse in a way the suite could not have shown me.
 
 **What it changed.** Three of the entries in this file are browser-behaviour
 bugs (#15, #23, #31) and all three were found by looking at the page. Looking at

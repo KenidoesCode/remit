@@ -167,6 +167,15 @@ def test_a_tab_that_is_never_looked_at_still_gets_the_page(site, browser):
     assert pg.locator("#intro").count() == 0, (
         "a tab that is never looked at is still waiting behind the opening")
     assert pg.locator("#askForm").count() == 1
+
+    # And the page it arrives at has to have something in it. The hero is the
+    # one region that animates INTO existence, so a throttled timeline leaves
+    # a black rectangle -- the page arrived and there was nothing in it.
+    painted = pg.evaluate(
+        "[...document.querySelectorAll('.headline .in, .sub, .cta-row, #nav')]"
+        ".map(e => Number(getComputedStyle(e).opacity))")
+    assert painted and min(painted) > .9, (
+        f"the hero never arrived in a tab nobody looked at: {painted}")
     ctx.close()
 
 
