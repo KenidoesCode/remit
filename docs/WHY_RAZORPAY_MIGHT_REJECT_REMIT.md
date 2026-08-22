@@ -132,6 +132,85 @@ and the missing external witness is listed as a gap rather than glossed.
 
 ---
 
+## Reasons that were true last week and are not any more
+
+*These were `FAIL` rows in an earlier scorecard. They were fixed by building
+and testing the missing thing, not by rescoring it — and each one is listed
+with what it still does not do.*
+
+### 13. "There is no tenancy. Two customers would collide."
+
+**It was true, and worse than it sounds.** The idempotency key was
+`H(user : semantic_hash | cart | total | catalog_version)` with no tenant in
+it, so the same principal id in two tenants **collides**: tenant B sends the
+same sentence, the key matches tenant A's payment, and B is told `replayed:
+true` — handed A's order id, charged nothing, and given nothing. A silent
+cross-tenant leak that presents to the victim as a *successful purchase*.
+
+The first cross-tenant test ever written found it (FAILURES #48).
+
+**Fixed.** The tenant is part of the key namespace rather than a filter applied
+afterwards — filtering after the fact was the natural instinct and would not
+have helped, because the collision happens when the key is computed. Tenant now
+appears on every money-path and evidence-path row, in the session signature, and
+**in no request model**. 15 tests.
+
+**Still missing:** per-tenant policy, per-tenant key material, and a tenant
+that is anything more than a namespace.
+
+### 14. "Caller-supplied identity. Anyone can spend as anyone."
+
+**It was never quite that, but it was close enough to matter.** Identity is now
+an HMAC-signed httpOnly session principal, and the defence is structural rather
+than validating: **no request model has an identity field**, so there is nothing
+to forge. Roles came with it — `human · agent · merchant · admin · system` —
+and the line worth reading is `CAN_APPROVE = frozenset({HUMAN})`. An agent that
+can approve the step-up it triggered has not been stopped by anything.
+
+**Still missing:** an identity provider. This is a signed session, not SSO, not
+MFA and not federated. `principal_from_upstream()` is the seam and is
+deliberately unwritten — writing it without an IdP behind it would be theatre.
+Scored `PARTIAL`, not `PASS`.
+
+### 15. "It has only ever run as one process. Your concurrency proof is threads."
+
+**True, and the moment it ran as real processes, three defects appeared that
+threads could not see** — including an **audit chain that forked permanently**
+under six processes, because `append()` read the head, computed the link and
+inserted as three separate operations (FAILURES #47).
+
+**Fixed.** WAL, `busy_timeout=30000`, `synchronous=FULL`, and `BEGIN IMMEDIATE`
+around every read-then-write — SQLite's plain `BEGIN` is deferred and cannot be
+upgraded, so a second process that writes in between gets `SQLITE_BUSY` on a
+transaction that cannot recover. 12 OS processes now produce exactly 1 payment.
+
+**Still missing:** Postgres. This is verified on one host. Multi-*host*
+correctness is a design in `docs/SCALE_ARCHITECTURE.md`, not an implementation,
+which is why it is `PARTIAL`.
+
+### 16. "Your own documentation contradicts your own code."
+
+**It did.** While writing the final evidence index I checked the clause count
+before typing it: the policy defines 21, and the repository said 22 in seven
+places, 19 in two, 18 in one and 17 in three. The endpoint describing my working
+method said `FAILURES.md` was 46 entries long when it was 47, and the build
+script whose docstring says numbers are counted rather than typed contained a
+typed `"policy_clauses": 17`.
+
+Every one of these **overstated** the system. Nothing had drifted downward.
+
+**Fixed** by `tests/test_stated_numbers.py`, which reads every `.md`, `.py` and
+`.html` in the repository and asserts that any claim of the form "N clauses"
+equals what the running policy defines. I ran it expecting a pass, having just
+fixed everything grep showed me, and **it failed twice more**. FAILURES #49.
+
+**Why this belongs on a rejection list:** a reviewer who finds one wrong number
+is entitled to stop trusting all of them, and would be right to. The answer is
+not that I will be more careful; it is that prose is now something the test
+suite reads.
+
+---
+
 ## The one that would sting
 
 > **"You built the thing you could measure instead of the thing that matters."**

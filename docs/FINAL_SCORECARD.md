@@ -11,7 +11,7 @@ unauthorised
 
 | Dimension | Verdict | Evidence, or what is missing |
 |---|---|---|
-| **Authorization integrity** | **PASS** | Immutable envelope, actor-bound, merchant-bound, currency-bound, time-bound, revocable. 22 clauses, pure, `now` as an argument. `test_no_bypass.py` drives the whole public surface and asks the database whether every payment has a decision behind it |
+| **Authorization integrity** | **PASS** | Immutable envelope, actor-bound, merchant-bound, currency-bound, time-bound, revocable. 21 clauses, pure, `now` as an argument. `test_no_bypass.py` drives the whole public surface and asks the database whether every payment has a decision behind it |
 | **Payment safety** | **PASS** | One trusted entry point, asserted structurally and behaviourally. Idempotency on meaning, UNIQUE-constrained, survives a restart. 40 concurrent identical journeys → one payment |
 | **Replay protection** | **PASS** | Approval single-use via predicated `UPDATE`; 32 concurrent redemptions → one. Webhook dedupe by PRIMARY KEY; 12 parallel → one applied |
 | **Revocation** | **PASS** | Persisted, two scopes, actor-bound, idempotent, checked twice per journey, race-tested with real threads |

@@ -74,5 +74,5 @@ creative/      creative direction, brand, interaction map, easter eggs
 1. `remit/buyer/journey.py` — the whole product, top to bottom.
 2. `remit/domain/drift.py` — the formula, the weights, and why unstated
    constraints are `not_evaluable` rather than compliant.
-3. `remit/policy/authorize.py` — 17 clauses, pure, no model input.
+3. `remit/policy/authorize.py` — 21 clauses, pure, no model input.
 4. `FAILURES.md` — the things that actually broke.

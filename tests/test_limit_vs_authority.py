@@ -3,7 +3,7 @@
 This is the project's central conceptual claim, so it must be the thing least
 allowed to be staged. One mandate is held fixed and the AGENT's action varies;
 every alternative is re-decided against the ORIGINAL envelope by the same drift
-engine and the same 22 clauses.
+engine and the same 21 clauses.
 
 The first version got this wrong in a way worth recording. Each row was run as
 its own utterance, so each row got its own mandate — and "buy 4 running shoes

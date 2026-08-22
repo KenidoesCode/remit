@@ -729,11 +729,14 @@ def builder():
                 "actions and starts taking them. The hard part isn't making an "
                 "agent capable of paying -- that's solved. It's deciding what "
                 "the agent was actually authorised to do."),
+            # Counted, not typed. This sentence said 46 while the file had
+            # grown to 47 -- a small lie in the paragraph that claims I do not
+            # tell them. FAILURES #49.
             "method": (
-                "FAILURES.md is 46 entries long because every one of them cost "
-                "me something. Three were found this week in code I had just "
-                "written, and six were bugs in my own tests. I would rather a "
-                "reviewer read them from me than find them themselves."),
+                f"FAILURES.md is {len(failures()['entries'])} entries long "
+                "because every one of them cost me something, and several were "
+                "bugs in my own tests rather than in the system. I would rather "
+                "a reviewer read them from me than find them themselves."),
             "fuel": "Red Bull, mostly at night",
             "line": "with great autonomy comes great authorization",
             "this_build": {
@@ -782,7 +785,7 @@ def limit_vs_authority(req: LimitRequest, request: Request):
     for running shoes. The human said laptop.
 
     Nothing is scripted to a verdict. Every row runs through the same drift
-    engine and the same 22 clauses on a throwaway instance. If REMIT starts
+    engine and the same 21 clauses on a throwaway instance. If REMIT starts
     allowing the laptop stand, this table will say so.
     """
     with LOCK:
@@ -1058,7 +1061,7 @@ def timing():
             "interpret": "sentence -> intent envelope (no model call on this "
                          "deployment: RuleCompiler)",
             "retrieve": "grounding, vector retrieval, ranking, cart pricing",
-            "policy": "drift, risk and the 22 clauses -- pure, no I/O",
+            "policy": "drift, risk and the 21 clauses -- pure, no I/O",
             "execute": "creating the order at the gateway (test mode)",
         },
         "logging": ("set REMIT_LOG=1 for one JSON line per decision, keyed on "

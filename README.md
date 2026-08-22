@@ -347,7 +347,7 @@ with `rzp_test_`.
 ## What is real, and what is not
 
 **Real:** every rupee figure on every screen is computed at run time from the
-same code the tests use. The policy engine is pure and its 17 clauses are
+same code the tests use. The policy engine is pure and its 21 clauses are
 data. Payments go through a Razorpay adapter that is the only file in the
 repo that knows Razorpay exists. Idempotency, the payment state machine,
 webhook signature verification, duplicate and out-of-order handling, and the

@@ -103,7 +103,7 @@ and half revoking. **No payment exists dated after the revocation.**
 
 Room **07**, the audit trail. Hash-chained, one database, every decision in
 order. Open one: the sentence, the envelope it compiled to, what was searched,
-what was picked and why, the cart, the drift per dimension, the risk, all 22
+what was picked and why, the cart, the drift per dimension, the risk, all 21
 clauses with their details, the verdict, the order id.
 
 Say the honest thing out loud: **one writer proves ordering, not honesty.** It

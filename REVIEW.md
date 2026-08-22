@@ -522,7 +522,7 @@ that nothing calls.
 
 > "Show me the best."
 
-`remit/policy/authorize.py`. Pure, `now` is an argument, 19 clauses that are
+`remit/policy/authorize.py`. Pure, `now` is an argument, 21 clauses that are
 data, and every clause id in it surfaces in the decision, the ledger and the UI.
 It is the reason replay works and the reason the autonomy sweep is meaningful.
 
@@ -610,7 +610,7 @@ The failure log says yes and the payment state machine says no.
 ### Ten strengths
 
 1. Real money rail, real Razorpay test orders, live URL — nothing simulated.
-2. Policy as pure data: 19 clauses, replayable, `now` injected.
+2. Policy as pure data: 21 clauses, replayable, `now` injected.
 3. `integrity_layer` makes "with and without REMIT" a data change, not a branch.
 4. Idempotency keyed on meaning, not on ids — a resent sentence buys once.
 5. Drift renormalised over *evaluable* dimensions; unstated is never compliant.

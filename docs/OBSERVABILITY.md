@@ -42,7 +42,7 @@ operational, and are.
 |---|---|---|---|---|
 | `interpret` | sentence → envelope | 0.61 ms | 0.74 ms | 3.31 ms |
 | `retrieve` | grounding, vectors, ranking, pricing | 1.70 ms | 2.15 ms | 5.15 ms |
-| `policy` | drift, risk, 22 clauses — pure, no I/O | **0.06 ms** | 0.07 ms | 0.10 ms |
+| `policy` | drift, risk, 21 clauses — pure, no I/O | **0.06 ms** | 0.07 ms | 0.10 ms |
 | `execute` | order creation at the gateway (fake) | 0.13 ms | 0.17 ms | 0.22 ms |
 
 *n = 20 per stage, one process, this container. Reproduce with

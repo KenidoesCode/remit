@@ -81,7 +81,7 @@ before. That is the standard I would want.
 
 > **"Show me the boundary."**
 
-`remit/policy/authorize.py`. 22 clauses, pure, `now` is an argument, no I/O.
+`remit/policy/authorize.py`. 21 clauses, pure, `now` is an argument, no I/O.
 27.3 µs p50 (n=20,000), ~32,000 decisions/second/core. A test greps the module
 for `db.execute`, `sqlite3`, `httpx`, `requests` and `datetime.now`, because
 the purity is load-bearing for replay, the frontier sweep and the Arena.

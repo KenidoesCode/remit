@@ -1933,3 +1933,60 @@ asking" and "what they may do" are different questions —
 step-up it triggered has not been stopped by anything; the step-up is a
 formality with a round trip in it. That is a role check, not a policy setting,
 and it is the one line in `remit/tenancy.py` worth reading.
+
+## 49. The numbers in the prose had quietly stopped being true
+
+**What happened.** I was writing the final evidence document and went to
+confirm the clause count before typing it. The policy defines **21** clauses.
+The repository said **22** in seven places, **19** in two, **18** in one and
+**17** in three.
+
+Then the same check applied elsewhere found more of it:
+
+- `/api/builder` — the endpoint whose whole subject is my working method —
+  contained the sentence *"FAILURES.md is 46 entries long because every one of
+  them cost me something."* The file had 47 entries. A typed number, inside the
+  paragraph that claims I would rather a reviewer read my mistakes from me than
+  find them themselves.
+- `eval/build_manifest.py` carried `"policy_clauses": 17` as a literal. Its own
+  docstring says *"Rather than typing a number into the page, this script counts
+  the real test functions"* — and then typed a number into the page. A previous
+  entry had already caught a hardcoded 17 in the API and derived it there; the
+  copy in the build script survived because nothing read it back.
+- The shipped manifest reported **372** under the label `tests`. Pytest collects
+  **690**. Both numbers are real and they are not the same number: 372 test
+  *functions*, 690 test *cases*, and parametrisation is the difference. The site
+  published the smaller one with no label, under-reporting itself by 318.
+
+**Why it survived.** Not one of these is load-bearing. No test asserted them,
+no code branched on them, nothing broke. They drifted because clauses were
+merged and added over four days and prose does not recompile. This is the
+failure mode I should have been most alert to and was least: the repository's
+entire argument is *these numbers are real and here is how to check them*, and
+it had grown a category of number that nobody checked.
+
+The direction is the part I want to keep on the record. Every stale claim
+**overstated** the system — 22 clauses where there are 21. Nothing drifted
+downward. I do not think I did that deliberately, and that is rather the point:
+a bias does not need intent to be a bias, which is why the answer is a test and
+not a resolution to be more careful.
+
+**The fix** is `tests/test_stated_numbers.py`. It reads every `.md`, `.py` and
+`.html` in the repository, extracts any claim of the form *"N clauses"*, and
+asserts N equals the number the running policy actually defines. It does the
+same for the `FAILURES.md is N entries` sentence, and it asserts the shipped
+manifest matches a fresh count.
+
+I ran it expecting it to pass, because I had just fixed everything grep showed
+me. It failed twice more — `REVIEW.md`, `SETUP.md`, then `ASSESSMENT.md` and
+`README.md`. My grep had searched for the wrong number. **A test that reads the
+prose found five claims that a person reading the prose did not.**
+
+**What it changed.** Prose is now something the test suite reads. The rule the
+codebase already applied to metrics — *derive it, never type it* — now applies
+to the sentences about the metrics, which is where it should have started.
+
+One deliberate exception: dated snapshots. `HARDENING_AUDIT.md` opens *"433
+tests"* and `FINAL_SCORECARD.md` opens *"636 tests"*, and those were true on
+the days they were written. A historical statement is not a stale one, and the
+test does not touch counts that carry a date.

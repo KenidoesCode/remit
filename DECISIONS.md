@@ -522,7 +522,7 @@ version is a table of hand-written rows.
 
 **Decision.** One mandate is held fixed, candidates are derived from the
 catalog's own relations table, and every row is re-decided by the real drift
-engine and the real 22 clauses on a throwaway instance.
+engine and the real 21 clauses on a throwaway instance.
 
 **Why.** A demonstration that cannot come out the other way is not evidence. If
 REMIT starts allowing the laptop stand, that table will say so — and a test

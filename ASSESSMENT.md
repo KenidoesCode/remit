@@ -34,7 +34,7 @@ what was asked here, so most of this document is about the gap.
 
 ## 2. What actually works
 
-Verified today: **184 tests passing (128 functions), 9,146 lines of Python, 19
+Verified today: **184 tests passing (128 functions), 9,146 lines of Python, 21
 policy clauses, 186 products across 14 categories and 593 grounded phrases, 26
 logged failures, 35 decision records.**
 
@@ -43,7 +43,7 @@ logged failures, 35 decision records.**
 | Piece | State | Evidence |
 |---|---|---|
 | Intent envelope | Immutable, versioned, `semantic_hash` excludes ids and timestamps | `remit/domain/intent.py`, used as the idempotency key |
-| Policy engine | 18 clauses, **pure function**, no I/O, `now` is an argument | `remit/policy/authorize.py`; this is why replay and the frontier sweep are possible at all |
+| Policy engine | 21 clauses, **pure function**, no I/O, `now` is an argument | `remit/policy/authorize.py`; this is why replay and the frontier sweep are possible at all |
 | Policy as data | `integrity_layer: true/false` flips the boundary without a code change | The "with / without" comparison is one YAML key, not a second build |
 | Drift engine | 14 named dimensions, renormalised over *evaluable* ones | Unstated constraints are `not_evaluable`, never scored as zero drift |
 | Risk engine | `E[loss] = (1−p) × amount × irreversibility` against `friction = max(floor, bps × total)` | Replaced a flat ₹15 that caused 296 needless escalations |
