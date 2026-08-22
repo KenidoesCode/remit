@@ -110,7 +110,13 @@ def test_builder_reports_real_build_facts(client):
     assert b["handle"] == "techuilaguy"
     assert b["this_build"]["products"] > 100
     assert b["this_build"]["failures_logged"] >= 8
-    assert b["this_build"]["clauses"] == 17
+    # Derived from the policy document rather than asserted as a constant --
+    # a hardcoded 17 here is what let the page under-report the engine for a
+    # week while two clauses were being enforced undeclared.
+    import yaml
+    from remit.paths import ROOT
+    declared = yaml.safe_load((ROOT / "policy/authorize.yaml").read_text())["clauses"]
+    assert b["this_build"]["clauses"] == len(declared)
 
 
 def test_results_404_with_a_hint_rather_than_a_lie(client):

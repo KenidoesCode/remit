@@ -109,6 +109,13 @@ STOP |= {
     "return", "returns", "exchange", "emi", "coupon", "cashback",
 }
 
+# Words that describe the wrapper, not the goods. Stripped off the end of a
+# product name before deciding what its head noun is, so "Daily Mart Condoms
+# (10 pack)" is a condom and not a pack.
+PACKAGING = {"pack", "packs", "pcs", "piece", "pieces", "box", "bags", "bag",
+             "pulls", "rolls", "roll", "sachets", "sachet", "strip", "strips",
+             "refill", "set", "kit", "combo", "pair", "pairs", "count"}
+
 WORD = re.compile(r"[a-z]+", re.I)
 
 
@@ -141,10 +148,15 @@ class RequestedItem:
     category: str | None
     surface: str
     how: str
+    approximate: bool = False   # every word matched only as a MODIFIER inside
+                                # some product's name -- "laptop" reaching
+                                # "Laptop Stand". Buyable, but not the thing
+                                # that was named, so a person decides.
 
     def dict(self) -> dict:
         return {"terms": self.terms, "category": self.category,
-                "surface": self.surface, "how": self.how}
+                "surface": self.surface, "how": self.how,
+                "approximate": self.approximate}
 
 
 @dataclass(frozen=True)
@@ -206,7 +218,7 @@ class Lexicon:
         counts: dict[str, dict[str, int]] = {}
         kinds: dict[str, set[str]] = {}
 
-        def note(phrase: str, category: str, kind: str = "product") -> None:
+        def note(phrase: str, category: str, kind: str = "head") -> None:
             phrase = phrase.strip()
             if len(phrase) < 3 or phrase in STOP:
                 return
@@ -231,14 +243,29 @@ class Lexicon:
             for a in _json.loads(r["attributes"]):
                 a = a.lower().replace("-", " ")
                 if not a.startswith("restricted"):
-                    note(a, cat, "attribute")
+                    # A whole attribute names a kind of thing ("backpack",
+                    # "waterproof"); a fragment of one does not.
+                    note(a, cat, "head")
             # The product name, minus brand and minus packaging.
             toks = [t for t in WORD.findall(r["name"].lower())
                     if t not in brand and t not in STOP]
             toks = [t for t in toks if not UNIT.match(t)]
+            while toks and toks[-1] in PACKAGING:
+                toks.pop()
+            # English puts the head noun last. The final token, and the final
+            # pair, NAME the product; everything before them only describes it.
+            # "Deskhaus Laptop Stand" is a stand, not a laptop -- and an agent
+            # that treats those as the same word buys you a Rs 4,446 stand when
+            # you asked for a laptop, and does it on AUTO. FAILURES #24.
+            heads = set()
+            if toks:
+                heads.add(toks[-1])
+                if len(toks) > 1:
+                    heads.add(" ".join(toks[-2:]))
             for n in (2, 1):
                 for i in range(len(toks) - n + 1):
-                    note(" ".join(toks[i:i + n]), cat)
+                    phrase = " ".join(toks[i:i + n])
+                    note(phrase, cat, "head" if phrase in heads else "modifier")
 
         phrases: dict[str, tuple[str | None, str]] = {}
         for phrase, by_cat in counts.items():
@@ -251,7 +278,10 @@ class Lexicon:
             # is what this used to do, silently lost the word instead.
             tie = len(ordered) > 1 and ordered[0][1] == ordered[1][1]
             cat = None if tie else ordered[0][0]
-            kind = "product" if "product" in kinds[phrase] else "attribute"
+            # Head anywhere wins: "oil" is a modifier in "Oil Filter" and a head
+            # in "Cooking Oil", and the second is enough to make it a thing you
+            # can ask for.
+            kind = "head" if "head" in kinds[phrase] else "modifier"
             phrases[phrase] = (cat, kind)
         return cls(phrases, merchants, version)
 
@@ -386,6 +416,8 @@ def ground(utterance: str, lex: Lexicon) -> Grounding:
             surface=" ".join(x.surface for x in g),
             how=("fuzzy" if any(x.how == "fuzzy" for x in g)
                  else "synonym" if any(x.how == "synonym" for x in g)
-                 else "exact")))
+                 else "exact"),
+            approximate=all(lex.phrases.get(x.term, (None, "head"))[1]
+                            == "modifier" for x in g)))
     return Grounding(items=items, merchants=sorted(set(merchants)),
                      ungrounded=ungrounded, noise=noise)

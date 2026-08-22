@@ -25,7 +25,35 @@ from .policy.authorize import Policy
 from .seed.catalog_seed import seed
 from .tools.broker import Tool, ToolBroker
 
-WEBHOOK_SECRET = os.environ.get("RAZORPAY_WEBHOOK_SECRET", "remit_test_webhook_secret")
+def _webhook_secret(live: bool) -> str:
+    """The secret that decides whether a webhook is believed.
+
+    There used to be a default here: `"remit_test_webhook_secret"`. A default
+    on a verification secret is not a convenience, it is a published key --
+    anyone who has read this repository could have signed a `payment.captured`
+    event for any payment id on the deployment and had it applied, because the
+    signature would have verified. It failed OPEN, which is the wrong direction
+    for the one function whose entire job is to reject things.
+
+    Offline it returns a per-process random value: local runs and the test
+    suite sign with the same object they verify against, so they keep working,
+    and nothing that leaves this process is signable by anyone else. Live it
+    demands a real secret and refuses to start without one -- a deployment that
+    cannot verify webhooks should not be taking payments.
+    """
+    secret = os.environ.get("RAZORPAY_WEBHOOK_SECRET", "").strip()
+    if secret:
+        return secret
+    if live:
+        raise RuntimeError(
+            "RAZORPAY_WEBHOOK_SECRET is not set. REMIT will not accept "
+            "payments it cannot verify webhooks for. Set it, or unset "
+            "REMIT_LIVE to run against the fake gateway.")
+    import secrets as _secrets
+    return "dev-" + _secrets.token_hex(16)
+
+
+WEBHOOK_SECRET = _webhook_secret(False)
 
 
 def load_calibrator(path: str | None = None):
@@ -69,6 +97,11 @@ class App:
     gateway: PaymentGateway
     journey: Journey
     seed_info: dict
+    # The secret this instance verifies webhooks with. Exposed so that a test,
+    # the evaluation harness and the demo sign with whatever this process is
+    # actually using, rather than with a constant copied out of the source --
+    # which is how a published default survived in the first place.
+    webhook_secret: str = ""
 
     def rebuild_journey(self, policy: Policy | None = None,
                         aggressiveness: float | None = None) -> Journey:
@@ -102,6 +135,7 @@ def build(*, db_path: str = ":memory:", policy_path: str | None = None,
     if gateway is None:
         gateway = RazorpayTestClient() if live else FakeGateway()
 
+    secret = _webhook_secret(live)
     compiler = RuleCompiler(lexicon=Lexicon.from_db(db, catalog.version()))
     if use_llm:
         try:
@@ -127,9 +161,10 @@ def build(*, db_path: str = ":memory:", policy_path: str | None = None,
                       calibrator=load_calibrator())
     return App(db=db, catalog=catalog, policy=policy, ledger=ledger,
                payments=payments,
-               webhooks=WebhookProcessor(db, payments, WEBHOOK_SECRET),
+               webhooks=WebhookProcessor(db, payments, secret),
                recon=Reconciler(db, payments, gateway), broker=broker,
-               gateway=gateway, journey=journey, seed_info=info)
+               gateway=gateway, journey=journey, seed_info=info,
+               webhook_secret=secret)
 
 
 def _register_tools(broker: ToolBroker, catalog: Catalog, gw: PaymentGateway) -> None:

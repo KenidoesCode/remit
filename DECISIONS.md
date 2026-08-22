@@ -288,3 +288,147 @@ would also have worked and needed no timer. It was rejected because the fade is
 worth keeping, and a CSS-only teardown would have to choose between an abrupt
 cut and a transition that has the same problem in a different language.
 
+
+---
+
+## ADR-031 — The vocabulary comes from the catalog, and REMIT never substitutes
+
+**Status:** accepted (supersedes the `term_fallback` behaviour)
+
+**Context.** Grounding was a hand-written dictionary of category words. It knew
+only the nouns I had personally thought of; adding 85 products to the catalog
+taught it nothing. When it recognised no noun it widened to a category and
+bought whatever ranked first — which is how "buy a helicopter under 500000"
+returned a yoga mat (FAILURES #13) and how "rice and cooking oil" delivered oil
+(FAILURES #16).
+
+**Decision.** Three parts, and they stand or fall together.
+
+1. **The lexicon is derived from the catalog** — product names, categories,
+   subcategories and attributes — so the vocabulary is exactly the set of
+   things a merchant can actually sell, and it grows when the catalog grows.
+   593 phrases from 186 products, rebuilt per catalog version. One small
+   hand-written synonym map survives, and a test asserts every entry in it
+   resolves to something buyable.
+
+2. **Requested items are first-class.** A conjunction or a comma starts a new
+   one. Adjacent words qualify the same one. The catalog arbitrates when the
+   grammar guesses wrong: try the conjunction, and if nothing satisfies all of
+   it, split it.
+
+3. **Nothing is substituted, ever.** An unstocked noun is named back to the
+   human. A stocked-but-expensive one comes back with its real price. A noun
+   that matches only as a modifier inside some product's name (MATCH-001,
+   ADR-033) goes to a person.
+
+**Consequence.** Recall of "things REMIT will attempt" is now bounded by the
+merchant's catalog rather than by my imagination, which is the correct bound.
+The cost is that a merchant with badly-written product names gets a worse
+grounder, and the fix for that is to fix the names — which is also correct,
+because those names are what their customers search.
+
+**Rejected.** Sending the utterance to a model to ground it. It would score
+better on the long tail and it would destroy the two properties this system is
+built on: determinism (the same sentence must compile to the same envelope
+forever, or replay is fiction) and the ability to say *why* a word was
+understood the way it was.
+
+---
+
+## ADR-032 — Unknown words are explained, not charged for
+
+**Status:** accepted
+
+**Context.** Once the grounder could report words it did not recognise, the
+obvious move was to count them as unfulfilled requests: you asked for three
+things, you got two, that is drift. It was obvious and it was wrong. "yaar ek
+yoga mat order kar do teen hazaar tak" contains four words this catalog will
+never hold and exactly one thing to buy. Counting them turned 87 correct
+purchases into interruptions (FAILURES #18).
+
+**Decision.** An unknown word contributes to `drift` **only** if it stood alone
+as a request — its own conjunct, with nothing grounded beside it. Otherwise it
+is reported to the human in words and costs them nothing. What always counts is
+an item that grounded to a real term and still never reached the cart: that is
+a shortfall REMIT caused, not a word it failed to parse.
+
+**Consequence.** "buy a ferrari and some rice" buys the rice, tells you plainly
+that no ferrari is stocked, and does not interrupt you about it. A reviewer may
+reasonably argue that it should ask. The counter-argument is the interruption
+budget: every step-up spends attention, and spending it on vocabulary rather
+than on money is how people learn to click through.
+
+---
+
+## ADR-033 — A modifier is not a head noun
+
+**Status:** accepted
+
+**Context.** "buy a laptop" bought a Laptop Stand on AUTO with drift 0.00 and
+every clause green, because "laptop" is a word in its name (FAILURES #24). No
+existing mechanism could have objected: drift, risk and the policy limits are
+all questions about magnitude, and this was a question about meaning.
+
+**Decision.** The lexicon records, per phrase, whether it ever appears as a
+**head** — the final token or final pair of a product name after stripping
+brand, size and packaging, or a category, subcategory, or whole attribute. A
+requested item whose every term is modifier-only is `approximate`, and that
+fails the new soft clause `MATCH-001`, which routes to a human with the
+sentence "you said 'laptop'; the nearest thing this shop sells is 'Deskhaus
+Laptop Stand'".
+
+**Consequence.** "buy basmati" also steps up, because basmati is a modifier of
+rice. That is a false positive and I am keeping it: the alternative requires
+knowing that basmati *is a kind of* rice while a laptop is *not a kind of*
+stand, which is world knowledge this system deliberately does not have.
+
+**Rejected.** Refusing outright. The stand may well be what they meant, and a
+shop that answers "no" to "buy a laptop" while holding something with LAPTOP
+printed on the box is not being safe, it is being useless.
+
+---
+
+## ADR-034 — Ambiguity in the amount resolves downward
+
+**Status:** accepted
+
+**Context.** `best_ceiling` took the largest candidate amount, so any number
+later in the sentence became the budget — including one an attacker appended
+(FAILURES #25).
+
+**Decision.** Proximity first: the ceiling is the amount adjacent to the word
+that makes it a ceiling, on the correct side for the language ("under 200" in
+English, "5 thousand tak" in Hindi). When proximity cannot decide, take the
+**smallest** candidate. Rejected candidates are recorded in telemetry as the
+evidence that the ambiguity was adjudicated rather than missed.
+
+**Consequence.** A person who says two numbers gets the more conservative
+reading and a note saying so, and can restate. The system is never generous by
+accident.
+
+---
+
+## ADR-035 — Exposure is per-actor and time-boxed, by definition
+
+**Status:** accepted
+
+**Context.** `_exposure` summed every payment row on the instance for all time
+and handed it to the policy engine as one person's hourly velocity. After
+twelve journeys, `VEL-001` — a hard clause — denied every utterance from every
+visitor, permanently (FAILURES #21). The policy engine was correct throughout;
+it was fed a lie by twelve lines of SQL in the API layer that nothing tested.
+
+**Decision.** Exposure is scoped to a user id and windowed by time — the last
+hour for velocity and session, since midnight for the daily cap. Every browser
+session gets its own id. A limit that counts other people's transactions
+against you is not a limit; it is a fuse.
+
+**Consequence.** Multi-tenancy is now visible in exactly the place it matters
+first. The remaining gap is honest and documented: user ids are
+browser-generated and unauthenticated, so this is isolation, not identity. Real
+tenancy needs authentication and a tenant column on every table, which is in
+the roadmap and is not built.
+
+**The wider lesson, recorded because it will happen again.** The pure,
+replayable, well-tested core was undone by untested glue. Purity protects the
+function; it does not protect the arguments.

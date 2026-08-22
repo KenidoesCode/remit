@@ -12,15 +12,15 @@
       "duplicate_payments": 0,
       "webhook_state_violations": 0,
       "abstention_accuracy": 1.0,
-      "no_decision_reached": 127
+      "no_decision_reached": 132
     },
     "guardrails": {
-      "needs_human_precision": 0.6489,
+      "needs_human_precision": 0.6534,
       "needs_human_recall": 1.0,
       "false_negatives_dangerous": 0,
-      "false_positives_friction": 99,
-      "blocked_value": "\u20b91,074,242.43",
-      "blocked_value_paise": 107424243
+      "false_positives_friction": 96,
+      "blocked_value": "\u20b91,004,896.43",
+      "blocked_value_paise": 100489643
     },
     "quality": {
       "category_accuracy": 0.93,
@@ -41,12 +41,12 @@
       "aov": "\u20b92,698.77",
       "aov_paise": 269877,
       "auto_rate": 0.2426,
-      "human_confirmation_rate": 0.3852,
+      "human_confirmation_rate": 0.3759,
       "denial_rate": 0.137
     },
     "efficiency": {
-      "latency_p50_ms": 3.38,
-      "latency_p95_ms": 4.74
+      "latency_p50_ms": 3.41,
+      "latency_p95_ms": 4.58
     }
   },
   "train": {
@@ -58,15 +58,15 @@
       "duplicate_payments": 0,
       "webhook_state_violations": 0,
       "abstention_accuracy": 1.0,
-      "no_decision_reached": 75
+      "no_decision_reached": 79
     },
     "guardrails": {
-      "needs_human_precision": 0.6374,
+      "needs_human_precision": 0.6467,
       "needs_human_recall": 1.0,
       "false_negatives_dangerous": 0,
-      "false_positives_friction": 62,
-      "blocked_value": "\u20b9654,224.12",
-      "blocked_value_paise": 65422412
+      "false_positives_friction": 59,
+      "blocked_value": "\u20b9605,527.12",
+      "blocked_value_paise": 60552712
     },
     "quality": {
       "category_accuracy": 0.924,
@@ -87,12 +87,12 @@
       "aov": "\u20b92,567.65",
       "aov_paise": 256765,
       "auto_rate": 0.2407,
-      "human_confirmation_rate": 0.392,
+      "human_confirmation_rate": 0.3796,
       "denial_rate": 0.1358
     },
     "efficiency": {
-      "latency_p50_ms": 3.33,
-      "latency_p95_ms": 4.7
+      "latency_p50_ms": 3.41,
+      "latency_p95_ms": 4.62
     }
   },
   "dev": {
@@ -104,15 +104,15 @@
       "duplicate_payments": 0,
       "webhook_state_violations": 0,
       "abstention_accuracy": 1.0,
-      "no_decision_reached": 23
+      "no_decision_reached": 24
     },
     "guardrails": {
-      "needs_human_precision": 0.678,
+      "needs_human_precision": 0.6897,
       "needs_human_recall": 1.0,
       "false_negatives_dangerous": 0,
-      "false_positives_friction": 19,
-      "blocked_value": "\u20b9243,440.65",
-      "blocked_value_paise": 24344065
+      "false_positives_friction": 18,
+      "blocked_value": "\u20b9222,791.65",
+      "blocked_value_paise": 22279165
     },
     "quality": {
       "category_accuracy": 0.9451,
@@ -133,12 +133,12 @@
       "aov": "\u20b92,919.69",
       "aov_paise": 291969,
       "auto_rate": 0.2407,
-      "human_confirmation_rate": 0.3704,
+      "human_confirmation_rate": 0.3611,
       "denial_rate": 0.1759
     },
     "efficiency": {
-      "latency_p50_ms": 3.47,
-      "latency_p95_ms": 5.12
+      "latency_p50_ms": 3.52,
+      "latency_p95_ms": 4.57
     }
   },
   "test": {
@@ -153,10 +153,10 @@
       "no_decision_reached": 29
     },
     "guardrails": {
-      "needs_human_precision": 0.6538,
+      "needs_human_precision": 0.6346,
       "needs_human_recall": 1.0,
       "false_negatives_dangerous": 0,
-      "false_positives_friction": 18,
+      "false_positives_friction": 19,
       "blocked_value": "\u20b9176,577.66",
       "blocked_value_paise": 17657766
     },
@@ -183,8 +183,8 @@
       "denial_rate": 0.1019
     },
     "efficiency": {
-      "latency_p50_ms": 3.38,
-      "latency_p95_ms": 4.43
+      "latency_p50_ms": 3.31,
+      "latency_p95_ms": 4.32
     }
   },
   "by_bucket": {
@@ -220,7 +220,7 @@
       "unauthorized_paise": 0,
       "false_negatives": 0,
       "auto": 4,
-      "step_up": 20,
+      "step_up": 22,
       "deny": 0,
       "abstain": 0
     },
@@ -247,7 +247,7 @@
       "unauthorized_paise": 0,
       "false_negatives": 0,
       "auto": 13,
-      "step_up": 18,
+      "step_up": 11,
       "deny": 0,
       "abstain": 0
     },

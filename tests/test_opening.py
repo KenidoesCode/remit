@@ -59,7 +59,12 @@ def test_reduced_motion_still_gets_the_branding():
 def test_the_opening_introduces_no_new_colour_or_family():
     """It must use the tokens the product already defines. A second red or a
     third font family is a new brand, not an opening."""
-    block = CSS.split("the opening")[1]
+    # Bound the slice to the opening's own section rather than "everything
+    # after the words 'the opening'". The looser version passed until the file
+    # grew a section below it, and then failed on a `#chips` selector that has
+    # nothing to do with the opening -- a test that fails for a reason it is
+    # not about is worse than no test.
+    block = CSS.split("the opening")[1].split("/* \u2500")[0]
     for token in ("var(--bg)", "var(--signal)", "var(--ink)", "var(--m)", "var(--s)"):
         assert token in block, token
     assert "#" not in block.replace("#intro", "").replace("#webshot", "") \

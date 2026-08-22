@@ -149,7 +149,7 @@ def run_case(case, arm) -> Outcome:
     if mode in ("dup_webhook", "ooo_webhook", "bad_signature") and r.payment_id:
         body = json.dumps({"id": "evt_1", "event": "payment.captured",
                            "payload": {"payment_id": r.payment_id}}).encode()
-        secret = "remit_test_webhook_secret"
+        secret = app.webhook_secret
         if mode == "bad_signature":
             res = app.webhooks.handle(body=body, signature="deadbeef", now=NOW)
             st = app.payments.get(r.payment_id)["state"]

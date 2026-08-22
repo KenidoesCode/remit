@@ -182,6 +182,12 @@ class RuleCompiler:
                     "nothing in this catalog answers " +
                     ", ".join(repr(w) for w in g.ungrounded[:3]))
                 conf -= 0.15
+            approx = [i for i in items if i.approximate]
+            if approx:
+                notes.append(
+                    "no product here IS " + " or ".join(
+                        repr(i.surface) for i in approx)
+                    + " -- only products with that word in the name")
             if len(items) > 1:
                 notes.append(f"{len(items)} separate items requested: " +
                              ", ".join(i.surface for i in items))
@@ -268,6 +274,7 @@ class RuleCompiler:
             user_id=user_id, utterance=utterance, now=now,
             category=category, product_terms=terms,
             requested_items=[i.dict() for i in items],
+            approximate_items=[i.surface for i in items if i.approximate],
             ungrounded=g.ungrounded,
             merchant_constraints=g.merchants,
             max_price_paise=ceiling if ceiling_is_per_unit else None,

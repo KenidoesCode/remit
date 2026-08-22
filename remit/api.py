@@ -15,7 +15,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from .assembly import App, build, utcnow
 from .domain.drift import compute_drift
@@ -45,6 +45,59 @@ def get_app() -> App:
 
 api = FastAPI(title="REMIT", version="0.1.0")
 
+# --------------------------------------------------------------------------
+# The small, honest amount of hardening a public demo actually needs.
+#
+# What is here: a body-size ceiling, a per-IP request budget, and no CORS
+# middleware at all -- so a browser on another origin cannot call this API,
+# which is the correct default and needed no code.
+#
+# What is NOT here, stated plainly rather than implied: no authentication, no
+# tenant isolation beyond a browser-generated id, no WAF, no bot defence, and
+# a rate limiter that lives in this process's memory and therefore resets on
+# deploy and does not exist across replicas. This is enough to stop a bored
+# visitor and a runaway script. It is not enough to stop anyone who is trying,
+# and REMIT does not claim otherwise. See THREAT_MODEL.md.
+# --------------------------------------------------------------------------
+
+MAX_BODY_BYTES = 16 * 1024
+RATE_WINDOW_S = 60
+RATE_MAX = 90
+_HITS: dict[str, list[float]] = {}
+
+
+@api.middleware("http")
+async def _guard(request: Request, call_next):
+    if request.method in ("POST", "PUT", "PATCH"):
+        declared = request.headers.get("content-length")
+        if declared and declared.isdigit() and int(declared) > MAX_BODY_BYTES:
+            return JSONResponse(
+                {"error": "request too large",
+                 "limit_bytes": MAX_BODY_BYTES}, status_code=413)
+
+    if request.url.path.startswith("/api/"):
+        import time as _t
+        who = (request.headers.get("x-forwarded-for", "").split(",")[0].strip()
+               or (request.client.host if request.client else "unknown"))
+        now = _t.monotonic()
+        hits = [t for t in _HITS.get(who, ()) if now - t < RATE_WINDOW_S]
+        if len(hits) >= RATE_MAX:
+            _HITS[who] = hits
+            return JSONResponse(
+                {"error": "too many requests",
+                 "note": f"{RATE_MAX} API calls per {RATE_WINDOW_S}s per client;"
+                         " this is a demo on a free instance"},
+                status_code=429,
+                headers={"retry-after": str(RATE_WINDOW_S)})
+        hits.append(now)
+        _HITS[who] = hits
+        if len(_HITS) > 4096:            # bound the map, not just the window
+            for k in [k for k, v in _HITS.items()
+                      if not v or now - v[-1] > RATE_WINDOW_S]:
+                _HITS.pop(k, None)
+
+    return await call_next(request)
+
 
 class ReplayRequest(BaseModel):
     correlation_id: str
@@ -55,13 +108,17 @@ class ReplayRequest(BaseModel):
 
 
 class CompareRequest(BaseModel):
-    utterance: str
+    utterance: str = Field(max_length=2000)
     user_id: str = "usr_demo"
     inject: dict = {}
 
 
 class ShopRequest(BaseModel):
-    utterance: str
+    # A shopping sentence. Bounded because an unbounded string on a public
+    # endpoint is a denial-of-service primitive, and because nothing anyone
+    # actually says to a shopping agent is 2,000 characters long. The bound is
+    # enforced by the schema, so it is rejected before any of our code runs.
+    utterance: str = Field(max_length=2000)
     user_id: str = "usr_demo"
     accept_offers: str = "in_envelope"
     human_confirms: bool | None = None
@@ -293,11 +350,21 @@ def failures():
         entries = []
         for block in raw.split("\n## ")[1:]:
             head, _, body = block.partition("\n")
-            if not head.startswith("2026"):
+            # Two heading styles live in this file, because the early entries
+            # were dated as they happened and the later ones are numbered. A
+            # parser that understood only the first silently reported 14 when
+            # the document had 26 -- the page claimed fewer failures than I had
+            # actually written down, which is the one direction this number
+            # must never be wrong in.
+            if head.startswith("2026"):
+                date, _, title = head.partition(" — ")
+                if not title:
+                    date, _, title = head.partition(" - ")
+            elif head[:1].isdigit() and ". " in head:
+                num, _, title = head.partition(". ")
+                date = f"#{num.strip()}"
+            else:
                 continue
-            date, _, title = head.partition(" — ")
-            if not title:
-                date, _, title = head.partition(" - ")
             fields = {}
             current = None
             for line in body.split("\n"):
@@ -342,7 +409,9 @@ def builder():
                 "products": a.seed_info["products"],
                 "policy_version": a.policy.version,
                 "calibrator": type(a.journey.calibrator).__name__,
-                "clauses": 17,
+                # Derived, not typed. A hardcoded 17 sat here while the policy
+                # grew to 19, so the page under-reported the system it describes.
+                "clauses": len(a.policy.clauses),
                 "failures_logged": len(failures()["entries"]),
             },
         }

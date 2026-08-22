@@ -282,6 +282,14 @@ class Journey:
                              "why": f"for {it.get('surface')!r}: {why}"}
                             for p, it, why, sc in picks]
 
+        approx = [it for it in requested if it.get("approximate")]
+        if approx and picks:
+            by_surface = {it.get("surface"): p for p, it, _w, _s in picks}
+            r.telemetry = dict(r.telemetry) | {
+                "approximate_note": "; ".join(
+                    f"you said {a.get('surface')!r}; the nearest thing this shop"
+                    f" sells is {by_surface[a.get('surface')].name!r}"
+                    for a in approx if a.get("surface") in by_surface)}
         if over_budget:
             r.telemetry = dict(r.telemetry) | {
                 "over_budget": over_budget,

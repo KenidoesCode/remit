@@ -611,3 +611,12 @@ body:not([data-intro="done"]) #glow{visibility:hidden}
 .su-actions .ghost:hover{border-color:var(--ink);color:var(--ink)}
 .su-actions button[disabled]{opacity:.5;cursor:default}
 .meta-line.short{color:var(--signal)}
+
+/* The example chips are a guided tour: the sentence, and what to watch for. */
+#chips button{display:flex;flex-direction:column;gap:3px;text-align:left;line-height:1.35}
+#chips button .cu{display:block}
+#chips button .cw{
+  display:block;font-family:var(--s);font-size:10.5px;color:var(--i4);
+  letter-spacing:0;text-transform:none;
+}
+#chips button:hover .cw{color:var(--i3)}

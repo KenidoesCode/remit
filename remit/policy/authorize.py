@@ -74,6 +74,10 @@ class Policy:
         self.name = doc.get("name", "policy")
         self.limits = doc["limits"]
         self.revenue = doc.get("revenue", {})
+        # The clause map is data, and anything that wants to say how many
+        # clauses this policy has reads it from here rather than typing a
+        # number that goes stale the next time one is added.
+        self.clauses = doc.get("clauses", {})
 
     @classmethod
     def load(cls, path: str = "policy/authorize.yaml") -> "Policy":
@@ -188,6 +192,24 @@ def authorize(*, env: IntentEnvelope, cart: Cart, totals: Totals,
           ("requires a person: " + ", ".join(f"{pid} ({kind})"
                                              for pid, kind in restricted))
           if restricted else "nothing age-restricted or pharmacy in this cart",
+          hard=False)
+
+    # RESEMBLANCE IS NOT A MATCH.
+    #
+    # "buy a laptop" reaches a Laptop Stand, because "laptop" is a word in its
+    # name. The stand is a real product, it is in budget, drift scores zero --
+    # every gate agrees, and the agent buys a Rs 4,446 stand for someone who
+    # asked for a laptop, on AUTO. No amount of risk tuning catches that,
+    # because nothing about it is risky; it is simply not what was asked for.
+    #
+    # So the grounder marks a term that only ever appears as a MODIFIER inside
+    # some product's name, and that mark becomes a clause. Soft, not hard: the
+    # stand may well be what they wanted. A person decides. FAILURES #24.
+    approx = list(getattr(env, "approximate_items", []) or [])
+    check("MATCH-001", (not integrity) or not approx,
+          ("named but not stocked: " + ", ".join(repr(a) for a in approx)
+           + " -- the cart holds the nearest thing, not the thing")
+          if approx else "every item was matched by name",
           hard=False)
 
     if not L.get("allow_agent_added_over_ceiling", False) and ceiling is not None:

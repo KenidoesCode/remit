@@ -34,8 +34,9 @@ what was asked here, so most of this document is about the gap.
 
 ## 2. What actually works
 
-Verified today: **93 test functions passing, 4,916 lines of Python, 18 policy
-clauses, 186 products across 14 categories, 13 logged failures.**
+Verified today: **184 tests passing (128 functions), 9,146 lines of Python, 19
+policy clauses, 186 products across 14 categories and 593 grounded phrases, 26
+logged failures, 35 decision records.**
 
 ### The decision core — genuinely solid
 
@@ -71,12 +72,16 @@ clauses, 186 products across 14 categories, 13 logged failures.**
 - Four arms bracketing REMIT, so the comparison cannot be rigged in either
   direction: plain checkout, unbounded agent, REMIT-approve, REMIT-decline.
 - Held-out gates: **₹0.00 unauthorised movement, 0 duplicate payments, 0 webhook
-  state violations, recall 1.0, 0 dangerous false negatives, p95 3.57 ms.**
-- Headline: the unbounded agent earns **₹323,824 more** than plain checkout while
-  moving **₹510,910.26 across 167 transactions nobody authorised**. REMIT keeps
-  **73.2%** of that upside at **₹0.00** unauthorised.
-- `FAILURES.md` — 13 dated entries written when they happened, including the two
-  deployment failures and the one below that I found an hour ago.
+  state violations, recall 1.0, 0 dangerous false negatives, p95 4.38 ms.**
+- Headline: the unbounded agent earns **₹315,246 more** than plain checkout while
+  moving **₹737,930.43 across 147 transactions nobody authorised**. REMIT moves
+  **₹0.00**, and the price is ₹378,668 of forgone revenue -- an exchange rate of
+  **₹1.95 prevented per ₹1 given up**. (This replaced a flattering "73.2% of the
+  upside kept", which was partly earned by REMIT buying the wrong thing quietly.
+  FAILURES #18.)
+- `FAILURES.md` — 26 entries written when they happened, including two about my
+  own tests being wrong (#18, #22) and one about a chart that proved nothing
+  (#26).
 
 ### The honesty apparatus — the part I would actually defend
 
@@ -132,7 +137,9 @@ is advisory, not enforced by the rail.
 - The LLM compiler exists behind `ANTHROPIC_API_KEY` but is **not measured** —
   the entire 540-case evaluation runs on the rule compiler. Its accuracy,
   latency, cost and failure modes are unknown.
-- **Precision is 0.5238.** Roughly half of all step-ups are unnecessary friction.
+- **Precision is 0.6346 on the held-out split** (up from 0.5238 once the
+  grounder stopped substituting). Roughly one step-up in three is still
+  unnecessary friction.
   In production that is a merchant revolt: every second autonomous purchase
   interrupts a customer for no reason. Recall 1.0 is the right trade for a
   demo and the wrong one for a business.
@@ -220,7 +227,7 @@ service.
 | Original goal | Status | Honest note |
 |---|---|---|
 | Demonstrate intent-to-transaction drift as a real problem | **Met** | The four-arm experiment is the strongest artefact here |
-| Show revenue and safety are not opposed | **Met** | 73.2% of upside kept at ₹0 unauthorised |
+| Show revenue and safety are not opposed | **Partly met** | REMIT costs 6.64% of gross and removes ₹560,575 of unauthorised movement — a real trade, not a free lunch |
 | Deterministic, replayable authorisation | **Met** | Pure function, ~250 µs re-decision, no model call |
 | Real Razorpay integration | **Met, test mode** | Orders + Checkout + signature verify + webhooks |
 | Honest evaluation with a held-out split | **Met, on synthetic data** | Scored once; the data is invented |

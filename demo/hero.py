@@ -21,7 +21,7 @@ from remit.exec.webhooks import sign
 from remit.money import rupees
 
 NOW = datetime(2026, 9, 1, 10, 0, tzinfo=timezone.utc)
-SECRET = "remit_test_webhook_secret"
+SECRET = ""  # set from the app once it is built
 W = 78
 
 
@@ -204,11 +204,11 @@ def main():
     pid = ok.payment_id
     cap = json.dumps({"id": "evt_cap", "event": "payment.captured",
                       "payload": {"payment_id": pid}}).encode()
-    a = app.webhooks.handle(body=cap, signature=sign(cap, SECRET), now=NOW)
-    b = app.webhooks.handle(body=cap, signature=sign(cap, SECRET), now=NOW)
+    a = app.webhooks.handle(body=cap, signature=sign(cap, app.webhook_secret), now=NOW)
+    b = app.webhooks.handle(body=cap, signature=sign(cap, app.webhook_secret), now=NOW)
     late = json.dumps({"id": "evt_auth", "event": "payment.authorized",
                        "payload": {"payment_id": pid}}).encode()
-    c = app.webhooks.handle(body=late, signature=sign(late, SECRET), now=NOW)
+    c = app.webhooks.handle(body=late, signature=sign(late, app.webhook_secret), now=NOW)
     forged = json.dumps({"id": "evt_forged", "event": "payment.captured",
                          "payload": {"payment_id": pid}}).encode()
     d = app.webhooks.handle(body=forged, signature="deadbeef", now=NOW)

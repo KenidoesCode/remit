@@ -36,6 +36,10 @@ class IntentEnvelope(BaseModel):
                                        # "waterproof trail shoes" is one entry
                                        # with three terms. The cart owes the
                                        # human one line per entry.
+    approximate_items: list[str] = []  # things the human named that only match
+                                       # a product as a MODIFIER inside its
+                                       # name -- "laptop" reaching "Laptop
+                                       # Stand". Buyable, not what was said.
     ungrounded: list[str] = []         # words this catalog has no answer for.
                                        # Kept in the envelope on purpose: what
                                        # the agent could NOT do for you is part

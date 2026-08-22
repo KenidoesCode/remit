@@ -31,19 +31,25 @@ by hand.
 
 | arm | revenue | vs baseline | AOV | unauthorised | asked a human |
 |---|---:|---:|---:|---:|---:|
-| no revenue engine, no integrity layer | ₹809,247.26 | — | ₹1,904.11 | **₹357,574.26** | 0 |
-| revenue engine ON, no integrity layer | ₹1,133,071.26 | ₹323,824.00 | ₹2,666.05 | **₹510,910.26** | 0 |
-| full REMIT, human approves at step-up | ₹1,046,407.26 | ₹237,160.00 | ₹2,768.27 | **₹0.00** | 261 |
-| full REMIT, human declines every step-up | ₹329,159.00 | -₹480,088.26 | ₹2,766.04 | **₹0.00** | 261 |
+| no revenue engine, no integrity layer | ₹955,606.43 | — | ₹2,568.83 | **₹560,575.43** | 0 |
+| revenue engine ON, no integrity layer | ₹1,270,852.43 | ₹315,246.00 | ₹3,416.26 | **₹737,930.43** | 0 |
+| full REMIT, human approves at step-up | ₹892,184.43 | -₹63,422.00 | ₹2,695.42 | **₹0.00** | 203 |
+| full REMIT, human declines every step-up | ₹348,142.00 | -₹607,464.43 | ₹2,698.77 | **₹0.00** | 203 |
 
 **Let an agent optimise merchant revenue with no authorisation boundary and it
-earns ₹323,824.00 more than a plain checkout — while moving
-₹510,910.26 across 167 transactions the human never
-authorised.**
+earns ₹315,246.00 more than a plain checkout — while moving ₹737,930.43 across
+147 transactions the human never authorised.**
 
-**REMIT keeps 73.2% of that revenue upside and removes 100% of the
-unauthorised movement.** Its average order value is also *higher*
-(₹2,768.27 vs ₹2,666.05), because it only attaches what fits inside the line.
+**REMIT moves ₹0.00 unauthorised.** The price of that is
+₹1,270,852.43 − ₹892,184.43 = **₹378,668.00** of revenue given up, so
+the exchange rate is **₹1.95 of unauthorised movement prevented for every ₹1
+forgone**. Against a plain checkout with no boundary at all, REMIT costs
+**6.64%** of gross and removes
+**₹560,575.43** of unauthorised movement.
+
+There used to be a nicer number here — "REMIT keeps 73.2% of the upside". It is
+gone because it was partly earned by REMIT quietly buying a yoga mat when it
+could not understand you, and those purchases were revenue. See FAILURES #18.
 
 ---
 

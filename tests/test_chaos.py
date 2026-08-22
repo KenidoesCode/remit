@@ -9,7 +9,8 @@ from remit.exec.razorpay import FakeGateway
 from remit.exec.webhooks import sign
 
 NOW = datetime(2026, 9, 1, 10, 0, tzinfo=timezone.utc)
-SECRET = "remit_test_webhook_secret"
+# Signed with whatever the app under test actually verifies with, so a
+# change to how the secret is sourced cannot pass unnoticed here.
 
 
 def _pay(app, utt="buy running shoes under 5000"):
@@ -67,8 +68,8 @@ def test_duplicate_webhook_applies_once():
     r = _pay(app)
     body = json.dumps({"id": "e1", "event": "payment.captured",
                        "payload": {"payment_id": r.payment_id}}).encode()
-    a = app.webhooks.handle(body=body, signature=sign(body, SECRET), now=NOW)
-    b = app.webhooks.handle(body=body, signature=sign(body, SECRET), now=NOW)
+    a = app.webhooks.handle(body=body, signature=sign(body, app.webhook_secret), now=NOW)
+    b = app.webhooks.handle(body=body, signature=sign(body, app.webhook_secret), now=NOW)
     assert a["applied"] is True
     assert b["accepted"] is False and b["why"] == "duplicate"
     n = app.db.execute("SELECT COUNT(*) c FROM payment_transitions"
@@ -82,10 +83,10 @@ def test_out_of_order_webhook_never_regresses_state():
     r = _pay(app)
     cap = json.dumps({"id": "e1", "event": "payment.captured",
                       "payload": {"payment_id": r.payment_id}}).encode()
-    app.webhooks.handle(body=cap, signature=sign(cap, SECRET), now=NOW)
+    app.webhooks.handle(body=cap, signature=sign(cap, app.webhook_secret), now=NOW)
     late = json.dumps({"id": "e2", "event": "payment.authorized",
                        "payload": {"payment_id": r.payment_id}}).encode()
-    res = app.webhooks.handle(body=late, signature=sign(late, SECRET), now=NOW)
+    res = app.webhooks.handle(body=late, signature=sign(late, app.webhook_secret), now=NOW)
     assert app.payments.get(r.payment_id)["state"] == "SUCCESS"
     assert res["applied"] is False and "out-of-order" in res["note"]
 
