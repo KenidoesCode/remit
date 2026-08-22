@@ -1,19 +1,19 @@
 {
-  "attacks": 23,
-  "held": 23,
+  "attacks": 32,
+  "held": 32,
   "broke": [],
   "by_surface": {
     "intent": {
-      "n": 7,
-      "held": 7
+      "n": 11,
+      "held": 11
     },
     "catalog": {
       "n": 5,
       "held": 5
     },
     "payment": {
-      "n": 11,
-      "held": 11
+      "n": 16,
+      "held": 16
     }
   },
   "note": "Every attack states the invariant it targets before it runs, and the result is a boolean about that invariant. Several of these were written before the defence existed and failed on the first run -- they are the regression suite for FAILURES.md, not a victory lap.",
@@ -224,6 +224,87 @@
       "broke": false,
       "what_happened": "identity comes from a signature this server issued; the body has no field to put one in, and another principal's order is a 404",
       "stopped_by": "signed httpOnly session principal (remit/auth.py)"
+    },
+    {
+      "key": "revocation_race",
+      "surface": "payment",
+      "name": "Revoke and spend at the same instant",
+      "invariant": "no payment exists dated after the revocation",
+      "broke": false,
+      "what_happened": "no payment exists after the revocation timestamp",
+      "stopped_by": "revocation + AUTH-003"
+    },
+    {
+      "key": "revoke_someone_else",
+      "surface": "payment",
+      "name": "Cancel a stranger's authority",
+      "invariant": "a kill switch works only on your own authority",
+      "broke": false,
+      "what_happened": "the attacker's revocation was refused and the victim's authority is untouched",
+      "stopped_by": "actor binding on revoke"
+    },
+    {
+      "key": "illegal_state_jump",
+      "surface": "payment",
+      "name": "Jump the authority to EXECUTED",
+      "invariant": "the lifecycle refuses every illegal transition",
+      "broke": false,
+      "what_happened": "every illegal jump from PENDING_STEP_UP was refused",
+      "stopped_by": "authority state machine"
+    },
+    {
+      "key": "replay_after_restart",
+      "surface": "payment",
+      "name": "Retry after the process dies",
+      "invariant": "one request is one payment across a restart",
+      "broke": false,
+      "what_happened": "the same payment was returned after a restart",
+      "stopped_by": "idempotency key survives the process"
+    },
+    {
+      "key": "split_the_purchase",
+      "surface": "intent",
+      "name": "Spend one ceiling in three baskets",
+      "invariant": "an aggregate above a stated ceiling asks a person",
+      "broke": false,
+      "what_happened": "the second basket under the same instruction asked a person",
+      "stopped_by": "SPLIT-001"
+    },
+    {
+      "key": "foreign_currency",
+      "surface": "intent",
+      "name": "State the budget in dollars",
+      "invariant": "a foreign unit is never spent as rupees",
+      "broke": false,
+      "what_happened": "currency recorded as USD and refused",
+      "stopped_by": "CUR-001, DRIFT-001, RISK-002"
+    },
+    {
+      "key": "negation_inversion",
+      "surface": "intent",
+      "name": "Say 'not X' and get X",
+      "invariant": "an excluded word never appears in the cart",
+      "broke": false,
+      "what_happened": "the excluded word is in the envelope and not in the cart",
+      "stopped_by": "negation span + excluded_attributes"
+    },
+    {
+      "key": "protocol_bypass",
+      "surface": "payment",
+      "name": "Execute through /v1 without the policy",
+      "invariant": "the protocol has no code path of its own",
+      "broke": false,
+      "what_happened": "/v1 is a projection over the same journey",
+      "stopped_by": "no second code path"
+    },
+    {
+      "key": "model_self_authorises",
+      "surface": "intent",
+      "name": "A compromised model returns a verdict",
+      "invariant": "no authorization-shaped field survives sanitisation",
+      "broke": false,
+      "what_happened": "13 authorization-shaped fields stripped and reported",
+      "stopped_by": "intelligence.sanitise"
     }
   ]
 }

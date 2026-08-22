@@ -1,29 +1,108 @@
 # REMIT
 
-**The autonomy lab for agentic commerce.**
+**Model-independent authorization for autonomous commerce.**
+
+> AI can be probabilistic. Authorization cannot.
 
 *(**R**evocable, **E**xplainable **M**andates for **I**ntent-driven **T**ransactions)*
+
+---
+
+## The problem
 
 I gave an AI permission to spend money. Then I tried to work out how much I
 could trust it.
 
-That is the whole project. Not "an AI shopping agent with guardrails" — an
-**environment for measuring how much economic autonomy an AI agent should have
-when it is moving real money**, and for finding the point where the extra value
-of that autonomy starts violating the authority a human actually delegated.
+A human authorises an intent **once**. The agent then makes dozens of decisions
+before a rupee moves: it picks a product, picks a variant, accepts an upsell,
+absorbs a shipping change, is handed a price that moved underneath it. By the
+time money leaves the account, the transaction may bear very little
+resemblance to the sentence that started it — and nothing in the payment stack
+can tell that apart from a legitimate purchase, because both arrive as a valid
+API call with a valid key.
 
-The gap is real and it is structural. A human authorises an intent **once**;
-the agent then makes dozens of decisions before money moves. It picks a
-product, picks a variant, accepts an upsell, absorbs a shipping change, is
-handed a price that moved underneath it. By the time a rupee leaves an account,
-the transaction may bear very little resemblance to the sentence that started
-it — and nothing in the payment stack can tell that apart from a legitimate
-purchase, because both arrive as a valid API call with a valid key.
+**A limit is not an authority.**
+
+> "buy a laptop under ₹50,000"
+
+A spending limit permits all of this: a laptop **stand**, a laptop bag, a
+₹3,000 warranty, a refurbished unit, the same laptop from a different merchant,
+or three separate purchases of ₹16,000. Every one is under ₹50,000. None of
+them is what was said.
+
+₹50,000 does not mean *anything under ₹50,000*. It means **the things the human
+asked for, under the constraints they stated, inside that number** — and the
+gap between those two readings is where an autonomous agent lives.
+
+## The thesis
+
+```
+HUMAN INTENT → AI INTERPRETATION → SEMANTIC GROUNDING → INTENT ENVELOPE
+     → AGENT ACTION → DRIFT → POLICY → AUTHORIZATION → PAYMENT → AUDIT
+```
+
+The agent interprets. A **deterministic policy engine** decides whether the
+action is still inside what the human actually authorised. Only then does money
+move.
+
+The model may be wrong. It may hallucinate, be prompt-injected, be swapped for
+a different vendor, or be compromised at the provider. **The authorization
+boundary has to hold anyway** — so it is a pure function with no I/O, no text
+input and nothing to persuade. It runs in **27 microseconds** and it is the
+only trusted decision-maker in the system.
 
 Razorpay AI Buildathon — **Track 01, AI Growth & Agentic Commerce**.
 Live, in Razorpay test mode: **https://remit-vvug.onrender.com**
 
 ---
+
+## The thirty-second version
+
+| | |
+|---|---|
+| unauthorised money moved | **₹0.00** across 540 evaluated journeys and 32 live attacks |
+| dangerous false negatives | **0** — held-out split, scored once |
+| the control arm (an LLM with a payment key, no envelope) | **₹7,37,930** moved that nobody authorised, across 147 transactions |
+| attacks that held | **32/32**, run live against a throwaway instance |
+| decision cost | **27.3 µs** p50 · ~32,000/second/core |
+| tests | **630+**, including real concurrency, property, browser and recovery tests |
+| prototype readiness | **51/100**, scored honestly in `docs/HARDENING_AUDIT.md` |
+
+REMIT is **not** the highest-earning agent in its own benchmark, and the page
+says so: the frugal agent beats it, *because REMIT sometimes buys the wrong
+thing — not because it lets money escape.*
+
+## Try to break it
+
+The most useful thing on the site is the attack lab. 32 attacks across intent,
+catalog and payment, run live rather than replayed from a file:
+
+prompt injection · approval replay · approval theft · split spending · foreign
+currency · merchant substitution · revocation race · illegal state jump ·
+restart replay · negation inversion · protocol bypass · a model that returns
+its own verdict · duplicate webhooks · out-of-order webhooks · forged webhooks
+
+The second most useful thing is **`FAILURES.md`** — 46 entries of what I broke
+and why, including three found this week in code I had just written, and six
+where the bug was in my own tests.
+
+## An agent that has never heard of REMIT
+
+```bash
+python agents/external_agent.py https://remit-vvug.onrender.com
+```
+
+That file imports `json` and `urllib`. Nothing else — a test asserts it stays
+that way. It creates an authority from a sentence, asks whether it may act
+before acting, executes once, retries and gets the same payment back, is
+refused a dollar-denominated ceiling, spends a step-up approval exactly once,
+reconstructs why any of it happened, and is stopped dead by a revocation.
+
+That is what makes REMIT a protocol rather than a website with an engine behind
+it. See `docs/REMIT_PROTOCOL.md`.
+
+---
+
 
 ## Four systems
 
@@ -34,9 +113,12 @@ Live, in Razorpay test mode: **https://remit-vvug.onrender.com**
 | **3. Autonomy evaluation lab** | measures how much autonomy is safe | `eval/`, `remit/lab` |
 | **4. REMIT Arena** | compares agents under identical conditions | `remit/arena`, `eval/arena.py` |
 
-Eight rooms on the site, in this order: **live commerce · arena · autonomy
-frontier · counterfactual · break REMIT · evaluation lab · audit trail ·
-engineering.**
+Nine rooms on the site: **the sixty-second summary · live commerce · arena ·
+autonomy frontier · counterfactual · break REMIT · evaluation lab · audit trail
+· engineering.**
+
+Plus a tenth surface that is not a room: `/v1`, the protocol, which an external
+agent uses instead.
 
 ---
 
@@ -289,3 +371,59 @@ real. See `LIMITATIONS.md`.
 `FAILURES.md` is the one to read first if you only read one. It is the real
 list of things that broke while building this, including the moment my own
 parser silently doubled a customer's budget.
+
+---
+
+## Documentation
+
+| | |
+|---|---|
+| `docs/REMIT_PROTOCOL.md` | the six nouns, ten routes, and what an integrator needs |
+| `docs/THREAT_MODEL.md` | who is trusted with what, and which test enforces it |
+| `docs/HARDENING_AUDIT.md` | 61 requirements mapped to file, test and status. 51/100 |
+| `docs/FINAL_AUDIT.md` | the pre-submission audit: what is strong, what is open |
+| `docs/SCALE_ARCHITECTURE.md` | measured first. Throughput *falls* under concurrency, and why |
+| `docs/OBSERVABILITY.md` | what is measured, and the longer list of what is not |
+| `docs/PRODUCTION_GAPS.md` | buildathon mode vs production mode, line by line |
+| `docs/REVIEWER_SIMULATION.md` | eight hostile personas, asked what would make them reject this |
+| `docs/WHY_RAZORPAY_MIGHT_REJECT_REMIT.md` | written before submission, not after |
+| `FAILURES.md` | 46 entries. The most credible artefact in the repository |
+| `DECISIONS.md` | the ADRs — why local, why deterministic, why no blockchain |
+
+## Run it
+
+```bash
+pip install -r requirements.txt
+uvicorn remit.api:api --reload          # http://127.0.0.1:8000
+
+pytest -q                               # 630+ tests
+python eval/run_eval.py                 # 540-case evaluation
+python eval/matrix.py                   # 260 explicit edge cases
+python eval/attacks.py                  # 32 attacks, live
+python eval/scale.py                    # load ladder, writes results/scale.json
+python agents/external_agent.py http://127.0.0.1:8000
+```
+
+No API key required for any of it. `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET`
+switch the gateway from the fake to Razorpay **test mode**; without them
+everything still runs, and `/health` says which gateway is actually attached
+rather than implying one.
+
+## Who built this
+
+**Pranauv Shrinaath S.** — *techuilaguy*, your friendly neighbourhood
+developer. B.Tech CSE (AI/ML) at SRM, class of 2028. Blockchain domain director
+at Codenex. I build things I probably should not be attempting yet, and then I
+write down what broke.
+
+That last part is not a personality trait, it is the method. `FAILURES.md` is
+46 entries long because every one of them cost me something and I would rather
+a reviewer read them from me than find them themselves.
+
+> With great autonomy comes great authorization.
+
+---
+
+*Razorpay test mode. Real orders, no real money. Synthetic catalog, written by
+the author — which is the largest threat to every number in this file, and is
+said here rather than left to be discovered.*

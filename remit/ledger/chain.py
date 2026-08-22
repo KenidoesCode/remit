@@ -39,10 +39,40 @@ CREATE TABLE IF NOT EXISTS claims (
 
 
 class Ledger:
-    def __init__(self, path: str | Path = ":memory:"):
-        self.db = sqlite3.connect(str(path), isolation_level=None,
-                                  check_same_thread=False)
-        self.db.execute("PRAGMA journal_mode=WAL")
+    """The audit chain. Shares the application's connection by default.
+
+    It used to open its own. Against a real file that meant two connections
+    with two independent transactions; against ``:memory:`` -- the default, and
+    therefore what every test, the whole evaluation harness and the deployed
+    instance ran on -- it meant a **completely separate database**.
+
+    The consequence was not theoretical. A journey that ended in DENY wrote its
+    `decisions` row to one store and its `PAYMENT_BLOCKED`, `UTTERANCE`,
+    `PRODUCT_SEARCH` and `STEP_UP_REQUIRED` events to another. "Reconstruct why
+    this was refused" required joining across two databases that shared no
+    transaction, no ordering guarantee and, in the default configuration, no
+    file. A tamper-evident chain of events that cannot be tied atomically to
+    the decision it explains is a chain of events.
+
+    Passing the connection in fixes it by deletion rather than by machinery:
+    one database, one connection, one lock, and an event and the decision it
+    describes are written inside the same serialised section. The alternative
+    was a two-phase commit between two SQLite files, which is distributed
+    systems complexity bought to solve a problem created by a default argument.
+
+    `path` is kept for the standalone case -- a script that wants a chain and
+    nothing else -- and it is no longer how the application builds one.
+    """
+
+    def __init__(self, path: str | Path = ":memory:", conn=None):
+        if conn is not None:
+            self.db = conn
+            self.owns_connection = False
+        else:
+            self.db = sqlite3.connect(str(path), isolation_level=None,
+                                      check_same_thread=False)
+            self.db.execute("PRAGMA journal_mode=WAL")
+            self.owns_connection = True
         self.db.executescript(SCHEMA)
 
     def head(self) -> str:

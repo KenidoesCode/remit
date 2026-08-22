@@ -1733,3 +1733,98 @@ test and missed the only case it existed for. The catch is wider now, and the
 week thinking about exactly this failure mode, in a file whose docstring
 describes exactly this failure mode. Reading your own code does not find them.
 Running two of them at once does.
+
+---
+
+## 45. Restarting the process charged the customer twice
+
+**What happened.** `catalog_version` is one of five components of the
+idempotency key:
+
+```
+H(user : semantic_hash | cart_signature | total | catalog_version)
+```
+
+and `seed()` inserted a new `catalog_versions` row **every time it ran** —
+including on a restart against an existing database with the same 186 products
+at the same prices. So the version went 1 → 2, the key changed, and the same
+request after a crash created a **second payment**.
+
+That is precisely the double-charge the idempotency key exists to prevent,
+caused by the process coming back.
+
+```
+v1  catalog 1   idem 793e1ad56cc33e97…   497600
+v2  catalog 2   idem 4f83ffdbc782a3ae…   497600     ← two rows, one purchase
+```
+
+**Why nothing caught it.** Every test that exercises idempotency does so within
+one process, because that is what a test is. `tests/test_commerce.py` retries
+in a loop; `tests/test_concurrency.py` retries in forty threads; the attack lab
+retries six times. All of them share one `App`, so all of them share one
+catalog version, so all of them passed.
+
+The bug lives in the gap between two processes, and there was no test with two
+processes in it.
+
+**The fix.** `seed()` is idempotent: a version is created when the catalog is
+empty or when its content differs, and otherwise the existing version stands —
+which is what "version" is supposed to mean. Re-seeding an unchanged catalog is
+now a no-op that returns `{"reused": true}`.
+
+**What it changed.** `tests/test_recovery.py` boots an app against a file,
+does something, deletes the app object and boots a second one against the same
+file. Not a mock of a restart — the first process's objects are gone. It asks
+the second process what it believes about: a completed payment, a repeated
+request, a revocation, an authority mid-step-up, an unspent approval token, an
+ambiguous `UNKNOWN` payment, a webhook, and the hash chain.
+
+The last of those found nothing wrong. The first found this.
+
+---
+
+## 46. Throughput went down when I added workers, and that is the correct answer
+
+**What happened.** `eval/scale.py` was written to find the bottleneck before
+drawing a scaling diagram. It found one immediately, and not the one I expected:
+
+```
+   100 requests,  1 worker    289 req/s     p50   3.5 ms
+  1000 requests, 16 workers    59 req/s     p50 267.5 ms
+```
+
+More concurrency, less throughput. Per stage, at the top of the ladder:
+
+| stage | 1 worker | 16 workers |
+|---|---:|---:|
+| `interpret` | 0.54 ms | 0.78 ms |
+| **`retrieve`** | **1.29 ms** | **90.36 ms** |
+| `policy` | 0.047 ms | 0.076 ms |
+| `execute` | 0.12 ms | 9.42 ms |
+
+**Retrieval is the bottleneck, ×70 under contention.** The policy engine — the
+part with all the rules in it, the part anyone would assume is expensive —
+never leaves 76 microseconds. `authorize()` measured alone runs at **27.3 µs
+p50, ~32,000 decisions per second per core.**
+
+**Why this is not a bug to fix today.** One process, one `RLock` around every
+mutating path, and a GIL. Sixteen threads get one core and a queue. The lock is
+what makes the concurrency tests pass, and removing it to make a graph go up
+and to the right would trade a real guarantee for a number.
+
+**What it changed.** `docs/SCALE_ARCHITECTURE.md` says this in the table rather
+than around it, and names the specific change that would matter: retrieval is
+pure, reads an immutable index, and needs no lock at all — moving it out of the
+critical section is the highest-value change in the document and a small one.
+The real serialisation points are already in the database, which is where they
+belong.
+
+It also names the thing that cannot be scaled naively: `SPLIT-001` and the
+exposure clauses are aggregate reads on the hot path of a money decision, and
+two replicas reading a stale spend total will both allow the transaction that
+crosses the cap. The answer there is a conditional write per actor, not a
+cache — the same shape as every other control in this system that turned out
+to be correct.
+
+I would have written a scaling document without this. It would have had a
+diagram in it and it would have been wrong about which box was the problem.

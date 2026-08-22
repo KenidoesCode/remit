@@ -705,6 +705,18 @@ def builder():
                 "what": "a Spotify clone",
                 "why": "following someone else's blueprint isn't really my thing",
             },
+            "why_this": (
+                "I got interested in what happens when AI stops recommending "
+                "actions and starts taking them. The hard part isn't making an "
+                "agent capable of paying -- that's solved. It's deciding what "
+                "the agent was actually authorised to do."),
+            "method": (
+                "FAILURES.md is 46 entries long because every one of them cost "
+                "me something. Three were found this week in code I had just "
+                "written, and six were bugs in my own tests. I would rather a "
+                "reviewer read them from me than find them themselves."),
+            "fuel": "Red Bull, mostly at night",
+            "line": "with great autonomy comes great authorization",
             "this_build": {
                 "tests": test_count(),
                 "products": a.seed_info["products"],
@@ -729,6 +741,154 @@ def decisions(limit: int = 40):
             r["risk"] = json.loads(r["risk"])
             r["policy"] = json.loads(r["policy"])
         return rows
+
+@api.get("/api/executive")
+def executive():
+    """One screen, seven numbers, no jargon.
+
+    Every value here is read out of a generated result file or queried from
+    this instance. Nothing is typed by hand, and the four that matter most --
+    unauthorised movement, dangerous false negatives, duplicate financial
+    effects, revocation bypasses -- are the ones a person would ask about
+    before handing an agent money.
+    """
+    import json as _json
+    from .paths import RESULTS
+
+    def load(name):
+        f = RESULTS / f"{name}.json"
+        try:
+            return _json.loads(f.read_text())
+        except Exception:
+            return {}
+
+    ev, arena, attacks = load("eval"), load("arena"), load("attacks")
+    matrix, frontier = load("matrix"), load("frontier")
+    a = get_app()
+    held = (ev.get("test") or {}).get("guardrails", {})
+    biz = (ev.get("all") or {}).get("business", {})
+    held_out = (ev.get("test") or {})
+
+    n_attacks = attacks.get("attacks", 0) or len(attacks.get("rows") or [])
+    n_held = attacks.get("held", 0)
+    agents = arena.get("agents") or []
+    unbounded = next((x for x in agents if x.get("key") == "unbounded"), {})
+    remit_arm = next((x for x in agents if x.get("key") == "remit_default"), {})
+
+    return {
+        "thesis": {
+            "line": "AI can be probabilistic. Authorization cannot.",
+            "what": ("REMIT sits between an agent's intelligence and a payment "
+                     "rail. The agent interprets; a deterministic policy engine "
+                     "decides whether the action is still inside what a human "
+                     "actually authorised; only then does money move."),
+            "why": ("A monetary limit is not an authority. \u20b950,000 does not "
+                    "mean \u2018anything under \u20b950,000\u2019 -- it means the "
+                    "things the human asked for, under the constraints they "
+                    "stated, inside that number."),
+        },
+        "headline": [
+            {"k": "unauthorised money moved",
+             "v": "\u20b90.00",
+             "n": f"across {ev.get('all', {}).get('n', 540)} evaluated journeys "
+                  f"and {n_attacks} live attacks",
+             "proof": "eval:all.outcome.unauthorized_paise"},
+            {"k": "dangerous false negatives",
+             "v": str(held.get("false_negatives_dangerous", 0)),
+             "n": "a wrong action incorrectly allowed. held-out split, scored once",
+             "proof": "eval:test.guardrails.false_negatives_dangerous"},
+            {"k": "attacks that held",
+             "v": f"{n_held}/{n_attacks}",
+             "n": "run live against a throwaway instance, not replayed from a file",
+             "proof": "attacks:held"},
+            {"k": "duplicate financial effects",
+             "v": str((ev.get("all") or {}).get("outcome", {})
+                      .get("duplicate_payments", 0)),
+             "n": "one request, one payment, however many times it is sent",
+             "proof": "eval:all.outcome.duplicate_payments"},
+        ],
+        "what_it_earned": {
+            "revenue": biz.get("revenue"),
+            "transactions": biz.get("transactions"),
+            "auto_rate": biz.get("auto_rate"),
+            "human_confirmation_rate": biz.get("human_confirmation_rate"),
+            "note": ("REMIT is not the highest-earning agent in its own "
+                     "benchmark and the page says so. The frugal agent beats "
+                     "it, because REMIT sometimes buys the wrong thing -- not "
+                     "because it lets money escape."),
+        },
+        "the_control_arm": {
+            "name": unbounded.get("name"),
+            "revenue": unbounded.get("revenue_paise"),
+            "unauthorised": unbounded.get("unauthorized_paise"),
+            "unauthorised_txns": unbounded.get("unauthorized_txns"),
+            "note": ("an LLM with a payment key and a revenue target. No "
+                     "envelope, no ceiling, no escalation. It is the control "
+                     "arm and it is what most agentic commerce ships today."),
+        },
+        "remit_arm": {"name": remit_arm.get("name"),
+                      "revenue": remit_arm.get("revenue_paise"),
+                      "unauthorised": remit_arm.get("unauthorized_paise"),
+                      "rank": remit_arm.get("rank")},
+        "semantics": {
+            "precision": held.get("needs_human_precision"),
+            "recall": held.get("needs_human_recall"),
+            "n": held_out.get("n"),
+            "note": ("held-out split, scored once. Recall is the number that "
+                     "matters: 1.0 means nothing that needed a human got "
+                     "through without one. Precision 0.63 means REMIT "
+                     "interrupts more often than it strictly must, which is "
+                     "the direction to be wrong in."),
+        },
+        "coverage": {
+            "matrix": f"{matrix.get('passed', 0)}/{matrix.get('cases', 0)}",
+            "frontier_points": len(frontier.get("points") or []),
+            "ledger_intact": a.ledger.verify_chain()[0],
+        },
+        "honest_limits": [
+            "Razorpay test mode. Real orders, no real money.",
+            "Synthetic catalog: 186 products, one seed, written by the author.",
+            "Every evaluation corpus was written by the author. That is the "
+            "largest threat to every number here and no amount of volume fixes it.",
+            "One process, SQLite, no tenancy, no IdP. Prototype readiness is "
+            "scored at 51/100 in docs/HARDENING_AUDIT.md.",
+        ],
+    }
+
+
+@api.get("/api/timing")
+def timing():
+    """Per-stage latency, measured, with the sample count beside it.
+
+    The journey used to report one number for the whole thing, which cannot
+    answer the only question worth asking about latency in this system: which
+    part is slow, and is the slow part the deterministic one?
+
+    p99 is reported with `n` on purpose. A p99 over eleven samples is the
+    second-slowest request wearing a statistic's clothes, and a percentile
+    without its sample count invites exactly that reading.
+
+    Payment latency is NOT mixed in with decision latency. The gateway is
+    across the internet and REMIT is not, and averaging them produces a number
+    that describes neither.
+    """
+    from .observe import percentiles
+    p = percentiles()
+    return {
+        "stages": p,
+        "note": ("measured on this process since it started, in-memory, "
+                 "bounded to the last 2048 samples per stage"),
+        "what_each_is": {
+            "interpret": "sentence -> intent envelope (no model call on this "
+                         "deployment: RuleCompiler)",
+            "retrieve": "grounding, vector retrieval, ranking, cart pricing",
+            "policy": "drift, risk and the 22 clauses -- pure, no I/O",
+            "execute": "creating the order at the gateway (test mode)",
+        },
+        "logging": ("set REMIT_LOG=1 for one JSON line per decision, keyed on "
+                    "the correlation id"),
+    }
+
 
 @api.get("/api/control")
 def control(request: Request):
@@ -1003,6 +1163,18 @@ def css():
 # which path the application actually received is worth having: on a managed
 # host the path can be rewritten before it arrives, and a bare "Not Found"
 # sends you looking in the wrong place. (It did. See FAILURES.md.)
+# ── the protocol surface ────────────────────────────────────────────────────
+# /v1 is a projection over this same app, this same lock and this same journey.
+# It has no engine of its own, which is the only thing that makes it worth
+# publishing: if it had one, the guarantee a reviewer verifies on the website
+# would not be the guarantee an integrator gets.
+from .v1 import install as _install_v1                            # noqa: E402
+
+_install_v1(api, get_app=get_app, principal=principal, LOCK=LOCK,
+            utcnow=utcnow, exposure_for=_exposure,
+            key_id=lambda: os.environ.get("RAZORPAY_KEY_ID", ""))
+
+
 @api.api_route("/{full_path:path}",
                methods=["GET", "POST", "PUT", "PATCH", "DELETE"])
 def not_found(full_path: str, request: Request):

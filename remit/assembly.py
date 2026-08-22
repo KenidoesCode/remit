@@ -144,7 +144,11 @@ def build(*, db_path: str = ":memory:", policy_path: str | None = None,
     info = seed(db, now)
     catalog = Catalog(db)
     policy = Policy.load(policy_path or str(PATHS_POLICY))
-    ledger = Ledger(db_path if db_path != ":memory:" else ":memory:")
+    # One database. The ledger used to open its own connection -- and on
+    # ":memory:", which is the default, its own DATABASE -- so a decision
+    # row and the events explaining it lived in two stores with no shared
+    # transaction. See remit/ledger/chain.py.
+    ledger = Ledger(conn=db)
     payments = PaymentStore(db)
 
     if gateway is None:

@@ -1043,6 +1043,73 @@ async function renderFrontier() {
 }
 
 /* ═════════════════════════ 02 · the arena ══════════════════════════════ */
+/* ═══════════════════ executive mode ══════════════════════════════════════
+   Room 00. A reviewer who opens this page has between five and sixty seconds
+   before deciding whether the rest of it is worth reading, and every one of
+   the eight rooms below assumes they already care.
+
+   Seven numbers, no jargon, and each one carries where it came from -- the
+   `proof` field names the exact key in the exact generated file. A number a
+   reviewer cannot trace is a number they are being asked to take on faith,
+   which is the opposite of the argument this project is making. */
+async function renderExec() {
+  const host = $("#execOut");
+  if (!host) return;
+  let d;
+  try { d = await api("/api/executive"); }
+  catch (e) { host.innerHTML = couldNotLoad("the summary", "renderExec"); return; }
+
+  const R0 = p => "₹" + Math.round((p || 0) / 100).toLocaleString("en-IN");
+
+  host.innerHTML = `
+    <p class="ex-thesis">${esc(d.thesis.what)}</p>
+    <p class="ex-why">${esc(d.thesis.why)}</p>
+
+    <div class="ex-grid">
+      ${d.headline.map(h => `<div class="ex-card">
+        <span class="ex-v">${esc(h.v)}</span>
+        <span class="ex-k">${esc(h.k)}</span>
+        <span class="ex-n">${esc(h.n)}</span>
+        <span class="ex-p mono" title="the file and key this is read from">${esc(h.proof)}</span>
+      </div>`).join("")}
+    </div>
+
+    <div class="ex-two">
+      <div class="ex-arm">
+        <span class="kicker">the control arm</span>
+        <h4>${esc(d.the_control_arm.name)}</h4>
+        <p class="ex-arm-n"><b class="bad">${R0(d.the_control_arm.unauthorised)}</b>
+          moved that nobody authorised, across
+          ${d.the_control_arm.unauthorised_txns} transactions</p>
+        <p class="ex-note">${esc(d.the_control_arm.note)}</p>
+      </div>
+      <div class="ex-arm mine">
+        <span class="kicker">the same world, with a boundary</span>
+        <h4>${esc(d.remit_arm.name || "REMIT")}</h4>
+        <p class="ex-arm-n"><b>₹0.00</b> moved that nobody authorised,
+          earning ${R0(d.remit_arm.revenue)}</p>
+        <p class="ex-note">${esc(d.what_it_earned.note)}</p>
+      </div>
+    </div>
+
+    <div class="ex-sem">
+      <span class="kicker">how good is the understanding</span>
+      <p><b>recall ${Number(d.semantics.recall).toFixed(2)}</b> · precision ${Number(d.semantics.precision).toFixed(4)}
+         · n=${d.semantics.n}, held out, scored once</p>
+      <p class="ex-note">${esc(d.semantics.note)}</p>
+    </div>
+
+    <div class="ex-limits">
+      <span class="kicker">what this is not</span>
+      <ul>${d.honest_limits.map(l => `<li>${esc(l)}</li>`).join("")}</ul>
+    </div>
+
+    <p class="meta-line">matrix ${esc(d.coverage.matrix)} ·
+      frontier ${d.coverage.frontier_points} points ·
+      audit chain ${d.coverage.ledger_intact ? "intact" : "BROKEN"}</p>`;
+}
+window.renderExec = renderExec;
+
 /* ── the arena leaderboard ────────────────────────────────────────────────
    This was a nine-column table, one of whose columns was a full sentence of
    prose per row. Two things went wrong at once. `td { white-space: nowrap }`
@@ -1365,7 +1432,13 @@ async function renderFailures() {
 async function renderWho() {
   const b = await api("/api/builder");
   STATE.builder = b;
-  $("#whoOut").innerHTML = `<div class="who">
+  // Why this exists, in his words, before the credentials. A reviewer who
+  // reaches this section has already seen the engineering; what they have not
+  // seen is the reason somebody spent two weeks on it.
+  $("#whoOut").innerHTML = `
+    ${b.why_this ? `<p class="who-why">${esc(b.why_this)}</p>` : ""}
+    ${b.method ? `<p class="who-method">${esc(b.method)}</p>` : ""}
+    <div class="who">
     <div><span class="k">builds</span><div class="v">
       ${b.shipped.map(s => `<b>${esc(s.what)}</b><span>${esc(s.how_long)}</span>`).join("")}
       </div></div>
@@ -1377,7 +1450,9 @@ async function renderWho() {
     <div><span class="k">this build</span><div class="v">
       <b>${b.this_build.tests} tests · ${b.this_build.clauses} policy clauses</b>
       <span>${b.this_build.failures_logged} failures logged, none hidden</span></div></div>
-  </div>`;
+  </div>
+  ${b.line ? `<p class="who-line">${esc(b.line)}</p>` : ""}
+  ${b.fuel ? `<p class="who-fuel mono" title="engineering fuel">${esc(b.fuel)}</p>` : ""}`;
 }
 
 /* ══════════════════════════════ the ask ════════════════════════════════ */
@@ -1584,6 +1659,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   // /api/health or on eight room renders -- and a throw anywhere in that
   // chain must not be able to leave the page's primary demonstration blank.
   renderWalk();
+  renderExec();          // room 00: the sixty-second read
   if (GL) {
     GL.init($("#gl"));
     GL.onStrike = () => {

@@ -87,7 +87,12 @@ _FOREIGN = (
 # Adjacent to a number, in either order, or a bare currency word. A lone "$"
 # in a template-injection string ("${ceiling*1000}") is not a price and must
 # not become one -- the symbol has to touch a digit.
-_NEAR = r"(?:{m})\s*[0-9]|[0-9][0-9,.]*\s*(?:{m})"
+# The alphabetic markers need the digit side matched WITHOUT \b: in
+# "1USD" the boundary between "1" and "U" does not exist, both being word
+# characters, so \busd\b never matched and a dollar amount written the
+# way people actually write it read as rupees. Found by generation, not
+# by any example I would have chosen.
+_NEAR = r"(?:{m})\s*[0-9]|[0-9][0-9,.]*\s*(?:{m2})"
 
 
 def detect_currency(text: str) -> str:
@@ -97,7 +102,12 @@ def detect_currency(text: str) -> str:
     """
     t = _fold_devanagari(text.lower())
     for code, pat in _FOREIGN:
-        if re.search(_NEAR.format(m=pat), t, re.I):
+        # The trailing form drops the leading \b so "1USD" matches; the symbol
+        # forms are unaffected because a symbol is never a word character.
+        pat2 = pat.replace(r"\b", "", 1) if pat.startswith(r"\b") else pat
+        pat2 = "|".join(p.lstrip("\\b") if p.startswith(r"\b") else p
+                        for p in pat.split("|"))
+        if re.search(_NEAR.format(m=pat, m2=pat2), t, re.I):
             return code
         # A bare word form with no digit beside it still names a unit:
         # "pay in dollars", "keep it under a hundred euros".

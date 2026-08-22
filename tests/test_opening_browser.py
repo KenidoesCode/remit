@@ -305,3 +305,72 @@ def test_the_arena_keeps_every_number_and_the_unflattering_ranking(site, browser
         assert str(a["transactions"]) in page_text, a["name"]
     assert "147" in page_text, "the unauthorised transaction count is gone"
     ctx.close()
+
+
+# ──────────────────────────────────────────────────── room 00, the sixty seconds
+
+@pytest.mark.parametrize("width", [1440, 1024, 768, 390])
+def test_the_executive_room_fits_and_traces_every_number(site, browser, width):
+    """A reviewer has between five and sixty seconds before deciding whether
+    the eight rooms below are worth reading. Four numbers, and every one of
+    them carries the file and key it was read from -- a number nobody can trace
+    is a number they are being asked to take on faith, which is the opposite of
+    the argument this project makes."""
+    ctx = browser.new_context(viewport={"width": width, "height": 900})
+    pg = ctx.new_page()
+    pg.goto(site, wait_until="domcontentloaded")
+    pg.wait_for_function(
+        "document.querySelectorAll('#execOut .ex-card').length === 4",
+        timeout=45000)
+
+    cards = pg.evaluate("""[...document.querySelectorAll('#execOut .ex-card')]
+        .map(c => ({v: c.querySelector('.ex-v').textContent.trim(),
+                    k: c.querySelector('.ex-k').textContent.trim(),
+                    p: c.querySelector('.ex-p').textContent.trim()}))""")
+    assert cards[0]["v"] == "\u20b90.00"
+    assert "unauthorised" in cards[0]["k"]
+    assert all(c["p"] for c in cards), "a number with no provenance"
+
+    collisions = pg.evaluate(OVERLAPS % "'#execOut .ex-grid, #execOut .ex-two'")
+    assert collisions == [], f"at {width}px: {collisions[:3]}"
+    past = pg.evaluate("""(() => {
+      const w = document.documentElement.clientWidth;
+      return [...document.querySelectorAll('#execOut *')]
+        .filter(e => e.getBoundingClientRect().right > w + 1)
+        .map(e => e.className); })()""")
+    assert past == [], f"at {width}px these run past the viewport: {past[:3]}"
+    ctx.close()
+
+
+def test_the_executive_room_states_its_own_limits(site, browser):
+    """The honest-limits block is not optional garnish. A summary that lists
+    only what works is the thing this project is arguing against."""
+    ctx = browser.new_context(viewport={"width": 1440, "height": 900})
+    pg = ctx.new_page()
+    pg.goto(site, wait_until="domcontentloaded")
+    pg.wait_for_function(
+        "document.querySelectorAll('#execOut .ex-limits li').length >= 4",
+        timeout=45000)
+    # textContent, not inner_text: a section below the fold with a pending
+    # reveal reports "" for inner_text, which reads as "the copy is gone"
+    # rather than "the copy is not on screen yet".
+    text = pg.evaluate(
+        "document.querySelector('#execOut .ex-limits').textContent").lower()
+    for must in ("test mode", "synthetic", "author", "51/100"):
+        assert must in text, (must, text[:200])
+    ctx.close()
+
+
+def test_the_page_says_remit_does_not_win_its_own_benchmark(site, browser):
+    """The most load-bearing sentence on the site, and the easiest one to
+    quietly drop."""
+    ctx = browser.new_context(viewport={"width": 1440, "height": 900})
+    pg = ctx.new_page()
+    pg.goto(site, wait_until="domcontentloaded")
+    pg.wait_for_function(
+        "document.querySelectorAll('#execOut .ex-card').length === 4",
+        timeout=45000)
+    text = pg.evaluate("document.querySelector('#execOut').textContent").lower()
+    assert "not the highest-earning" in text or "frugal agent beats" in text, \
+        "the page stopped saying that REMIT loses its own benchmark"
+    ctx.close()

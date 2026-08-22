@@ -356,6 +356,17 @@ NEGATE_PAIRS = {("other", "than"), ("apart", "from"), ("but", "not"),
 # A negation span ends here. "not white and not black" is two spans, not one
 # span containing a conjunction.
 NEGATE_END = {",", ";", "and", "or", "but", "plus", "also", "aur", "&", "+"}
+# Inside a negation span, only GRAMMAR is noise. `STOP` is a much larger list
+# that also contains descriptive words -- "premium", "best", "cheap", "new",
+# "fast" -- because they are objectives and required-attribute keywords
+# elsewhere. Filtering the span through STOP therefore threw away exactly the
+# constraints people state most often: "not premium", "not the cheap one".
+# Found by generation; "premium" is not a word I would have chosen to test.
+SPAN_STOP = {
+    "a", "an", "the", "of", "for", "to", "me", "my", "i", "we", "any",
+    "some", "one", "it", "is", "are", "that", "this", "do", "please",
+    "kind", "type", "ones", "thing", "things", "stuff",
+}
 
 TOKEN = re.compile(r"[a-z]+|[,;&+]", re.I)
 
@@ -427,7 +438,7 @@ def _strip_negations(toks: list[str]) -> tuple[list[str], list[str]]:
         span: list[str] = []
         while j < len(toks) and toks[j].lower() not in NEGATE_END:
             w = toks[j].lower()
-            if w not in STOP and len(w) > 1:
+            if w not in SPAN_STOP and len(w) > 1:
                 span.append(w)
             j += 1
         if span:

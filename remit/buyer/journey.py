@@ -40,6 +40,7 @@ from ..models import canonical as _canonical, sha as _sha
 from ..money import Paise, rupees
 from ..policy.authorize import Authorization, Policy, Verdict, authorize
 from ..retrieval.index import hard_filter
+from ..observe import log as _olog, record as _orecord
 from ..tools.broker import ToolBroker
 
 # How far back SPLIT-001 looks. Long enough that an agent decomposing a
@@ -348,8 +349,24 @@ class Journey:
         r = JourneyResult(correlation_id=cid)
 
         # 1. INTENT ------------------------------------------------------
-        self._event("UTTERANCE", cid, {"len": len(utterance), "user": user_id}, now)
+        # The sentence itself, not a length.
+        #
+        # This recorded {"len": ..., "user": ...} -- which answers "was there an
+        # utterance" and not "what did the human ask", the first question any
+        # audit of a payment asks. The text was recoverable from
+        # intent_versions.envelope, but ONLY for a journey that compiled: an
+        # abstention has no envelope, so the one class of journey where the
+        # sentence is the entire evidence was the one that discarded it.
+        #
+        # A shopping sentence is not a credential. It is bounded at 2,000 chars
+        # by the request schema, and the audit trail is worth more than the
+        # bytes.
+        self._event("UTTERANCE", cid,
+                    {"utterance": utterance, "len": len(utterance),
+                     "user": user_id}, now)
+        _t_compile = time.perf_counter()
         env, tel = self.compiler.compile(utterance, user_id, now)
+        _orecord("interpret", (time.perf_counter() - _t_compile) * 1000)
         r.telemetry = tel
         if env is not None and inject.get("expire"):
             # Move the clock past the envelope's TTL rather than faking a flag:
@@ -366,6 +383,34 @@ class Journey:
             self.authority.open(intent_id=env.intent_id, user_id=user_id,
                                 now=now, correlation_id=cid)
             self._to(env, "INTERPRETED", now, cid, "compiled from the utterance")
+
+        # Stop here if the authority is cancelled.
+        #
+        # AUTH-003 already refuses a revoked mandate, but the policy engine runs
+        # at step 7 -- after search, ranking, offers and pricing. A revoked
+        # principal asking for something the shop cannot afford therefore got
+        # "the cheapest running shoes is Rs 4,299, above the Rs 100 you allowed":
+        # true, useless, and not the reason. Somebody who pressed stop is owed
+        # the sentence "you pressed stop", not a price comparison. Found by a
+        # generated case, where a ceiling of 100 made the abstain path fire
+        # before the clause that mattered.
+        #
+        # It is also simply less work: a cancelled authority should not be
+        # searching a catalog.
+        revoked_early = self._revoked(env)
+        if revoked_early is not None:
+            self._to(env, "REVOKED", now, cid,
+                     f"revoked at {revoked_early.revoked_at} "
+                     f"({revoked_early.scope})")
+            self._event("AUTHORIZATION_REVOKED", cid, revoked_early.dict(), now)
+            r.payment_state = "BLOCKED"
+            r.note = (f"this authority was revoked at "
+                      f"{revoked_early.revoked_at} ({revoked_early.scope} "
+                      f"scope); nothing will execute under it")
+            r.telemetry = dict(r.telemetry) | {
+                "revocation": revoked_early.dict()}
+            r.latency_ms = (time.perf_counter() - t0) * 1000
+            return r
         self._event("INTENT_CREATED", cid, json.loads(env.model_dump_json()), now)
         self._graph(env.intent_id, cid, "intent", None,
                     {"category": env.category, "ceiling": env.ceiling_paise()}, now)
@@ -484,6 +529,7 @@ class Journey:
                     "this catalog has nothing that answers "
                     + ", ".join(repr(x) for x in unfulfilled)
                     + "; REMIT does not substitute")}
+        _orecord("retrieve", (time.perf_counter() - t0) * 1000)
         self._event("PRODUCT_SEARCH", cid,
                     {"results": searched, "requested_items": len(requested),
                      "fulfilled": len(picks), "unfulfilled": unfulfilled}, now)
@@ -505,8 +551,15 @@ class Journey:
         # 3. SELECT ------------------------------------------------------
         sel, _first_item, why, score = picks[0]
         r.selected, r.why_selected = sel, why
+        # Name, price and reason alongside the id. A product id is a join key,
+        # and an auditor reading this six months from now against a catalog
+        # that has moved on needs the row to say what was actually bought and
+        # why it beat the alternatives -- not to require a table that may no
+        # longer contain it.
         self._event("PRODUCT_SELECTED", cid,
-                    {"product_id": sel.product_id, "score": score,
+                    {"product_id": sel.product_id, "name": sel.name,
+                     "price_paise": sel.price_paise,
+                     "why": r.why_selected, "score": score,
                      "lines": len(picks)}, now)
         self._graph(env.intent_id, cid, "selection", "search",
                     {"product_id": sel.product_id, "price": sel.price_paise}, now)
@@ -636,14 +689,21 @@ class Journey:
         oos = [l.product_id for l in cart.lines
                if (self.catalog.get(l.product_id) or None) is None
                or (self.catalog.get(l.product_id).inventory < l.qty)]
+        _t_policy = time.perf_counter()
         auth = authorize(env=env, cart=cart, totals=totals, drift=drift, risk=risk,
                          exposure=exposure, policy=self.policy, now=now,
                          catalog_version=catalog_now, out_of_stock=oos,
                          intent_revoked=revoked_now is not None
                                         or bool(inject.get("revoked")),
                          stale_pricing=stale)
+        _orecord("policy", (time.perf_counter() - _t_policy) * 1000)
         r.authorization = auth
         self._event("POLICY_DECIDED", cid, auth.dict(), now)
+        _olog("decision", cid, verdict=auth.verdict.value, failed=auth.failed,
+              total_paise=totals.total_paise, drift=drift.score,
+              intent=env.intent_id, actor=user_id,
+              policy_version=auth.policy_version,
+              catalog_version=catalog_now)
         self._graph(env.intent_id, cid, "policy", "drift",
                     {"verdict": auth.verdict.value, "failed": auth.failed}, now)
         self.db.execute(
@@ -797,6 +857,7 @@ class Journey:
                      "a person redeemed a token bound to this basket"
                      if approval_token else "a person confirmed")
         self._to(env, "EXECUTING", now, cid, "creating the order")
+        _t_pay = time.perf_counter()
         pid, created = self.payments.create(
             cart_id=cart.cart_id, intent_id=env.intent_id, idem_key=idem,
             amount_paise=totals.total_paise, now=now, correlation_id=cid,
@@ -839,6 +900,7 @@ class Journey:
             r.latency_ms = (time.perf_counter() - t0) * 1000
             return r
 
+        _orecord("execute", (time.perf_counter() - _t_pay) * 1000)
         self.payments.attach_order(pid, order["id"])
         r.order_id = order["id"]
         self._to(env, "EXECUTED", now, cid, f"gateway order {order['id']}")

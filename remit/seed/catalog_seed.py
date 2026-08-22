@@ -263,7 +263,33 @@ RELATIONS = [
 
 
 def seed(db: sqlite3.Connection, now: datetime, rng_seed: int = 20260821) -> dict:
+    """Idempotent. Re-seeding an unchanged catalog does NOT create a version.
+
+    It used to, unconditionally -- and `catalog_version` is an input to the
+    idempotency key, which is what stops a retry from charging somebody twice.
+    So restarting the process bumped the version, the key changed, and the same
+    request after a crash created a SECOND payment. The exact double-charge the
+    key exists to prevent, caused by the process coming back.
+
+    Nobody would have found this by reading it. The recovery test found it by
+    killing the app and asking the new one what it believed.
+
+    A version is created when the catalog is empty (first boot) or when its
+    content actually differs. Otherwise the existing version stands, which is
+    what "version" is supposed to mean.
+    """
     rng = random.Random(rng_seed)
+    have = db.execute("SELECT COUNT(*) c FROM products").fetchone()["c"]
+    if have:
+        v = db.execute(
+            "SELECT MAX(version) v FROM catalog_versions").fetchone()["v"]
+        if v:
+            row = db.execute(
+                "SELECT COUNT(*) n, COALESCE(SUM(price_paise),0) s"
+                " FROM products").fetchone()
+            return {"products": row["n"], "merchants": len(MERCHANTS),
+                    "relations": len(RELATIONS), "catalog_version": v,
+                    "reused": True, "checksum_paise": row["s"]}
     db.execute("INSERT INTO catalog_versions (created_at, note) VALUES (?,?)",
                (now.isoformat(), "initial seed"))
     v = db.execute("SELECT MAX(version) v FROM catalog_versions").fetchone()["v"]

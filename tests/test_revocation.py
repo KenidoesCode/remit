@@ -65,8 +65,24 @@ def test_revoke_before_execution_blocks(app):
     app.revocations.revoke(user_id="usr_rev", now=NOW, reason="changed my mind")
     r = run(app, human_confirms=True)
     assert r.payment_state == "BLOCKED", r.payment_state
-    assert "AUTH-003" in failed(r)
     assert r.payment_id is None or not app.payments.get(r.payment_id)
+    # It refuses BEFORE the catalog is searched, so there is no clause trace --
+    # and that is the improvement, not a regression. A revoked principal asking
+    # for something unaffordable used to be told "the cheapest running shoes is
+    # Rs 4,299, above the Rs 100 you allowed": true, useless, and not the
+    # reason. Somebody who pressed stop is owed the sentence "you pressed
+    # stop". Found by a generated case; see test_properties.py.
+    assert "revoked" in r.note.lower(), r.note
+    assert r.telemetry["revocation"]["scope"] == "principal"
+
+
+def test_the_clause_still_refuses_a_revocation_that_arrives_late(app):
+    """The early return is a courtesy, not the control. AUTH-003 is the
+    control, and it has to keep working for the revocation that lands after
+    the journey has already started."""
+    r = run(app, human_confirms=True, inject={"revoked": True})
+    assert r.payment_state == "BLOCKED"
+    assert "AUTH-003" in failed(r), failed(r)
 
 
 def test_revoking_one_intent_leaves_the_others_alone(app):
@@ -98,7 +114,7 @@ def test_revoke_during_a_step_up_blocks_the_approval(app):
     app.revocations.revoke(user_id="usr_rev", now=NOW, reason="no")
     after = run(app, ASKS, human_confirms=True, approval_token=token)
     assert after.payment_state == "BLOCKED", after.payment_state
-    assert "AUTH-003" in failed(after)
+    assert "revoked" in after.note.lower(), after.note
 
 
 def test_a_revocation_does_not_burn_the_approval_token(app):

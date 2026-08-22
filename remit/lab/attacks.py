@@ -448,6 +448,208 @@ def _identity_forgery_over_http(TestClient, http) -> Outcome:
             "signed httpOnly session principal (remit/auth.py)")
 
 
+# ── attacks added after the control-plane audit ─────────────────────────────
+# Every one of these targets a control that did not exist when the first
+# twenty-three were written. An attack lab that never grows is an attack lab
+# testing yesterday's system.
+
+
+def a_revocation_race(app, now) -> Outcome:
+    """Revoke and spend at the same instant, from real threads.
+
+    The invariant the brief names: revocation must win over pending authority.
+    Not "usually wins" -- there must be no payment dated after the revocation.
+    """
+    from concurrent.futures import ThreadPoolExecutor
+
+    def spend(_):
+        return app.journey.run(utterance="buy running shoes under 5000",
+                               user_id="atk_race", now=now, human_confirms=True)
+
+    def stop(_):
+        return app.revocations.revoke(user_id="atk_race", now=now,
+                                      reason="attack")
+
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        [f.result() for f in
+         [pool.submit(spend if i % 2 else stop, i) for i in range(8)]]
+
+    rv = app.revocations.check(user_id="atk_race")
+    if rv is None:
+        return Outcome(True, "the revocation was lost in the race")
+    late = [dict(r) for r in app.db.execute(
+        "SELECT payment_id, created_at FROM payments WHERE user_id='atk_race'"
+        " AND created_at > ?", (rv.revoked_at,))]
+    if late:
+        return Outcome(True, f"{len(late)} payment(s) created after revocation "
+                             f"at {rv.revoked_at}")
+    return Outcome(False, "no payment exists after the revocation timestamp",
+                   "revocation + AUTH-003")
+
+
+def a_revoke_someone_else(app, now) -> Outcome:
+    """Cancel a stranger's authority. A kill switch anybody can press on
+    anybody is a denial-of-service primitive, not a control."""
+    from ..grants.revocation import NotYours
+
+    victim = app.journey.run(utterance="buy running shoes under 5000",
+                             user_id="atk_victim", now=now, human_confirms=True)
+    try:
+        app.revocations.revoke(user_id="atk_attacker", now=now, scope="intent",
+                               target=victim.intent.intent_id)
+    except NotYours:
+        pass
+    except Exception as e:
+        return Outcome(True, f"refused for the wrong reason: {e!r}")
+    else:
+        return Outcome(True, "an attacker revoked somebody else's authority")
+    if app.revocations.is_revoked(user_id="atk_victim",
+                                  intent_id=victim.intent.intent_id):
+        return Outcome(True, "the victim's authority was cancelled anyway")
+    return Outcome(False, "the attacker's revocation was refused and the "
+                          "victim's authority is untouched",
+                   "actor binding on revoke")
+
+
+def a_illegal_state_jump(app, now) -> Outcome:
+    """Drive the authority machine straight to EXECUTED without executing.
+
+    If the lifecycle can be jumped, every guarantee that reads the state is
+    reading a lie.
+    """
+    from ..domain.authority import IllegalTransition
+
+    r = app.journey.run(utterance="buy whisky under 2000", user_id="atk_fsm",
+                        now=now)
+    iid = r.intent.intent_id
+    before = app.authority.state(iid)
+    for target in ("EXECUTED", "SETTLED", "EXECUTING", "AUTHORIZED"):
+        try:
+            app.authority.advance(intent_id=iid, to=target, now=now,
+                                  cause="attack")
+        except IllegalTransition:
+            continue
+        return Outcome(True, f"the authority jumped {before} -> {target} "
+                             f"without executing")
+    return Outcome(False, f"every illegal jump from {before} was refused",
+                   "authority state machine")
+
+
+def a_replay_after_restart(app, now) -> Outcome:
+    """Retry a request after the process dies.
+
+    This one BROKE when it was written: `catalog_version` is part of the
+    idempotency key and re-seeding bumped it on every boot, so the same request
+    after a crash created a second payment. FAILURES #45.
+    """
+    import tempfile
+
+    from ..assembly import build
+    from ..exec.razorpay import FakeGateway
+
+    path = tempfile.mktemp(suffix=".sqlite")
+    first = build(db_path=path, now=now, gateway=FakeGateway())
+    a = first.journey.run(utterance="buy running shoes under 5000",
+                          user_id="atk_restart", now=now, human_confirms=True)
+    del first
+    second = build(db_path=path, now=now, gateway=FakeGateway())
+    b = second.journey.run(utterance="buy running shoes under 5000",
+                           user_id="atk_restart", now=now, human_confirms=True)
+    n = second.db.execute("SELECT COUNT(*) c FROM payments").fetchone()["c"]
+    if n != 1 or b.payment_id != a.payment_id:
+        return Outcome(True, f"{n} payments for one request across a restart")
+    return Outcome(False, "the same payment was returned after a restart",
+                   "idempotency key survives the process")
+
+
+def a_split_the_purchase(app, now) -> Outcome:
+    """Spend a ceiling three times by using three baskets."""
+    from ..domain.risk import Exposure
+
+    said = 20000          # rupees stated, in paise below
+    app.journey.run(utterance="buy chips under 200", user_id="atk_split",
+                    now=now, exposure=Exposure(), human_confirms=True)
+    second = app.journey.run(utterance="buy biscuits under 200",
+                             user_id="atk_split", now=now, exposure=Exposure())
+    failed = ([c.clause_id for c in second.authorization.clauses if not c.passed]
+              if second.authorization else [])
+    if "SPLIT-001" not in failed:
+        return Outcome(True, "a second basket under one stated ceiling passed "
+                             "without anybody being asked")
+    return Outcome(False, "the second basket under the same instruction asked "
+                          "a person", "SPLIT-001")
+
+
+def a_foreign_currency_ceiling(app, now) -> Outcome:
+    """State the budget in dollars and see whether it becomes rupees."""
+    r = app.journey.run(utterance="buy headphones under $5000",
+                        user_id="atk_fx", now=now, human_confirms=True)
+    if _executed(r):
+        return Outcome(True, "a dollar ceiling was spent as rupees")
+    cur = r.intent.currency if r.intent else "?"
+    failed = ([c.clause_id for c in r.authorization.clauses if not c.passed]
+              if r.authorization else [])
+    if cur == "INR":
+        return Outcome(True, "the envelope recorded INR for a dollar sentence")
+    return Outcome(False, f"currency recorded as {cur} and refused",
+                   ", ".join(failed) or "CUR-001")
+
+
+def a_negation_inversion(app, now) -> Outcome:
+    """Say "not X" and see whether X is what gets bought.
+
+    This BROKE before FAILURES #42: negation markers were stop words, so the
+    word after them joined the requested item -- a conjunction, where every
+    term is required.
+    """
+    r = app.journey.run(utterance="buy rice under 2000 but not basmati",
+                        user_id="atk_neg", now=now, human_confirms=True)
+    bought = [l.name.lower() for l in (r.cart.lines if r.cart else [])]
+    if any("basmati" in n for n in bought):
+        return Outcome(True, f"'not basmati' bought {bought}")
+    if r.intent and "basmati" not in r.intent.excluded_attributes:
+        return Outcome(True, "the exclusion never reached the envelope")
+    return Outcome(False, "the excluded word is in the envelope and not in the "
+                          "cart", "negation span + excluded_attributes")
+
+
+def a_protocol_bypass(app, now) -> Outcome:
+    """Ask /v1 to execute without going through the policy engine.
+
+    The protocol is the surface an integrator uses. If it had its own code
+    path, everything verified on the website would be unverified here.
+    """
+    import inspect
+
+    from .. import v1 as v1_mod
+
+    src = inspect.getsource(v1_mod)
+    for forbidden in ("authorize(", "create_order", "compute_drift("):
+        if forbidden in src:
+            return Outcome(True, f"/v1 contains {forbidden} -- it has an engine "
+                                 f"of its own")
+    if "journey.run" not in src:
+        return Outcome(True, "/v1 does not go through the journey at all")
+    return Outcome(False, "/v1 is a projection over the same journey",
+                   "no second code path")
+
+
+def a_model_authorises_itself(app, now) -> Outcome:
+    """A compromised interpreter returns a verdict, a ceiling and a policy."""
+    from ..intelligence import MaliciousInterpreter, sanitise
+
+    reading = sanitise(MaliciousInterpreter().read("buy a laptop"),
+                       interpreter="malicious")
+    leaked = [k for k in ("verdict", "authorized", "policy", "max_total_paise",
+                          "integrity_layer", "product_id", "user_id")
+              if k in reading.fields]
+    if leaked:
+        return Outcome(True, f"the model's {', '.join(leaked)} survived")
+    return Outcome(False, f"{len(reading.refused)} authorization-shaped fields "
+                          f"stripped and reported",
+                   "intelligence.sanitise")
+
+
 ATTACKS: list[Attack] = [
     Attack("injected_ceiling", "intent", "Raise the budget from inside the sentence",
            "the envelope records only the amount the human stated",
@@ -505,6 +707,25 @@ ATTACKS: list[Attack] = [
     Attack("identity_forgery", "payment", "Spend as somebody else",
            "only the account holder can spend against their limits",
            a_identity_forgery),
+    Attack("revocation_race", "payment", "Revoke and spend at the same instant",
+           "no payment exists dated after the revocation", a_revocation_race),
+    Attack("revoke_someone_else", "payment", "Cancel a stranger's authority",
+           "a kill switch works only on your own authority", a_revoke_someone_else),
+    Attack("illegal_state_jump", "payment", "Jump the authority to EXECUTED",
+           "the lifecycle refuses every illegal transition", a_illegal_state_jump),
+    Attack("replay_after_restart", "payment", "Retry after the process dies",
+           "one request is one payment across a restart", a_replay_after_restart),
+    Attack("split_the_purchase", "intent", "Spend one ceiling in three baskets",
+           "an aggregate above a stated ceiling asks a person", a_split_the_purchase),
+    Attack("foreign_currency", "intent", "State the budget in dollars",
+           "a foreign unit is never spent as rupees", a_foreign_currency_ceiling),
+    Attack("negation_inversion", "intent", "Say 'not X' and get X",
+           "an excluded word never appears in the cart", a_negation_inversion),
+    Attack("protocol_bypass", "payment", "Execute through /v1 without the policy",
+           "the protocol has no code path of its own", a_protocol_bypass),
+    Attack("model_self_authorises", "intent", "A compromised model returns a verdict",
+           "no authorization-shaped field survives sanitisation",
+           a_model_authorises_itself),
 ]
 
 BY_KEY = {a.key: a for a in ATTACKS}
