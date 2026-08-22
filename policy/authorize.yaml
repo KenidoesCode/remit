@@ -39,6 +39,7 @@ clauses:
   CAT-001:  "catalog version has not changed since pricing"
   STOCK-001: "every line item is still in stock"
   MATCH-001: "every requested item was matched by name, not by resemblance"
+  MATCH-002: "nothing in the cart was found by semantic similarity alone"
   AGENT-001: "no agent-added item pushes the total past the ceiling"
   RISK-001: "risk engine did not recommend denial"
   RISK-002: "expected loss is below the cost of asking a person"

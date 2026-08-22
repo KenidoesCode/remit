@@ -898,3 +898,113 @@ turns N requests into fewer than N cart lines must leave evidence, and I still
 do not have a single invariant that enforces that. The tests I added cover two
 more sentences. That is not the same thing, and I would rather say so than
 write another confident paragraph about what I have learned.
+
+---
+
+## 28. "under ₹20" was not a limit. It was not anything.
+
+**What happened.** `buy chips under 20` bought ₹110 of chips and cola.
+
+Not "bought something slightly over". The envelope recorded **no ceiling at
+all**: `max_price_paise = None`, `max_total_paise = None`. CEIL-001 had nothing
+to compare against, so it passed. Drift's `total` dimension was
+`not_evaluable`, so it did not count. Risk sized an exposure against no stated
+limit. Every clause was green, the verdict was AUTO, and a hard human
+constraint had been dropped on the floor between the tokenizer and the
+envelope.
+
+**Why.** One line in `best_ceiling`:
+
+```python
+cands = [c for c in extract(text) if c.paise >= 5000]   # >= Rs 50
+```
+
+The floor exists for a real reason: a bare number in a shopping sentence is
+usually not money. "2x earbuds", "5 pack", "size 9". Ignoring small unanchored
+numbers stops the parser reading "buy 2x earbuds under 3000" as a ₹2 budget.
+
+But it was applied to **every** candidate, including one sitting directly after
+the word "under". So any budget below ₹50 vanished — ₹20, ₹45, ₹1 — and vanished
+*completely*, rather than being clamped or flagged.
+
+**Why this is the worst bug in the file.** Every other failure here produces a
+wrong answer. This one produces a **missing question**. A ceiling that is wrong
+can be caught by a clause; a ceiling that was never recorded cannot be caught by
+anything, because every downstream check is conditional on it existing. The
+entire architecture — immutable envelope, drift measured against it, policy
+clauses reading it — rests on the envelope being a faithful record of what the
+human said. Here it silently was not.
+
+And it was reported to me by the person using it, not by 188 tests.
+
+**The fix.** The floor now applies only to numbers with nothing anchoring them
+to money. A number adjacent to "under", "se kam", "tak", "₹", "rs" or "rupees"
+is an amount at any size, down to ₹1. A bare number with no anchor still has to
+clear ₹50 to be read as a budget.
+
+```
+buy chips under 20   ->  the cheapest chips is Rs 60.00
+                         (Freshcart Salted Potato Chips 150g),
+                         above the Rs 20.00 you allowed
+```
+
+**What it changed.** I have property tests for what the system does with a
+constraint. I had none for whether the constraint survived being read. The new
+one asserts the invariant directly across a generated matrix: for any utterance
+containing an explicit ceiling, either the envelope carries that exact ceiling,
+or the journey abstains — never "proceeded without one".
+
+---
+
+## 29. The human approved ₹7,315 and the envelope still said ₹5,000
+
+**How it was found.** Not by me. Case 141 of the new 260-case matrix — *"buy
+running shoes under 5000"*, price bumped 60% mid-journey, human approves at the
+step-up — failed the check `inside`:
+
+```
+141 [approval] 'buy running shoes under 5000'
+      inside: paid 731540 against 500000
+```
+
+The system asked, a person said yes, and REMIT paid ₹7,315 against an envelope
+that recorded a ₹5,000 ceiling. Two cases failed this way.
+
+**Why my instinct was wrong.** My first reading was "the human overrode it, so
+this is fine." It is not fine, and the reason is the thing this whole project
+is built on: **the envelope is the record of what was authorised.** Every clause
+downstream reads it. The drift engine measures against it. A dispute six months
+later is adjudicated against it. If a person raises the ceiling and the envelope
+does not change, then the system's own record of what was authorised disagrees
+with what it paid — and the disagreement is invisible, because the payment
+succeeded and every log line looks normal.
+
+I had built an immutable versioned envelope specifically so that a change of
+authority would leave a trace, and then implemented the one interaction that
+changes authority as a boolean argument that never touched it.
+
+**What "approval" now means.** A token, issued when the basket is shown, bound
+to five things hashed at that moment: the user, the intent by semantic hash, the
+cart by a signature over (product, quantity, unit price), the exact total, and
+an expiry. Change any of them and it stops verifying:
+
+```
+changed cart / price / product  -> different cart hash  -> rejected
+different amount                -> rejected
+reused                          -> already used         -> rejected
+different person                -> wrong actor          -> rejected
+late                            -> expired              -> rejected
+```
+
+Single-use is enforced by `UPDATE ... WHERE used_at IS NULL` rather than a
+read-then-write, so two tabs racing the same click cannot both pay.
+
+And redeeming it **amends the envelope**: version n+1, with the reason *"human
+approved ₹7,315 at a step-up, raising the ceiling from ₹5,000"*. Version n is
+still there. The record and the payment now say the same thing.
+
+**What it changed.** I have been treating "the human said yes" as an input.
+It is an event, with a subject and an object, and a system that cannot say what
+the yes was *about* has not recorded consent — it has recorded a click.
+
+The matrix caught this on its first run. That is the argument for building it.

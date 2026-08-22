@@ -135,6 +135,36 @@ CEILING_AFTER = ("se kam", "ke andar", "ke neeche", "tak", "andar", "ke under")
 CEILING_WORDS = CEILING_BEFORE + CEILING_AFTER + ("budget",)
 
 
+def _anchored_spans(text: str) -> list[tuple[int, int]]:
+    """Character ranges where a number would be unambiguously about money."""
+    low = text.lower()
+    spans: list[tuple[int, int]] = []
+    for wd in CEILING_BEFORE:
+        start = 0
+        while (i := low.find(wd, start)) >= 0:
+            spans.append((i + len(wd), i + len(wd) + 12))
+            start = i + len(wd)
+    for wd in CEILING_AFTER:
+        start = 0
+        while (i := low.find(wd, start)) >= 0:
+            spans.append((max(0, i - 14), i))
+            start = i + len(wd)
+    for sym in ("\u20b9", "rs.", "rs ", "inr", "rupees", "rupaye"):
+        start = 0
+        while (i := low.find(sym, start)) >= 0:
+            spans.append((i, i + len(sym) + 12))
+            start = i + len(sym)
+    return spans
+
+
+def _is_anchored(c: "AmountCandidate", low: str, spans: list[tuple[int, int]]) -> bool:
+    i = low.find(c.surface.lower())
+    if i < 0:
+        return False
+    end = i + len(c.surface)
+    return any(a <= i and end <= b + 2 for a, b in spans)
+
+
 def best_ceiling(text: str) -> tuple[AmountCandidate | None, list[AmountCandidate]]:
     """Pick the amount that reads as a spending ceiling, and return the
     alternatives that were rejected.
@@ -160,10 +190,28 @@ def best_ceiling(text: str) -> tuple[AmountCandidate | None, list[AmountCandidat
          Ambiguity resolves toward LESS autonomy everywhere else in this
          system. There is no reason for the amount parser to be the exception.
     """
-    cands = [c for c in extract(text) if c.paise >= 5000]   # >= Rs 50
+    low = text.lower()
+
+    # THE FLOOR, AND WHY IT MOVES.
+    #
+    # A bare number in a shopping sentence is usually not money -- "2x earbuds",
+    # "5 pack", "size 9" -- so small unanchored numbers are ignored. The floor
+    # used to be a flat Rs 50 applied to EVERY candidate, which meant "buy chips
+    # under 20" produced NO ceiling at all. Not a small ceiling. None. The
+    # envelope recorded no limit, CEIL-001 had nothing to check, and the agent
+    # bought Rs 110 of chips and cola against a Rs 20 instruction, with every
+    # clause green.
+    #
+    # A hard constraint that is silently dropped is worse than one that is
+    # wrong, because nothing downstream can tell it is missing. So the floor now
+    # applies only to numbers with nothing anchoring them to money. A number
+    # sitting next to "under", "se kam", "tak" or a rupee sign is an amount at
+    # any size, including Rs 1. FAILURES #28.
+    anchored = _anchored_spans(text)
+    cands = [c for c in extract(text)
+             if c.paise >= 5000 or _is_anchored(c, low, anchored)]
     if not cands:
         return None, []
-    low = text.lower()
     if not any(wd in low for wd in CEILING_WORDS):
         return cands[0], [c for c in cands if c is not cands[0]]
 

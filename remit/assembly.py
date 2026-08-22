@@ -17,7 +17,10 @@ from .exec.payments import PaymentStore
 from .exec.razorpay import FakeGateway, PaymentGateway, RazorpayTestClient
 from .exec.recon import Reconciler
 from .exec.webhooks import WebhookProcessor
+from .grants.approval import ApprovalStore
 from .intent.grounding import Lexicon
+from .retrieval.embed import best_available
+from .retrieval.index import VectorIndex
 from .intent.shopping import LLMCompiler, RuleCompiler
 from .ledger.chain import Ledger
 from .paths import POLICY as PATHS_POLICY
@@ -97,6 +100,8 @@ class App:
     gateway: PaymentGateway
     journey: Journey
     seed_info: dict
+    index: object = None            # VectorIndex over the live catalog
+    embedder: object = None         # which embedder actually built it
     # The secret this instance verifies webhooks with. Exposed so that a test,
     # the evaluation harness and the demo sign with whatever this process is
     # actually using, rather than with a constant copied out of the source --
@@ -118,7 +123,9 @@ class App:
                        compiler=self.journey.compiler, revenue=rev, policy=p,
                        ledger=self.ledger, payments=self.payments,
                        broker=self.broker, gateway=self.gateway,
-                       calibrator=self.journey.calibrator)
+                       calibrator=self.journey.calibrator,
+                       index=self.journey.index,
+                       approvals=self.journey.approvals)
 
 
 def build(*, db_path: str = ":memory:", policy_path: str | None = None,
@@ -136,7 +143,18 @@ def build(*, db_path: str = ":memory:", policy_path: str | None = None,
         gateway = RazorpayTestClient() if live else FakeGateway()
 
     secret = _webhook_secret(live)
-    compiler = RuleCompiler(lexicon=Lexicon.from_db(db, catalog.version()))
+    # Semantic retrieval. `best_available` returns a real dense model when one
+    # is installed and a deterministic lexical-semantic embedder otherwise, and
+    # /health reports which -- so "semantic search" never implies a neural model
+    # that is not present on this instance.
+    embedder = best_available(prefer_neural=os.environ.get("REMIT_NEURAL") != "0")
+    index = VectorIndex.build(db, embedder, catalog.version())
+    def _semantic(text: str, k: int = 4):
+        return [(h.product.product_id, h.product.name, h.product.category, h.score)
+                for h in index.search(text, db, k=k)]
+
+    compiler = RuleCompiler(lexicon=Lexicon.from_db(db, catalog.version()),
+                            semantic=_semantic)
     if use_llm:
         try:
             import anthropic  # noqa
@@ -145,7 +163,8 @@ def build(*, db_path: str = ":memory:", policy_path: str | None = None,
                 compiler = LLMCompiler(client=anthropic.Anthropic(api_key=key),
                                        fallback=RuleCompiler(
                                            lexicon=Lexicon.from_db(
-                                               db, catalog.version())))
+                                               db, catalog.version()),
+                                           semantic=_semantic))
         except Exception:
             pass   # degradation always moves toward MORE friction
 
@@ -158,13 +177,14 @@ def build(*, db_path: str = ":memory:", policy_path: str | None = None,
     journey = Journey(db=db, catalog=catalog, compiler=compiler, revenue=revenue,
                       policy=policy, ledger=ledger, payments=payments,
                       broker=broker, gateway=gateway,
-                      calibrator=load_calibrator())
+                      calibrator=load_calibrator(), index=index,
+                      approvals=ApprovalStore(db))
     return App(db=db, catalog=catalog, policy=policy, ledger=ledger,
                payments=payments,
                webhooks=WebhookProcessor(db, payments, secret),
                recon=Reconciler(db, payments, gateway), broker=broker,
                gateway=gateway, journey=journey, seed_info=info,
-               webhook_secret=secret)
+               webhook_secret=secret, index=index, embedder=embedder)
 
 
 def _register_tools(broker: ToolBroker, catalog: Catalog, gw: PaymentGateway) -> None:

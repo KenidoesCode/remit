@@ -148,15 +148,21 @@ class RequestedItem:
     category: str | None
     surface: str
     how: str
-    approximate: bool = False   # every word matched only as a MODIFIER inside
+    approximate: bool = False
+    product_ids: list[str] | None = None   # set when the item came from vector
+                                           # retrieval: the products ARE the
+                                           # request, because no word matched   # every word matched only as a MODIFIER inside
                                 # some product's name -- "laptop" reaching
                                 # "Laptop Stand". Buyable, but not the thing
                                 # that was named, so a person decides.
 
     def dict(self) -> dict:
-        return {"terms": self.terms, "category": self.category,
-                "surface": self.surface, "how": self.how,
-                "approximate": self.approximate}
+        d = {"terms": self.terms, "category": self.category,
+             "surface": self.surface, "how": self.how,
+             "approximate": self.approximate}
+        if self.product_ids:
+            d["product_ids"] = list(self.product_ids)
+        return d
 
 
 @dataclass(frozen=True)
@@ -325,6 +331,28 @@ def _tokens(utterance: str) -> list[str]:
     only evidence for that is a comma -- throw it away with the rest of the
     punctuation and the three collapse into one unbuyable conjunction."""
     return [t for t in TOKEN.findall(utterance.lower())]
+
+
+def content_query(utterance: str) -> str:
+    """What the sentence is ABOUT, with the grammar of buying removed.
+
+    Vector retrieval on the raw sentence is dominated by the words every
+    sentence contains. "buy a helicopter under 500000" retrieved a cable tray
+    at 0.21 -- not because a tray is like a helicopter, but because after the
+    amount was masked out the query was short and the leftover function words
+    carried most of the weight. Strip them and the same query scores 0.15.
+
+    Short queries are where cosine similarity is least trustworthy, so this is
+    not cosmetic: it is the difference between the nonsense clearing the floor
+    and not.
+    """
+    low = utterance.lower()
+    from .amounts import CEILING_WORDS
+    for wd in sorted(CEILING_WORDS, key=len, reverse=True):
+        low = low.replace(wd, " ")
+    toks = [t for t in TOKEN.findall(low)
+            if t.isalpha() and len(t) > 2 and t not in STOP and t not in SPLIT]
+    return " ".join(toks)
 
 
 def ground(utterance: str, lex: Lexicon) -> Grounding:

@@ -122,6 +122,7 @@ class ShopRequest(BaseModel):
     user_id: str = "usr_demo"
     accept_offers: str = "in_envelope"
     human_confirms: bool | None = None
+    approval_token: str | None = Field(default=None, max_length=128)
     inject: dict = {}
 
 
@@ -135,7 +136,16 @@ def health():
                 "policy": a.policy.version,
                 "calibrator": type(a.journey.calibrator).__name__,
                 "ledger_intact": ok, "first_bad_seq": bad,
-                "gateway": type(a.gateway).__name__}
+                "gateway": type(a.gateway).__name__,
+                # Which retrieval actually ran on THIS instance. "semantic
+                # search" is not allowed to imply a neural model that is not
+                # installed here.
+                "embedder": {"name": getattr(a.embedder, "name", None),
+                             "kind": getattr(a.embedder, "kind", None),
+                             "dim": getattr(a.embedder, "dim", None),
+                             "indexed": len(getattr(a.index, "vectors", {}))},
+                "semantic_floor": type(a.journey.compiler).SEMANTIC_FLOOR
+                if hasattr(type(a.journey.compiler), "SEMANTIC_FLOOR") else None}
 
 @api.get("/api/catalog")
 def catalog(category: str | None = None, q: str | None = None, limit: int = 60):
@@ -164,7 +174,8 @@ def shop(req: ShopRequest):
         exposure = _exposure(a, req.user_id)
         r = a.journey.run(utterance=req.utterance, user_id=req.user_id, now=now,
                           exposure=exposure, accept_offers=req.accept_offers,
-                          human_confirms=req.human_confirms, inject=req.inject)
+                          human_confirms=req.human_confirms,
+                          approval_token=req.approval_token, inject=req.inject)
         d = r.dict()
         d["exposure"] = json.loads(exposure.model_dump_json())
         d["catalog_version"] = a.catalog.version()
@@ -329,13 +340,74 @@ def compare(req: CompareRequest):
                     else 0),
                 "asked_human": (d.get("authorization") or {}).get("verdict") == "STEP_UP",
                 "latency_ms": d["latency_ms"],
+                # What each world actually put in the basket. The numbers argue
+                # the case; the names are what make it land.
+                "cart": [
+                    {"name": l["name"], "paise": l["unit_price_paise"],
+                     "qty": l["qty"], "origin": l["origin"]}
+                    for l in (d.get("cart") or {}).get("lines", [])],
+                "note": d.get("note", ""),
+                "failed_clauses": (d.get("authorization") or {}).get("failed", []),
             }
         w, wo = out["with"], out["without"]
+        protected = wo["unauthorized_paise"] - w["unauthorized_paise"]
+        given_up = wo["total_paise"] - w["total_paise"]
         out["delta"] = {
-            "revenue_paise": wo["total_paise"] - w["total_paise"],
-            "unauthorized_avoided_paise": wo["unauthorized_paise"] - w["unauthorized_paise"],
+            "revenue_paise": given_up,
+            "unauthorized_avoided_paise": protected,
+            # The counterfactual question, answered in one sentence, because a
+            # table of two columns is not an argument until someone reads it
+            # out loud.
+            "story": _counterfactual_story(w, wo, protected, given_up),
         }
+        out["method"] = ("both worlds are this same process running the same "
+                         "code. 'Without REMIT' is the identical journey under "
+                         "a policy file with integrity_layer set to false -- a "
+                         "data change, not a branch. Simulated on the test-mode "
+                         "gateway; no money moves in either world.")
         return out
+
+
+def _counterfactual_story(w: dict, wo: dict, protected: int, given_up: int) -> str:
+    """What would have happened if REMIT had not intervened.
+
+    Six cases, because the interesting outcome is not always "money was
+    saved". Sometimes REMIT stopped a category of purchase rather than an
+    amount; sometimes both worlds refused; and sometimes -- most of the time --
+    the boundary changed nothing at all, which is the answer a merchant most
+    needs to hear before adopting one.
+    """
+    if not w["verdict"] and not wo["verdict"]:
+        return ("Neither world found anything to buy. REMIT is not the reason "
+                "this request went nowhere -- the catalog is.")
+    if protected > 0:
+        head = (f"Without the envelope the agent would have paid "
+                f"{rupees(wo['total_paise'])} against a "
+                f"{rupees(wo['ceiling_paise'])} instruction, on its own, and "
+                f"told nobody.")
+        if w["asked_human"]:
+            return (f"{head} REMIT stopped at {rupees(w['total_paise'])} and "
+                    f"asked. {rupees(protected)} did not move.")
+        if w["total_paise"]:
+            # The protected figure is the WHOLE unauthorised payment, not the
+            # difference between the two totals: once a payment crosses the
+            # instruction, all of it is money nobody agreed to.
+            return (f"{head} All {rupees(protected)} of that would have counted "
+                    f"as unauthorised. REMIT paid {rupees(w['total_paise'])} "
+                    f"inside the line instead.")
+        return f"{head} REMIT refused it entirely."
+    if w["asked_human"] and wo["verdict"] == "AUTO":
+        why = ", ".join(w["failed_clauses"][:2]) or "the envelope"
+        return (f"Same basket, same price, opposite decisions. The unbounded "
+                f"agent paid {rupees(wo['total_paise'])} without asking; REMIT "
+                f"stopped on {why} and put it in front of a person. Nothing "
+                f"here is about the amount.")
+    if given_up > 0:
+        return (f"Both worlds stayed inside the instruction. The unbounded "
+                f"agent attached {rupees(given_up)} more, and a person was "
+                f"never asked about it.")
+    return ("No difference. The boundary costs nothing on a request that was "
+            "already inside it -- which is most of them, and is the point.")
 
 
 @api.get("/api/failures")
@@ -489,7 +561,8 @@ def graph(intent_id: str):
 
 @api.get("/api/results/{name}")
 def results(name: str):
-    allowed = {"eval", "experiments", "frontier", "calibration"}
+    allowed = {"eval", "experiments", "frontier", "calibration", "arena",
+               "matrix", "attacks"}
     if name not in allowed:
         return JSONResponse({"error": "unknown result set"}, status_code=404)
     p = RESULTS_DIR / f"{name}.json"

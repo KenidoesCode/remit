@@ -212,6 +212,22 @@ def authorize(*, env: IntentEnvelope, cart: Cart, totals: Totals,
           if approx else "every item was matched by name",
           hard=False)
 
+    # RETRIEVED BY MEANING IS NOT THE SAME AS ASKED FOR BY NAME.
+    #
+    # Semantic retrieval is what lets "something to drink" and "snacks for a
+    # party" work at all -- there is no word in either sentence that a catalog
+    # index can match. It is also, precisely, the mechanism by which an agent
+    # can convince itself that a yoga mat is a helicopter. So the boundary is
+    # not "do not use embeddings", it is "an embedding may FIND a product and
+    # may never AUTHORISE one".
+    #
+    # Soft: the vector was probably right, and a person can say so in one click.
+    semantic = list(getattr(env, "semantic_items", []) or [])
+    check("MATCH-002", (not integrity) or not semantic,
+          ("found by meaning, not by name: " + ", ".join(repr(s) for s in semantic))
+          if semantic else "every line was matched by the words that were used",
+          hard=False)
+
     if not L.get("allow_agent_added_over_ceiling", False) and ceiling is not None:
         agent_added = [l for l in cart.lines
                        if l.origin in ("upsell", "cross_sell") and l.accepted_by == "agent"]

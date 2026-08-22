@@ -15,12 +15,12 @@
       "no_decision_reached": 132
     },
     "guardrails": {
-      "needs_human_precision": 0.6534,
+      "needs_human_precision": 0.6511,
       "needs_human_recall": 1.0,
       "false_negatives_dangerous": 0,
-      "false_positives_friction": 96,
-      "blocked_value": "\u20b91,004,896.43",
-      "blocked_value_paise": 100489643
+      "false_positives_friction": 97,
+      "blocked_value": "\u20b91,006,754.43",
+      "blocked_value_paise": 100675443
     },
     "quality": {
       "category_accuracy": 0.93,
@@ -33,20 +33,20 @@
       "amount_error_median": 0.0
     },
     "business": {
-      "revenue": "\u20b9348,142.00",
-      "revenue_paise": 34814200,
-      "merchant_margin": "\u20b9132,786.74",
-      "margin_paise": 13278674,
-      "transactions": 129,
-      "aov": "\u20b92,698.77",
-      "aov_paise": 269877,
-      "auto_rate": 0.2426,
-      "human_confirmation_rate": 0.3759,
+      "revenue": "\u20b9346,284.00",
+      "revenue_paise": 34628400,
+      "merchant_margin": "\u20b9132,139.10",
+      "margin_paise": 13213910,
+      "transactions": 128,
+      "aov": "\u20b92,705.34",
+      "aov_paise": 270534,
+      "auto_rate": 0.2407,
+      "human_confirmation_rate": 0.3778,
       "denial_rate": 0.137
     },
     "efficiency": {
-      "latency_p50_ms": 3.33,
-      "latency_p95_ms": 4.57
+      "latency_p50_ms": 3.75,
+      "latency_p95_ms": 5.71
     }
   },
   "train": {
@@ -61,12 +61,12 @@
       "no_decision_reached": 79
     },
     "guardrails": {
-      "needs_human_precision": 0.6467,
+      "needs_human_precision": 0.6429,
       "needs_human_recall": 1.0,
       "false_negatives_dangerous": 0,
-      "false_positives_friction": 59,
-      "blocked_value": "\u20b9605,527.12",
-      "blocked_value_paise": 60552712
+      "false_positives_friction": 60,
+      "blocked_value": "\u20b9607,385.12",
+      "blocked_value_paise": 60738512
     },
     "quality": {
       "category_accuracy": 0.924,
@@ -79,20 +79,20 @@
       "amount_error_median": 0.0
     },
     "business": {
-      "revenue": "\u20b9195,142.00",
-      "revenue_paise": 19514200,
-      "merchant_margin": "\u20b975,121.89",
-      "margin_paise": 7512189,
-      "transactions": 76,
-      "aov": "\u20b92,567.65",
-      "aov_paise": 256765,
-      "auto_rate": 0.2407,
-      "human_confirmation_rate": 0.3796,
+      "revenue": "\u20b9193,284.00",
+      "revenue_paise": 19328400,
+      "merchant_margin": "\u20b974,474.25",
+      "margin_paise": 7447425,
+      "transactions": 75,
+      "aov": "\u20b92,577.12",
+      "aov_paise": 257712,
+      "auto_rate": 0.2377,
+      "human_confirmation_rate": 0.3827,
       "denial_rate": 0.1358
     },
     "efficiency": {
-      "latency_p50_ms": 3.35,
-      "latency_p95_ms": 4.61
+      "latency_p50_ms": 3.74,
+      "latency_p95_ms": 5.66
     }
   },
   "dev": {
@@ -137,8 +137,8 @@
       "denial_rate": 0.1759
     },
     "efficiency": {
-      "latency_p50_ms": 3.43,
-      "latency_p95_ms": 4.52
+      "latency_p50_ms": 3.99,
+      "latency_p95_ms": 5.73
     }
   },
   "test": {
@@ -183,8 +183,8 @@
       "denial_rate": 0.1019
     },
     "efficiency": {
-      "latency_p50_ms": 3.24,
-      "latency_p95_ms": 4.54
+      "latency_p50_ms": 3.74,
+      "latency_p95_ms": 5.77
     }
   },
   "by_bucket": {
@@ -210,8 +210,8 @@
       "n": 46,
       "unauthorized_paise": 0,
       "false_negatives": 0,
-      "auto": 17,
-      "step_up": 13,
+      "auto": 16,
+      "step_up": 14,
       "deny": 0,
       "abstain": 0
     },

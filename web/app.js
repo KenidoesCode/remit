@@ -239,6 +239,9 @@ function verdictPanel(d) {
     ${a.counterfactual ? `<p class="meta-line">↳ ${esc(a.counterfactual)}</p>` : ""}
     ${(d.telemetry.notes || []).map(n => `<p class="meta-line">note: ${esc(n)}</p>`).join("")}
     ${d.telemetry.approximate_note ? `<p class="meta-line short">↳ ${esc(d.telemetry.approximate_note)}</p>` : ""}
+    ${(d.intent && d.intent.semantic_items && d.intent.semantic_items.length)
+      ? `<p class="meta-line short">↳ found by meaning, not by name — an embedding may
+         find a product, it may never authorise one (MATCH-002)</p>` : ""}
     ${d.telemetry.unfulfilled_note ? `<p class="meta-line short">↳ ${esc(d.telemetry.unfulfilled_note)}</p>` : ""}
     ${d.telemetry.over_budget_note ? `<p class="meta-line short">↳ ${esc(d.telemetry.over_budget_note)}</p>` : ""}
     ${clauseGrid(a)}
@@ -323,8 +326,11 @@ function renderAct2(d) {
           <button id="confirmBtn" class="cta">Approve — this is what I meant</button>
           <button id="declineBtn" class="ghost">No, that is not what I asked for</button>
         </div>
-        <p class="meta-line">Approving re-runs the same decision with your consent
-          recorded. Nothing was reserved and no order exists until you press it.</p>
+        ${d.approval ? `<p class="meta-line">Your approval is a token bound to
+          <b>this</b> basket — user, intent hash, cart hash, ${R2(d.approval.amount_paise)},
+          and an expiry. If a price moves before you press it, it stops verifying and
+          says so. It works once.</p>` : ""}
+        <p class="meta-line">Nothing was reserved and no order exists until you press it.</p>
       </div>`;
     }
     if (d.order_id && ["CREATED", "AUTHORIZED"].includes(d.payment_state)) {
@@ -341,7 +347,7 @@ function renderAct2(d) {
   const cb = $("#confirmBtn");
   if (cb) cb.addEventListener("click", () => {
     cb.disabled = true; cb.textContent = "approving…";
-    ask(d.intent.utterance, true);
+    ask(d.intent.utterance, true, (d.approval || {}).token);
   });
   const db = $("#declineBtn");
   if (db) db.addEventListener("click", () => {
@@ -830,7 +836,7 @@ const EXAMPLES = [
    "the objective changes what gets ranked first"],
 ];
 
-async function ask(utterance, humanConfirms) {
+async function ask(utterance, humanConfirms, approvalToken) {
   const btn = $("#askBtn"); btn.disabled = true;
   $("#act2Out").innerHTML = '<div class="skel"></div>';
   wire([["dispatch", "compiling the sentence into an intent envelope…"]]);
@@ -839,6 +845,10 @@ async function ask(utterance, humanConfirms) {
       utterance, accept_offers: "in_envelope", user_id: USER_ID,
       ...(humanConfirms === null || humanConfirms === undefined
           ? {} : { human_confirms: humanConfirms }),
+      // The approval is a token bound to the basket that was on screen, not a
+      // boolean saying somebody clicked. If the price moved between the ask
+      // and the click, this fails and says so.
+      ...(approvalToken ? { approval_token: approvalToken } : {}),
     });
     STATE.journey = d;
     const env = d.intent || {};

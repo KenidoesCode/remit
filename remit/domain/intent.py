@@ -40,6 +40,9 @@ class IntentEnvelope(BaseModel):
                                        # a product as a MODIFIER inside its
                                        # name -- "laptop" reaching "Laptop
                                        # Stand". Buyable, not what was said.
+    semantic_items: list[str] = []     # things found by MEANING rather than by
+                                       # the words the human used. Buyable, and
+                                       # never bought without asking. MATCH-002.
     ungrounded: list[str] = []         # words this catalog has no answer for.
                                        # Kept in the envelope on purpose: what
                                        # the agent could NOT do for you is part

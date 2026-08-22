@@ -24,7 +24,7 @@ from typing import Protocol
 
 from ..money import Paise
 from .amounts import AmountCandidate, best_ceiling
-from .grounding import Lexicon, ground
+from .grounding import Lexicon, RequestedItem, content_query, ground
 from ..domain.intent import IntentEnvelope, new_intent
 
 _DEFAULT_LEXICON: Lexicon | None = None
@@ -124,8 +124,37 @@ class RuleCompiler:
     merchant actually sells.
     """
 
-    def __init__(self, lexicon: Lexicon | None = None):
+    # How similar a product has to be, by meaning alone, before REMIT will
+    # even OFFER it. Below this the honest answer is "we do not sell that".
+    #
+    # MEASURED, not guessed, and the measurement is not flattering.
+    #
+    # Against 14 things this catalog cannot sell and 10 real meaning-only
+    # requests, the deterministic embedder's score distributions OVERLAP:
+    # "buy a house" scores 0.186 and "snacks for a party" scores 0.174. A
+    # character-n-gram embedder is lexical-semantic; it generalises over
+    # spelling and word order and it does not know that a party implies
+    # snacks. No threshold separates those two sentences, and pretending one
+    # does would be the exact failure this project exists to talk about.
+    #
+    # So the floor is set for PRECISION at 0.20: nothing in the negative set
+    # reaches it, and half the positive set does. "something to drink",
+    # "stuff for my desk", "fever medicine", "a gift for a runner" and "things
+    # for a baby" work; "snacks for a party" and "something for a headache" do
+    # not, and REMIT says it does not stock them rather than guessing.
+    #
+    # Installing the neural embedder raises the ceiling on that recall, and
+    # /health reports which one is actually running. `tests/test_semantic.py`
+    # asserts both sides of this boundary against the same two lists, so a
+    # catalog change cannot quietly move it.
+    SEMANTIC_FLOOR = 0.20
+
+    def __init__(self, lexicon: Lexicon | None = None, semantic=None):
         self._lex = lexicon
+        # (utterance, k) -> [(product_id, name, category, score)]. Supplied by
+        # the composition root, because the compiler has no business holding a
+        # database handle.
+        self._semantic = semantic
 
     @property
     def lexicon(self) -> Lexicon:
@@ -152,8 +181,32 @@ class RuleCompiler:
             for wd in words:
                 masked = re.sub(re.escape(wd), " ", masked, flags=re.I)
         g = ground(masked, self.lexicon)
-        items = g.items
-        terms = g.all_terms
+        items = list(g.items)
+        semantic_surfaces: list[str] = []
+
+        # NOTHING MATCHED BY WORD. Ask the vector index whether anything
+        # matches by MEANING -- "something to drink", "snacks for a party",
+        # "stuff for my desk" contain no word a catalog index can look up.
+        #
+        # What comes back is a candidate, not a decision: the item is tagged so
+        # MATCH-002 fails and a person is asked. An embedding may find a
+        # product; it may never authorise one.
+        if not items and self._semantic is not None:
+            hits = [h for h in self._semantic(content_query(utterance), 4)
+                    if h[3] >= self.SEMANTIC_FLOOR]
+            if hits:
+                pid, name, cat, score = hits[0]
+                semantic_surfaces = [utterance.strip()[:60]]
+                items = [RequestedItem(
+                    terms=[name.lower()], category=cat,
+                    surface=utterance.strip()[:60], how="semantic",
+                    product_ids=[h[0] for h in hits])]
+                notes.append(
+                    f"nothing here is called that; by meaning, the closest is "
+                    f"{name!r} (similarity {score:.2f})")
+                conf -= 0.20
+        terms = [t for i in items for t in i.terms]
+        terms = list(dict.fromkeys(terms))
         cats = {i.category for i in items if i.category}
         category = cats.pop() if len(cats) == 1 else None
 
@@ -275,6 +328,7 @@ class RuleCompiler:
             category=category, product_terms=terms,
             requested_items=[i.dict() for i in items],
             approximate_items=[i.surface for i in items if i.approximate],
+            semantic_items=semantic_surfaces,
             ungrounded=g.ungrounded,
             merchant_constraints=g.merchants,
             max_price_paise=ceiling if ceiling_is_per_unit else None,

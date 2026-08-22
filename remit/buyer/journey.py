@@ -30,7 +30,7 @@ from datetime import datetime, timedelta
 from ..domain.cart import Cart, Totals, line_from, new_cart, price_cart
 from ..domain.catalog import Catalog, Product, rank
 from ..domain.drift import DriftResult, compute_drift
-from ..domain.intent import IntentEnvelope
+from ..domain.intent import IntentEnvelope, amend
 from ..domain.revenue import Offer, RevenueEngine
 from ..domain.risk import Exposure, RiskDecision, assess
 from ..exec.idempotency import idempotency_key, receipt_for
@@ -39,6 +39,7 @@ from ..ledger.chain import Ledger
 from ..models import canonical as _canonical, sha as _sha
 from ..money import Paise, rupees
 from ..policy.authorize import Authorization, Policy, Verdict, authorize
+from ..retrieval.index import hard_filter
 from ..tools.broker import ToolBroker
 
 
@@ -77,6 +78,7 @@ class JourneyResult:
     payment_state: str = "NONE"
     shown_total_paise: int = 0
     replayed: bool = False
+    approval: dict | None = None    # the token a human must redeem to proceed
     note: str = ""
     latency_ms: float = 0.0
 
@@ -108,6 +110,7 @@ class JourneyResult:
             "authorization": self.authorization.dict() if self.authorization else None,
             "payment_id": self.payment_id, "order_id": self.order_id,
             "payment_state": self.payment_state, "replayed": self.replayed,
+            "approval": self.approval,
             "shown_total_paise": self.shown_total_paise,
             "note": self.note, "latency_ms": round(self.latency_ms, 2),
         }
@@ -116,7 +119,8 @@ class JourneyResult:
 class Journey:
     def __init__(self, *, db, catalog: Catalog, compiler, revenue: RevenueEngine,
                  policy: Policy, ledger: Ledger, payments: PaymentStore,
-                 broker: ToolBroker, gateway, calibrator=None):
+                 broker: ToolBroker, gateway, calibrator=None, index=None,
+                 approvals=None):
         self.db = db
         self.catalog = catalog
         self.compiler = compiler
@@ -126,6 +130,12 @@ class Journey:
         self.payments = payments
         self.broker = broker
         self.gw = gateway
+        # Semantic retrieval. Optional so that every existing construction of a
+        # Journey keeps working; when it is absent the agent simply cannot
+        # answer a request it has no words for, which is the old behaviour.
+        self.index = index
+        # Issues and redeems the tokens that bind a human's yes to one basket.
+        self.approvals = approvals
         # Identity until a temperature has been fitted on labelled data.
         # Deliberately explicit: an uncalibrated system says so.
         self.calibrator = calibrator or (lambda x: x)
@@ -170,6 +180,18 @@ class Journey:
         """
         terms = [t for t in item.get("terms") or [] if t]
         cat = item.get("category")
+        # Retrieval already named the products. They still have to survive the
+        # hard filter -- an embedding does not get to reintroduce a candidate
+        # the human's budget excluded.
+        if item.get("product_ids"):
+            found = [p for p in (self.catalog.get(pid)
+                                 for pid in item["product_ids"]) if p]
+            return hard_filter(
+                found,
+                max_price_paise=None if ignore_budget else env.max_price_paise,
+                required=env.required_attributes,
+                excluded=env.excluded_attributes,
+                merchants=env.merchant_constraints or None)
         base = {"max_price_paise": None if ignore_budget else env.max_price_paise,
                 "required": env.required_attributes,
                 "excluded": env.excluded_attributes,
@@ -207,6 +229,7 @@ class Journey:
             exposure: Exposure | None = None,
             accept_offers: str = "in_envelope",   # 'none'|'in_envelope'|'all'
             human_confirms: bool | None = None,
+            approval_token: str | None = None,
             inject: dict | None = None) -> JourneyResult:
         t0 = time.perf_counter()
         inject = inject or {}
@@ -498,9 +521,41 @@ class Journey:
             self._event("STEP_UP_REQUIRED", cid,
                         {"amount_paise": totals.total_paise,
                          "reason": auth.reason}, now)
-            if human_confirms is None:
+            if approval_token:
+                # A token, not a boolean. It was bound to this person, this
+                # request, this basket and this exact total at the moment they
+                # were shown it -- so a price that moved, a line that changed or
+                # a second tab replaying the same click all fail here rather
+                # than paying. See remit/grants/approval.py.
+                bad = self.approvals.redeem(
+                    token=approval_token, user_id=user_id, env=env, cart=cart,
+                    totals=totals, now=now) if self.approvals else None
+                if bad is not None:
+                    r.note = f"approval rejected ({bad.reason}): {bad.detail}"
+                    r.payment_state = "APPROVAL_REJECTED"
+                    self._event("APPROVAL_REJECTED", cid,
+                                {"reason": bad.reason, "detail": bad.detail,
+                                 "amount_paise": totals.total_paise}, now)
+                    r.latency_ms = (time.perf_counter() - t0) * 1000
+                    return r
+                human_confirms = True
+            elif human_confirms is None:
                 r.note = "awaiting human confirmation"
                 r.payment_state = "AWAITING_HUMAN"
+                if self.approvals is not None:
+                    grant = self.approvals.issue(
+                        user_id=user_id, env=env, cart=cart, totals=totals,
+                        now=now, correlation_id=cid)
+                    r.approval = {
+                        "token": grant.token,
+                        "amount_paise": grant.amount_paise,
+                        "expires_at": grant.expires_at,
+                        "cart_hash": grant.cart_hash,
+                        "intent_hash": grant.intent_hash,
+                        "binds": ["user", "intent hash", "cart hash", "amount",
+                                  "expiry"],
+                    }
+                    self._event("APPROVAL_REQUESTED", cid, r.approval, now)
                 r.latency_ms = (time.perf_counter() - t0) * 1000
                 return r
             if not human_confirms:
@@ -511,8 +566,33 @@ class Journey:
                              "why": "human declined"}, now)
                 r.latency_ms = (time.perf_counter() - t0) * 1000
                 return r
+
+            # THE APPROVAL IS RECORDED IN THE ENVELOPE, NOT JUST IN A LOG.
+            #
+            # A person who approves a Rs 7,315 basket against a Rs 5,000
+            # instruction has authorised Rs 7,315 -- and until this existed,
+            # the envelope still said Rs 5,000 and the payment went out above
+            # it. Every clause downstream reads the envelope, so an approval
+            # that does not amend it leaves the system's own record of what was
+            # authorised disagreeing with what was paid. Version n+1, with the
+            # reason, and version n is still there. FAILURES #29.
+            ceiling_before = env.ceiling_paise()
+            if ceiling_before is None or totals.total_paise > ceiling_before:
+                env, reason = amend(
+                    env, now=now,
+                    reason=(f"human approved {rupees(totals.total_paise)} at a "
+                            f"step-up" + (f", raising the ceiling from "
+                                          f"{rupees(ceiling_before)}"
+                                          if ceiling_before else "")),
+                    max_total_paise=totals.total_paise, max_price_paise=None)
+                r.intent = env
+                self._persist_intent(env, now, reason)
+                self._event("INTENT_AMENDED", cid,
+                            {"version": env.version, "reason": reason,
+                             "ceiling_paise": env.ceiling_paise()}, now)
             self._event("USER_CONFIRMED", cid,
-                        {"amount_paise": totals.total_paise}, now)
+                        {"amount_paise": totals.total_paise,
+                         "envelope_version": env.version}, now)
             authorization_state = "CONFIRMED"
 
         # 8. PAY ---------------------------------------------------------
