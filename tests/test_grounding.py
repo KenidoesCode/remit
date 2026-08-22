@@ -156,3 +156,25 @@ def test_a_named_merchant_becomes_a_constraint_not_a_product():
     env, _ = c.compile("buy running shoes from Strideworks under 6000", "u", NOW)
     assert env.merchant_constraints, "merchant not recognised"
     assert all("strideworks" not in t for t in env.product_terms)
+
+
+def test_a_list_without_commas_is_still_a_list(app):
+    """"toothpaste toothbrush and soap" is three things. The grouping rule
+    guesses it is two, and the catalog has to correct it -- strictly, by asking
+    whether ANY product satisfies all the words at once. An OR fallback made
+    every group look satisfiable, the split never fired, and the toothbrush
+    vanished exactly the way the rice used to. FAILURES #27."""
+    r = app.journey.run(utterance="need toothpaste toothbrush and soap under 500",
+                        user_id="usr_t7", now=NOW)
+    got = " | ".join(names(r)).lower()
+    for want in ("toothpaste", "toothbrush", "soap"):
+        assert want in got, f"{want} missing from {got}"
+
+
+def test_a_conjunction_the_catalog_can_satisfy_stays_one_item(app):
+    """The correction must not fire when the grouping was right: a Trail Grip
+    answers waterproof AND trail AND shoes, so it is one purchase, not three."""
+    r = app.journey.run(utterance="buy premium waterproof trail shoes under 9000",
+                        user_id="usr_t8", now=NOW)
+    primaries = [l for l in r.cart.lines if l.origin == "primary"]
+    assert len(primaries) == 1, [l.name for l in primaries]

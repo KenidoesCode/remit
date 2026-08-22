@@ -841,3 +841,60 @@ tuning how often you ask produces unauthorised movement. Only removing the
 envelope does. I had been searching for a gentle trade-off curve and the data
 says the trade-off is a cliff — which is exactly the argument for having an
 envelope at all, and I nearly missed it by sweeping the wrong axis.
+
+---
+
+## 27. The rice bug again, wearing a different hat
+
+**What happened.** Three weeks of work after FAILURES #16, on a live deployment,
+I typed `need toothpaste toothbrush and soap under 500` and got toothpaste and
+soap. And `i need diapers baby wipes and detergent under 3000` returned wipes
+and detergent. The toothbrush and the diapers were gone — silently, with no
+note, no drift, no clause. The exact failure I had written 900 words about.
+
+**Why the fix for #16 did not cover it.** The grouping rule says a conjunction
+or a comma starts a new item, and anything else continues the current one. So
+"toothpaste toothbrush" — no comma between them — became ONE item with two
+terms, on the theory that adjacent words describe one thing ("waterproof trail
+shoes"). The catalog was supposed to correct that: if nothing satisfies all the
+words at once, the grouping was the parser's guess and not the human's meaning,
+so split it.
+
+Two things defeated the correction, and I had built both of them myself.
+
+First, the split happened at the wrong level. It widened the *candidate pool* —
+searching each term and taking the union — and then still selected **one**
+product from that union. More candidates, same single line. The union is not a
+fix for a coverage problem.
+
+Second, and this is the one that made me sit still for a minute: the test for
+"can the catalog satisfy all of these words" ran through `_candidates`, which
+contains a **fallback that ORs the terms** when the strict search comes back
+empty. So the strict search returned nothing, the fallback quietly returned
+something, and the caller saw a non-empty list and concluded the group was
+satisfiable. Every group looked satisfiable. The split could never fire. I had
+written a correction and then, in a different function, written the thing that
+guaranteed it would never run.
+
+**The fix.** Split at the item level, and ask the question strictly:
+
+```python
+for it in requested:
+    if len(terms) > 1 and not self._candidates(env, it, strict=True):
+        resolved.extend(one item per term)
+```
+
+**What it changed.** Two things, and the second is the one worth keeping.
+
+A fallback is a policy decision, and a function that contains one cannot also
+be used to answer a question about what would happen without it. `_candidates`
+was doing double duty as "find me products" and "tell me if this is possible",
+and those need different answers.
+
+And: a fixed bug is not a fixed *class* of bug. #16 fixed the case I had in
+front of me — a comma-separated list — and I wrote the retrospective as though I
+had understood the general problem. The general problem is that anything which
+turns N requests into fewer than N cart lines must leave evidence, and I still
+do not have a single invariant that enforces that. The tests I added cover two
+more sentences. That is not the same thing, and I would rather say so than
+write another confident paragraph about what I have learned.

@@ -45,8 +45,8 @@
       "denial_rate": 0.137
     },
     "efficiency": {
-      "latency_p50_ms": 3.41,
-      "latency_p95_ms": 4.58
+      "latency_p50_ms": 3.33,
+      "latency_p95_ms": 4.57
     }
   },
   "train": {
@@ -91,8 +91,8 @@
       "denial_rate": 0.1358
     },
     "efficiency": {
-      "latency_p50_ms": 3.41,
-      "latency_p95_ms": 4.62
+      "latency_p50_ms": 3.35,
+      "latency_p95_ms": 4.61
     }
   },
   "dev": {
@@ -137,8 +137,8 @@
       "denial_rate": 0.1759
     },
     "efficiency": {
-      "latency_p50_ms": 3.52,
-      "latency_p95_ms": 4.57
+      "latency_p50_ms": 3.43,
+      "latency_p95_ms": 4.52
     }
   },
   "test": {
@@ -183,8 +183,8 @@
       "denial_rate": 0.1019
     },
     "efficiency": {
-      "latency_p50_ms": 3.31,
-      "latency_p95_ms": 4.32
+      "latency_p50_ms": 3.24,
+      "latency_p95_ms": 4.54
     }
   },
   "by_bucket": {

@@ -155,7 +155,8 @@ class Journey:
              reason, env.envelope_hash))
 
     def _candidates(self, env: IntentEnvelope, item: dict,
-                    ignore_budget: bool = False) -> list[Product]:
+                    ignore_budget: bool = False,
+                    strict: bool = False) -> list[Product]:
         """Everything that answers ONE requested item.
 
         The grammar said "waterproof trail shoes" is one thing described three
@@ -179,21 +180,18 @@ class Journey:
                 "search_products",
                 {"category": cat, "terms": terms, "match_all_terms": True} | base,
                 actor="model")
-            if not found and len(terms) > 1:
-                seen: set[str] = set()
-                for t in terms:
-                    for p in self.broker.call(
-                            "search_products",
-                            {"category": cat, "terms": [t],
-                             "match_all_terms": True} | base, actor="model"):
-                        if p.product_id not in seen:
-                            seen.add(p.product_id)
-                            found.append(p)
-            if not found and cat:
+            if not found and cat and not strict:
                 # The words did not land, but the shelf did. Search the shelf
                 # WITHOUT the category filter's help so the terms still have to
                 # do the work; if that is also empty the answer is "we do not
                 # stock it", which is a real answer.
+                #
+                # `strict` exists because this fallback is an OR, and asking
+                # "does anything satisfy ALL of these words" is the question the
+                # item-splitting pass needs answered. Letting it fall through to
+                # an OR here made every group look satisfiable and the split
+                # never fired -- so "diapers baby wipes" quietly delivered the
+                # wipes. FAILURES #27.
                 found = self.broker.call(
                     "search_products",
                     {"category": None, "terms": terms,
@@ -244,6 +242,22 @@ class Journey:
         requested = env.requested_items or [
             {"terms": env.product_terms, "category": env.category,
              "surface": (env.product_terms or ["it"])[0], "how": "exact"}]
+        # Grammar proposes; the catalog disposes -- and it has to dispose at the
+        # ITEM level, not the candidate level. The first version of this split
+        # the search and then still selected one product from the union, so
+        # "toothpaste toothbrush and soap" came back as toothpaste and soap and
+        # the toothbrush vanished exactly the way the rice used to. A group
+        # that nothing satisfies as a whole is not one thing described twice;
+        # it is two things said without a comma. FAILURES #27.
+        resolved: list[dict] = []
+        for it in requested:
+            terms = [t for t in (it.get("terms") or []) if t]
+            if len(terms) > 1 and not self._candidates(env, it, strict=True):
+                resolved.extend(dict(it, terms=[t], surface=t) for t in terms)
+            else:
+                resolved.append(it)
+        requested = resolved
+
         picks: list[tuple[Product, dict, str, float]] = []
         unfulfilled: list[str] = []
         over_budget: list[dict] = []
