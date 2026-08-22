@@ -8,6 +8,34 @@
 
 ---
 
+## Build with REMIT
+
+```bash
+npm install remit-sdk
+```
+
+```bash
+npm i -g remit-sdk       # the `remit` CLI
+```
+
+```ts
+import { Remit } from "remit-sdk";
+
+const remit = new Remit({ baseUrl: "https://remit-vvug.onrender.com" });
+const decision = await remit.authorization.evaluate({ text: "buy a laptop under 50000" });
+
+decision.verdict;   // "STEP_UP"
+decision.failed;    // ["MATCH-001"] -- a laptop stand is not a laptop
+```
+
+TypeScript, ESM and CommonJS, zero runtime dependencies, and an audit receipt
+you can verify locally rather than take on trust.
+
+The npm package is `remit-sdk` because `remit` is taken on npm by an unrelated
+library; the CLI binary is still `remit`. Docs: [`docs/sdk/`](docs/sdk/).
+Source: [`packages/sdk/`](packages/sdk/).
+
+
 ## The problem
 
 I gave an AI permission to spend money. Then I tried to work out how much I

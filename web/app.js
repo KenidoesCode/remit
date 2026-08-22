@@ -1761,6 +1761,42 @@ document.addEventListener("DOMContentLoaded", async () => {
     e.preventDefault();
     ask($("#utterance").value.trim() || $("#utterance").placeholder);
   });
+  // ── copy buttons on the install commands ──────────────────────────────
+  // navigator.clipboard needs a secure context and permission, and it rejects
+  // silently in enough situations (http, iframes, older browsers) that a copy
+  // button relying on it alone is a copy button that quietly does nothing. The
+  // fallback selects the text so the visitor can still copy it by hand, and
+  // the label says which happened rather than always claiming success.
+  document.querySelectorAll(".sdk-copy").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const text = btn.getAttribute("data-copy") || "";
+      const label = btn.textContent;
+      let ok = false;
+      try {
+        if (navigator.clipboard && window.isSecureContext) {
+          await navigator.clipboard.writeText(text);
+          ok = true;
+        }
+      } catch (_) { ok = false; }
+      if (!ok) {
+        const code = btn.parentElement && btn.parentElement.querySelector("code");
+        if (code) {
+          const range = document.createRange();
+          range.selectNodeContents(code);
+          const sel = window.getSelection();
+          sel.removeAllRanges();
+          sel.addRange(range);
+        }
+      }
+      btn.textContent = ok ? "copied" : "select";
+      btn.setAttribute("data-done", "1");
+      setTimeout(() => {
+        btn.textContent = label;
+        btn.removeAttribute("data-done");
+      }, 1600);
+    });
+  });
+
   $("#heroCta").addEventListener("click", () => {
     document.getElementById("act1").scrollIntoView({ behavior: REDUCED ? "auto" : "smooth" });
     setTimeout(() => {

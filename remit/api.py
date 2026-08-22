@@ -91,6 +91,25 @@ async def _guard(request: Request, call_next):
     # else who ever loaded the page. FAILURES #32.
     secret = _SESSION["secret"]
     pid = verify(request.cookies.get(COOKIE), secret)
+    if pid is None:
+        # A server-to-server client has no cookie jar. /v1 documented
+        # `Authorization: Bearer <session>` from the day it was written and
+        # nothing ever implemented it, so an SDK presenting a valid session got
+        # a BRAND NEW principal on every call -- silently. Not an auth failure:
+        # a fresh identity, which means zero exposure, no revocation history
+        # and an audit trail scoped to nobody. Exactly the integrator the
+        # protocol exists for, and exactly the class of bug FAILURES #49 was
+        # about: a claim in prose that no test read. FAILURES #51.
+        #
+        # This grants nothing new. The token is a value THIS server signed and
+        # is checked by the same verify() with the same secret; presenting it
+        # in a header rather than a cookie changes the transport, not the
+        # trust. A caller still cannot choose a principal, because a principal
+        # they typed will not carry our signature.
+        header = request.headers.get("authorization", "")
+        scheme, _, token = header.partition(" ")
+        if scheme.lower() == "bearer":
+            pid = verify(token.strip(), secret)
     issued = None
     if pid is None:
         issued = mint(secret)

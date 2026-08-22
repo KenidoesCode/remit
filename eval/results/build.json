@@ -1,8 +1,8 @@
 {
   "generated_by": "eval/build_manifest.py",
   "note": "shipped so a deployment that does not carry the test suite can still report a true number. test_cases is what pytest collects; test_functions is what the source defines. Parametrisation is the difference, and neither number is the other.",
-  "test_functions": 381,
-  "test_cases": 699,
-  "tests": 699,
+  "test_functions": 386,
+  "test_cases": 704,
+  "tests": 704,
   "policy_clauses": 21
 }

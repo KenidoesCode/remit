@@ -8,3 +8,8 @@ __pycache__/
 .env
 deploy/studio-min/
 deploy/one.html
+
+# SDK build output
+packages/sdk/node_modules/
+packages/sdk/dist/
+packages/sdk/*.tgz

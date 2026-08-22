@@ -195,3 +195,91 @@ def test_the_secret_fails_closed_when_live(env, monkeypatch):
     with pytest.raises(RuntimeError, match="REMIT_SESSION_SECRET"):
         session_secret(live=True)
     assert session_secret(live=False).startswith("dev-")
+
+
+# --- Bearer sessions, for clients with no cookie jar -----------------------
+#
+# FAILURES #51. /v1's docstring promised this from the day it was written and
+# nothing implemented it, so an SDK presenting a valid session was handed a new
+# principal on every call. These tests exist because a documented auth path
+# that nothing exercises is a documented auth path that does not work.
+
+def _client():
+    from fastapi.testclient import TestClient
+
+    import remit.api as api_mod
+    return TestClient(api_mod.api)
+
+
+def _session_token(client) -> str:
+    from remit.auth import COOKIE
+
+    client.post("/v1/intents", json={"utterance": "buy a yoga mat under 2000"})
+    tok = client.cookies.get(COOKIE)
+    assert tok, "the server did not issue a session"
+    return tok
+
+
+def test_a_bearer_session_is_the_same_principal_as_the_cookie():
+    a = _client()
+    token = _session_token(a)
+    mine = a.post("/v1/intents", json={"utterance": "buy a yoga mat under 2000"}
+                  ).json()["intent"]["actor_id"]
+
+    b = _client()                       # no cookie jar at all
+    theirs = b.post("/v1/intents",
+                    json={"utterance": "buy a yoga mat under 2000"},
+                    headers={"Authorization": f"Bearer {token}"}
+                    ).json()["intent"]["actor_id"]
+    assert mine == theirs
+
+
+def test_a_forged_bearer_token_does_not_choose_a_principal():
+    """The whole reason there is no API key: a bearer credential a caller can
+    type is a caller choosing whose limits to spend. FAILURES #32."""
+    b = _client()
+    got = b.post("/v1/intents",
+                 json={"utterance": "buy a yoga mat under 2000"},
+                 headers={"Authorization": "Bearer usr_iwouldliketobethis.0bad"}
+                 ).json()["intent"]["actor_id"]
+    assert got != "usr_iwouldliketobethis"
+    assert got.startswith("usr_")
+
+
+def test_a_tampered_signature_is_rejected():
+    a = _client()
+    token = _session_token(a)
+    pid, _, sig = token.rpartition(".")
+    bent = f"{pid}.{'0' * len(sig)}"
+
+    b = _client()
+    got = b.post("/v1/intents",
+                 json={"utterance": "buy a yoga mat under 2000"},
+                 headers={"Authorization": f"Bearer {bent}"}
+                 ).json()["intent"]["actor_id"]
+    assert got != pid
+
+
+def test_the_cookie_still_wins_when_both_are_present():
+    """A header must not be able to override a session the browser already
+    holds -- that would be a cross-site request choosing an identity."""
+    a = _client()
+    cookie_pid = _session_token(a).rpartition(".")[0]
+
+    b = _client()
+    other = _session_token(b)
+
+    got = a.post("/v1/intents",
+                 json={"utterance": "buy a yoga mat under 2000"},
+                 headers={"Authorization": f"Bearer {other}"}
+                 ).json()["intent"]["actor_id"]
+    assert got == cookie_pid
+
+
+def test_a_non_bearer_authorization_header_is_ignored():
+    b = _client()
+    got = b.post("/v1/intents",
+                 json={"utterance": "buy a yoga mat under 2000"},
+                 headers={"Authorization": "Basic dXNlcjpwYXNz"}
+                 ).json()["intent"]["actor_id"]
+    assert got.startswith("usr_")

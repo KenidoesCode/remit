@@ -2087,3 +2087,105 @@ I do not have a process fix for that. What I have is: the attack suite now runs
 five times rather than once before I believe a green result, and #49's lesson
 applies here too — **a number I have seen once is not a number I have
 verified.**
+
+## 51. The authentication the protocol documented and never implemented
+
+**What happened.** The first thing the SDK needed was a session, so I read what
+`/v1` says about identity:
+
+> *"Same session principal as everything else — an httpOnly signed cookie, or
+> the `Authorization: Bearer <session>` header for a client that has no cookie
+> jar."*
+
+That sentence had been in the module docstring since the day the protocol was
+written. **Nothing implemented it.** The middleware read
+`request.cookies.get(COOKIE)` and stopped.
+
+The failure mode is the bad kind. A server-to-server client presenting a
+perfectly valid session did not get an auth error — it got a **brand new
+principal, minted fresh, on every single call**. Which means:
+
+- exposure limits never accumulated, because each request was a new spender
+- velocity checks never fired, for the same reason
+- a revocation applied to an identity that made exactly one request
+- `/v1/audit/{id}` returned 404 for a trace the caller had created seconds
+  earlier, because it belonged to a principal that no longer existed anywhere
+
+Every one of those reads as "working" from the outside. The client gets 200s.
+
+**Who this hurt.** Precisely the integrator the protocol exists for. A browser
+never hit it, because a browser has a cookie jar. Every test hit it never,
+because `TestClient` has a cookie jar too. The one caller shape that had no
+cookie jar was the one shape nothing in the repository was.
+
+**The fix** is eleven lines: if there is no valid cookie, read
+`Authorization: Bearer` and verify it with the same function and the same
+secret. This grants nothing new — the token is a value this server signed, and
+presenting it in a header rather than a cookie changes the transport, not the
+trust. A caller still cannot choose a principal, because a principal they typed
+will not carry our signature.
+
+**What it changed.** Five tests in `test_identity.py`, and two of them are about
+what must NOT work: a forged token does not select a principal, and a cookie
+already present **wins** over a header, so a cross-site request cannot choose an
+identity for a browser that already has one.
+
+This is FAILURES #49 again with money attached. #49 was about numbers in prose
+that no test read. This was a **security control** in prose that no test read,
+and it survived a threat model, a security report and a readiness scorecard that
+all cited the sentence as though it described the code.
+
+The lesson I am actually taking: *the docstring is not the system.* Building a
+client against my own protocol found in ten minutes what auditing the protocol
+did not find in four days, because a client cannot read a docstring — it can
+only make the call.
+
+## 52. My receipt verifier cried tampering on a healthy chain
+
+**What happened.** `receipts.verify()` recomputes every audit hash in
+JavaScript rather than repeating the server's own `chain_intact` claim. The
+first run against a real journey said:
+
+```
+FAIL hashes_recomputed  hash mismatch at seq 38
+```
+
+The chain was completely intact. The bug was mine, in the verifier.
+
+The server hashes `json.dumps(..., sort_keys=True, separators=(",", ":"))`.
+Python writes a float `0.0` as `0.0`. `JSON.parse` turns that into the
+JavaScript number `0`, and in JavaScript `0` and `0.0` are the same value — the
+literal is **gone before any encoder can see it**. Re-serialising gives `0`, one
+byte differs, and the hash does not match.
+
+REMIT's `DRIFT_MEASURED` payload is twelve dimensions that are almost always
+exactly `0.0`. So this was not an edge case, it was **every receipt**.
+
+**Why it matters more than a normal bug.** A verifier that reports tampering on
+healthy data is worse than no verifier at all. It has exactly one job — to be
+believed when it says no — and a tool that cries wolf on the happy path trains
+you to click past it. I would have shipped a feature whose failure state was
+indistinguishable from its normal state.
+
+**The fix** is a JSON parser that keeps every number as the exact substring it
+occupied on the wire, and an encoder that emits that substring verbatim. 200
+lines, no dependencies, nothing normalised and nothing guessed. It also has to
+escape non-ASCII the way Python's `ensure_ascii=True` does, because
+`JSON.stringify` leaves "₹" as a literal character and the server did not.
+
+The server side needed one change too: `/v1/audit` now returns `prev_hash` and
+`trace_id` per event. Without them a client cannot recompute anything, and
+"verify a receipt" could only ever have meant "repeat the server's claim".
+
+**What it changed.** Two tests that matter more than the feature. One tampers
+with a payload and asserts verification **fails** — a verifier that has never
+rejected anything is a verifier nobody has tested. The other asserts that when
+the check *cannot run* (an older server, no `prev_hash`) the result is
+`ok: false` and says why, rather than a green tick over an absence.
+
+**And the thing I still cannot do.** None of this proves the server is honest.
+An operator who controls the whole chain can rewrite it from any point and
+re-link every hash consistently, and this verifier would pass. It is
+tamper-**evident** against partial edits and it is **not** tamper-proof. That is
+why `no_external_trust_anchor: true` is a field on every result rather than a
+line in a document — a footnote is a thing you skip.

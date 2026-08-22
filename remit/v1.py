@@ -475,8 +475,18 @@ def install(api, *, get_app, principal, LOCK, utcnow, exposure_for, key_id):
             if decision is None or decision["user_id"] != who:
                 return JSONResponse({"error": "no such correlation id"},
                                     status_code=404)
+            # prev_hash is returned so a CLIENT can recompute
+            #   sha256(prev_hash + canonical({kind, trace_id, ts, payload}))
+            # and check each event itself, rather than being told the chain is
+            # intact by the same server that would be lying. Without it,
+            # "verify a receipt" could only ever mean "repeat the server's
+            # claim". It still is not proof of honesty -- there is no external
+            # trust anchor and the SDK says so -- but it does detect a payload
+            # edited after the fact.
             events = [{"seq": r["seq"], "ts": r["ts"], "kind": r["kind"],
-                       "payload": _json.loads(r["payload"]), "hash": r["hash"]}
+                       "trace_id": r["trace_id"],
+                       "payload": _json.loads(r["payload"]),
+                       "prev_hash": r["prev_hash"], "hash": r["hash"]}
                       for r in a.db.execute(
                           "SELECT * FROM events WHERE trace_id=? ORDER BY seq",
                           (correlation_id,))]

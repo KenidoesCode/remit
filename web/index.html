@@ -62,6 +62,7 @@
 
   <div class="links">
     <a href="#exec" data-act="exec">summary</a>
+    <a href="#sdk" data-act="sdk">build</a>
     <a href="#act1" data-act="act1">commerce</a>
     <a href="#arena" data-act="arena">arena</a>
     <a href="#act3" data-act="act3">frontier</a>
@@ -140,6 +141,74 @@
       one that matters most is the one that is zero.</p>
   </div>
   <div id="execOut"></div>
+</section>
+
+<!-- ══════════════ SDK · BUILD WITH REMIT ══════════════ -->
+<section class="act" id="sdk">
+  <div class="numeral" aria-hidden="true">SDK</div>
+  <div class="act-head">
+    <span class="kicker">build with remit</span>
+    <h2>REMIT is infrastructure, so it installs like infrastructure.</h2>
+    <p class="lede">Everything on this page runs through the same
+      <code>/v1</code> protocol an external agent talks to. The SDK is that
+      protocol with types on it &mdash; no second engine, no second
+      authorization check.</p>
+  </div>
+
+  <div class="sdk-wrap">
+    <div class="sdk-install">
+      <div class="sdk-cmd">
+        <span class="sdk-prompt" aria-hidden="true">$</span>
+        <code id="sdkCmd1">npm install remit-sdk</code>
+        <button class="sdk-copy" type="button" data-copy="npm install remit-sdk"
+                aria-label="Copy npm install remit-sdk">copy</button>
+      </div>
+      <div class="sdk-cmd">
+        <span class="sdk-prompt" aria-hidden="true">$</span>
+        <code id="sdkCmd2">npm i -g remit-sdk</code>
+        <button class="sdk-copy" type="button" data-copy="npm i -g remit-sdk"
+                aria-label="Copy npm i -g remit-sdk">copy</button>
+      </div>
+      <p class="sdk-note">The package is <code>remit-sdk</code>: <code>remit</code>
+        was already taken on npm by an unrelated library. The CLI binary is
+        still <code>remit</code>.</p>
+    </div>
+
+    <pre class="sdk-code" aria-label="Example usage"><code><span class="k">import</span> { Remit } <span class="k">from</span> <span class="s">"remit-sdk"</span>;
+
+<span class="k">const</span> remit = <span class="k">new</span> Remit({ baseUrl: <span class="s">"https://remit-vvug.onrender.com"</span> });
+
+<span class="c">// what the human said becomes a bounded authority</span>
+<span class="k">const</span> { intent } = <span class="k">await</span> remit.intents.create({ text: <span class="s">"buy a laptop under 50000"</span> });
+
+<span class="c">// ask before doing. no money moves.</span>
+<span class="k">const</span> decision = <span class="k">await</span> remit.authorization.evaluate({ text: intent.utterance });
+
+decision.verdict;  <span class="c">// "STEP_UP"</span>
+decision.failed;   <span class="c">// ["MATCH-001"] — a laptop stand is not a laptop</span></code></pre>
+  </div>
+
+  <ul class="sdk-facts">
+    <li>TypeScript SDK, ESM and CommonJS</li>
+    <li>Zero runtime dependencies</li>
+    <li>Agent independent</li>
+    <li>Model independent &mdash; bring your own</li>
+    <li>Authorization first</li>
+    <li>Audit receipts, verified locally</li>
+    <li>Revocation, forward only</li>
+    <li>Razorpay test-mode integration</li>
+  </ul>
+
+  <div class="sdk-links">
+    <a class="sdk-btn" href="https://www.npmjs.com/package/remit-sdk"
+       target="_blank" rel="noopener">VIEW SDK ON NPM</a>
+    <a class="sdk-btn ghost" href="https://github.com/KenidoesCode/remit/tree/main/packages/sdk"
+       target="_blank" rel="noopener">SOURCE</a>
+    <a class="sdk-btn ghost" href="https://github.com/KenidoesCode/remit/tree/main/docs/sdk"
+       target="_blank" rel="noopener">DOCS</a>
+  </div>
+
+  <p class="sdk-thesis">Your agent can be intelligent.<br>Your authorization should still be explicit.</p>
 </section>
 
 <!-- ══════════════════════════ ACT I ══════════════════════════ -->

@@ -1,0 +1,11 @@
+# Publish dist/ and the docs a consumer needs. Nothing else.
+src/
+test/
+scripts/
+examples/
+node_modules/
+tsconfig.json
+*.tgz
+*.log
+.env
+.env.*

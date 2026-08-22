@@ -993,3 +993,112 @@ button.atk.broke .atk-r{color:var(--ink)}
   color:var(--ink-3);white-space:nowrap}
 .lim-v.yes{color:var(--stop);border-color:rgba(255,59,47,.4)}
 .lim-clause{font-size:11px;color:var(--ink-4);letter-spacing:.05em}
+
+/* ── SDK · build with remit ──────────────────────────────────────────────
+   Palette only: --bg, --ink, --line, --signal. No new colours, no gradients,
+   nothing that competes with the hero. The section has to read as
+   documentation rather than as an advertisement, which mostly means letting
+   the monospace and the whitespace do the work. */
+#sdk .numeral{letter-spacing:.02em}
+
+.sdk-wrap{
+  display:grid;gap:clamp(18px,2.4vw,30px);
+  grid-template-columns:1fr;
+  margin-top:clamp(26px,4vh,46px);
+}
+@media (min-width:1080px){
+  /* No margin-left here. Indenting a full-width grid the way .act-head is
+     indented pushed the right-hand column 124px past the section's own right
+     edge -- invisible at 1440 because the page clips, and a cut-off code block
+     at anything narrower. The heading carries the indent; the content aligns
+     to the container, like every other section on this page. */
+  .sdk-wrap{grid-template-columns:minmax(320px,.85fr) 1.15fr;align-items:start}
+}
+
+.sdk-install{display:flex;flex-direction:column;gap:12px;min-width:0}
+
+.sdk-cmd{
+  display:flex;align-items:center;gap:12px;
+  border:1px solid var(--line);
+  background:rgba(255,255,255,.02);
+  padding:14px 14px 14px 16px;
+  font-family:var(--mono);
+  /* the command must never wrap into two lines and look like two commands */
+  overflow-x:auto;
+}
+.sdk-cmd:focus-within{border-color:var(--signal)}
+.sdk-prompt{color:var(--signal);opacity:.9;user-select:none;flex:none}
+.sdk-cmd code{
+  font-size:clamp(13px,1.45vw,15.5px);
+  color:var(--ink);white-space:nowrap;flex:1 1 auto;
+}
+.sdk-copy{
+  flex:none;font-family:var(--mono);font-size:11px;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--ink);opacity:.55;
+  background:none;border:1px solid var(--line);padding:6px 10px;
+  cursor:pointer;transition:opacity .18s ease,border-color .18s ease;
+}
+.sdk-copy:hover,.sdk-copy:focus-visible{opacity:1;border-color:var(--signal)}
+.sdk-copy[data-done="1"]{color:var(--signal);border-color:var(--signal);opacity:1}
+
+.sdk-note{
+  font-size:13px;line-height:1.6;opacity:.5;margin:2px 0 0;max-width:46ch;
+}
+.sdk-note code{font-family:var(--mono);font-size:12.5px;opacity:.85}
+
+.sdk-code{
+  /* min-width:0 is load-bearing. A grid item defaults to min-width:auto, so it
+     refuses to shrink below its content and overflow-x:auto never engages --
+     the long import line was being CUT OFF at the column edge rather than
+     scrolling, with no way for a visitor to read the rest. */
+  min-width:0;
+  border:1px solid var(--line);
+  background:rgba(255,255,255,.02);
+  padding:clamp(16px,2vw,22px);
+  margin:0;overflow-x:auto;
+  font-family:var(--mono);
+  font-size:clamp(12px,1.35vw,13.5px);
+  line-height:1.75;
+}
+.sdk-code code{color:var(--ink);opacity:.92}
+.sdk-code .k{color:var(--signal);opacity:.95}
+.sdk-code .s{opacity:.72}
+.sdk-code .c{opacity:.42;font-style:italic}
+
+.sdk-facts{
+  list-style:none;padding:0;
+  margin:clamp(24px,3.4vh,38px) 0 0;
+  display:grid;gap:10px 26px;
+  grid-template-columns:repeat(auto-fit,minmax(230px,1fr));
+  font-family:var(--mono);font-size:12.5px;letter-spacing:.01em;
+}
+.sdk-facts li{position:relative;padding-left:20px;opacity:.72;line-height:1.5}
+.sdk-facts li::before{
+  content:"";position:absolute;left:0;top:.52em;
+  width:7px;height:7px;border:1px solid var(--signal);
+}
+
+.sdk-links{
+  display:flex;flex-wrap:wrap;gap:12px;
+  margin:clamp(26px,3.4vh,38px) 0 0;
+}
+.sdk-btn{
+  font-family:var(--mono);font-size:11.5px;letter-spacing:.14em;
+  text-transform:uppercase;text-decoration:none;
+  color:var(--bg);background:var(--signal);
+  border:1px solid var(--signal);padding:13px 20px;
+  transition:opacity .18s ease;
+}
+.sdk-btn:hover{opacity:.85}
+.sdk-btn.ghost{color:var(--ink);background:none;border-color:var(--line)}
+.sdk-btn.ghost:hover{border-color:var(--signal);opacity:1}
+
+.sdk-thesis{
+  margin:clamp(30px,4.4vh,52px) 0 0;
+  font-size:clamp(17px,2.3vw,25px);
+  line-height:1.45;letter-spacing:-.01em;max-width:24ch;
+}
+
+@media (prefers-reduced-motion:reduce){
+  .sdk-copy{transition:none}
+}

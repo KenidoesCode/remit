@@ -1,0 +1,63 @@
+{
+  "name": "remit-sdk",
+  "version": "0.1.0",
+  "description": "The authorization boundary between autonomous agents and financial action. Bring your own model; REMIT decides what it is allowed to do.",
+  "keywords": [
+    "agent",
+    "authorization",
+    "agentic-commerce",
+    "payments",
+    "ai-safety",
+    "autonomous-agents",
+    "policy",
+    "audit",
+    "remit"
+  ],
+  "license": "MIT",
+  "author": "Pranauv Shrinaath S. (techuilaguy)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/KenidoesCode/remit.git",
+    "directory": "packages/sdk"
+  },
+  "homepage": "https://remit-vvug.onrender.com",
+  "bugs": {
+    "url": "https://github.com/KenidoesCode/remit/issues"
+  },
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "bin": {
+    "remit": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "engines": {
+    "node": ">=18.17.0"
+  },
+  "sideEffects": false,
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "node --test test/*.test.js",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run build && npm test"
+  },
+  "devDependencies": {
+    "@types/node": "^26.2.0",
+    "esbuild": "^0.24.0",
+    "typescript": "^5.6.0"
+  }
+}
