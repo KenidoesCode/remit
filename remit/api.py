@@ -538,17 +538,20 @@ def ledger(correlation_id: str | None = None, limit: int = 120):
     with LOCK:
         a = get_app()
         if correlation_id:
-            rows = a.ledger.trace(correlation_id)
+            # trace() returns five columns and is used positionally elsewhere;
+            # widen it here rather than changing a shape other callers unpack.
+            rows = [(s_, t_, k_, correlation_id, p_, h_)
+                    for s_, t_, k_, p_, h_ in a.ledger.trace(correlation_id)]
         else:
             rows = list(a.ledger.db.execute(
-                "SELECT seq, ts, kind, payload, hash FROM events"
+                "SELECT seq, ts, kind, trace_id, payload, hash FROM events"
                 " ORDER BY seq DESC LIMIT ?", (limit,)))
-            rows = [(r[0], r[1], r[2], r[3], r[4]) for r in rows]
         ok, bad = a.ledger.verify_chain()
         return {"intact": ok, "first_bad_seq": bad,
                 "events": [{"seq": s, "ts": t, "kind": k,
+                            "correlation_id": c,
                             "payload": json.loads(p), "hash": h}
-                           for s, t, k, p, h in rows]}
+                           for s, t, k, c, p, h in rows]}
 
 @api.get("/api/graph")
 def graph(intent_id: str):

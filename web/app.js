@@ -106,15 +106,21 @@ function opening() {
   }
   // The backstop. If anything below throws, hangs, or GSAP never arrives, the
   // product still appears. An intro that can strand the page is not a feature.
-  const hardStop = setTimeout(done, 5200);
+  // The opening is longer than it was: the brief for the lab asks for two
+  // sentences and a beat between them, which no amount of easing makes fit in
+  // three seconds. The backstop moves with it -- and it is still a plain
+  // setTimeout, because an intro that can strand the page is not a feature.
+  const hardStop = setTimeout(done, 9600);
   const finish = () => { clearTimeout(hardStop); done(); };
 
   try {
     const paths = [...el.querySelectorAll("#webshot path")];
     if (REDUCED) {
-      gsap.set(".intro-mark, .intro-exp, .intro-by, .intro-aka", { opacity: 1 });
+      gsap.set(".intro-mark, .intro-exp, .intro-lab, .intro-by, .intro-aka",
+               { opacity: 1 });
+      gsap.set(".intro-said p", { opacity: 1 });
       gsap.set("#webshot .anchor", { opacity: 1 });
-      setTimeout(finish, 1400);
+      setTimeout(finish, 2600);
       return;
     }
     paths.forEach(p => {
@@ -122,7 +128,9 @@ function opening() {
       p.style.strokeDasharray = len;
       p.style.strokeDashoffset = len;
     });
-    gsap.set(".intro-mark, .intro-exp, .intro-by, .intro-aka", { opacity: 0, y: 14 });
+    gsap.set(".intro-mark, .intro-exp, .intro-lab, .intro-by, .intro-aka",
+             { opacity: 0, y: 14 });
+    gsap.set(".intro-said p", { opacity: 0, y: 10 });
     gsap.set(".intro-mark", { letterSpacing: "0.5em" });
 
     const t = gsap.timeline({ onComplete: finish });
@@ -135,14 +143,24 @@ function opening() {
      .to(".intro-mark", { opacity: 1, y: 0, letterSpacing: "0.22em",
                           duration: .7, ease: "expo.out" }, .78)
      .to(".intro-exp", { opacity: 1, y: 0, duration: .55, ease: "expo.out" }, 1.16)
-     .to(".intro-by", { opacity: 1, y: 0, duration: .45, ease: "expo.out" }, 1.5)
-     .to(".intro-aka", { opacity: 1, y: 0, duration: .45, ease: "expo.out" }, 1.74)
+     .to(".intro-lab", { opacity: 1, y: 0, duration: .55, ease: "expo.out" }, 1.42)
+     .to(".intro-by", { opacity: 1, y: 0, duration: .45, ease: "expo.out" }, 1.78)
+     .to(".intro-aka", { opacity: 1, y: 0, duration: .45, ease: "expo.out" }, 1.98)
+     // the title card clears, and then the two sentences that are the whole
+     // reason this thing exists. The gap between them is deliberate: the
+     // second line is a different thought and it should arrive as one.
+     .to(".intro-mid", { scale: .97, opacity: 0, duration: .5,
+                         ease: "power2.inOut" }, 3.0)
+     .to(".said-1", { opacity: 1, y: 0, duration: .6, ease: "expo.out" }, 3.35)
+     .to(".said-1", { opacity: .28, duration: .5 }, 5.05)
+     .to(".said-2", { opacity: 1, y: 0, duration: .6, ease: "expo.out" }, 5.15)
+     .to(".said-3", { opacity: 1, y: 0, duration: .5, ease: "expo.out" }, 6.65)
      // the thread pulls the mark into the system it made
      .to(paths, { strokeDashoffset: (i, tgt) => -tgt.getTotalLength(),
-                  duration: .6, ease: "power2.inOut" }, 2.5)
-     .to("#webshot .anchor", { opacity: 0, duration: .3 }, 2.6)
-     .to(".intro-mid", { scale: .96, opacity: 0, duration: .5,
-                         ease: "power2.inOut" }, 2.72);
+                  duration: .6, ease: "power2.inOut" }, 7.1)
+     .to("#webshot .anchor", { opacity: 0, duration: .35 }, 3.05)
+     .to(".intro-said", { opacity: 0, y: -8, duration: .5,
+                          ease: "power2.inOut" }, 7.45);
   } catch (e) {
     finish();
   }
@@ -596,40 +614,51 @@ async function fireWebhook(kind) {
   return `late event: ${r2.note || r2.why}`;
 }
 
-async function renderCompare() {
-  const utt = (STATE.journey && STATE.journey.intent && STATE.journey.intent.utterance)
-    || "buy a yoga mat under 2500";
+async function renderCompare(utterance) {
+  const utt = utterance
+    || (STATE.journey && STATE.journey.intent && STATE.journey.intent.utterance)
+    || "buy running shoes under 3000";
+  const out = $("#compareOut");
+  if (!out) return;
+  out.innerHTML = '<div class="skel"></div>';
   let c;
   try {
     c = await api("/api/compare", { utterance: utt });
   } catch (e) {
-    if (e instanceof NoEngine) { $("#compareOut").innerHTML = ENGINE_MISSING; return; }
+    if (e instanceof NoEngine) { out.innerHTML = ENGINE_MISSING; return; }
     throw e;
   }
   const row = (k, a) => `<div class="row"><span>${k}</span><span>${a}</span></div>`;
+  const basket = v => (v.cart || []).length
+    ? `<ul class="cf-cart">${v.cart.map(l => `<li>${esc(l.name)}
+        <span>${R2(l.paise * l.qty)}${l.origin !== "primary" ? " · agent-added" : ""}</span></li>`).join("")}</ul>`
+    : `<p class="cf-empty">${esc(v.note || "nothing bought")}</p>`;
   const side = (v, cls, hd) => `<div class="${cls}">
     <div class="hd">${hd}</div>
     <div class="big ${v.unauthorized_paise ? "over" : ""}">${R2(v.total_paise)}</div>
     <div class="k">charged against ${R2(v.ceiling_paise)} authorised</div>
+    ${basket(v)}
     ${row("verdict", v.verdict || "—")}
-    ${row("lines in cart", v.lines)}
     ${row("agent-added", v.accepted_offers)}
     ${row("drift", v.drift)}
-    ${row("payment", v.payment_state)}
     ${row("unauthorised", v.unauthorized_paise ? R2(v.unauthorized_paise) : "₹0.00")}
+    ${v.failed_clauses && v.failed_clauses.length
+      ? row("stopped by", v.failed_clauses.join(", ")) : ""}
   </div>`;
-  $("#compareOut").innerHTML = `<div class="vs">
-    ${side(c.without, "vs-left", "boundary off")}
-    ${side(c.with, "vs-right", "REMIT")}
+  out.innerHTML = `<p class="cf-utt">› ${esc(utt)}</p>
+  <div class="vs">
+    ${side(c.without, "vs-left", "without REMIT")}
+    ${side(c.with, "vs-right", "with REMIT")}
   </div>
-  <p class="meta-line">same utterance, same catalog, same agent. the only difference
-  is one line in a policy file.</p>`;
+  <p class="cf-story">${esc(c.delta.story)}</p>
+  <p class="meta-line">${esc(c.method)}</p>`;
 }
 
-/* ═════════════════════════ ACT V · the numbers ═════════════════════════ */
 async function renderNumbers() {
-  const [x, f, e] = await Promise.all([
-    api("/api/results/experiments"), api("/api/results/frontier"), api("/api/results/eval")]);
+  // Room 08 keeps the business case. The frontier moved to room 03 and the
+  // gates moved to room 06, because a single wall of numbers is where a
+  // reviewer stops reading.
+  const x = await api("/api/results/experiments").catch(() => ({ error: "unreachable" }));
   let h = "";
   if (!x.error) {
     const [A, B, C] = x.arms;
@@ -668,20 +697,112 @@ async function renderNumbers() {
         <td class="n">${a.human_confirmations}</td></tr>`).join("")}
       </tbody></table></div>`;
   }
-  if (!f.error) {
-    const safe = f.points.filter(p => !p.unauthorized_paise);
-    const knee = safe[safe.length - 1];
-    const first = f.points.find(p => p.unauthorized_paise);
-    h += `<div class="act-head sub-head" style="margin-top:52px">
-      <span class="kicker">how much autonomy is free</span></div>
-      <canvas id="fc" height="300"></canvas>
-      <p class="meta-line">every point is a full re-run of ${f.corpus_size} journeys.
-      autonomy is free up to <b>${(knee.autonomy * 100).toFixed(1)}%</b> — every
-      threshold up to "${esc(knee.label)}" moves ₹0 unauthorised.${first ? `
-      The next point, "${esc(first.label)}", is where the envelope stops being
-      consulted: autonomy jumps to ${(first.autonomy * 100).toFixed(1)}% and
-      <b class="bad">${esc(first.unauthorized)}</b> starts moving that nobody
-      asked for.` : ""}</p>`;
+  $("#numbersOut").innerHTML = h;
+  countUp();
+}
+
+/* ═════════════════════ 03 · the autonomy frontier ══════════════════════ */
+async function renderFrontier() {
+  const out = $("#frontierOut");
+  if (!out) return;
+  let f;
+  try { f = await api("/api/results/frontier"); } catch (e) { return; }
+  if (f.error) { out.innerHTML = `<p class="meta-line">${esc(f.error)}</p>`; return; }
+  const safe = f.points.filter(p => !p.unauthorized_paise);
+  const knee = safe[safe.length - 1];
+  const first = f.points.find(p => p.unauthorized_paise);
+  out.innerHTML = `<div class="act-head sub-head" style="margin-top:52px">
+    <span class="kicker">how much autonomy is free</span>
+    <p class="lede">Every point is a full re-run of ${f.corpus_size} journeys under a
+    different policy. Nothing here is interpolated.</p></div>
+    <canvas id="fc" height="300"></canvas>
+    <div class="tw"><table><thead><tr><th>policy</th><th class="n">autonomy</th>
+      <th class="n">asked / 100</th><th class="n">revenue</th>
+      <th class="n">unauthorised</th></tr></thead><tbody>
+      ${f.points.map(p => `<tr class="${p.unauthorized_paise ? "dirty" : ""}">
+        <td>${esc(p.label)}${p.integrity_layer === false
+          ? ' <span class="thesis">envelope off</span>' : ""}</td>
+        <td class="n">${(p.autonomy * 100).toFixed(1)}%</td>
+        <td class="n">${p.human_friction_per_100}</td>
+        <td class="n">${p.revenue}</td>
+        <td class="n ${p.unauthorized_paise ? "bad" : "good"}">${p.unauthorized}</td>
+      </tr>`).join("")}</tbody></table></div>
+    <p class="cf-story">Autonomy is free up to <b>${(knee.autonomy * 100).toFixed(1)}%</b>
+      — every threshold up to "${esc(knee.label)}" moves ₹0 that nobody authorised.${
+      first ? ` The next point, "${esc(first.label)}", is where the envelope stops
+      being consulted at all: autonomy jumps to ${(first.autonomy * 100).toFixed(1)}%
+      and <b class="bad">${esc(first.unauthorized)}</b> begins moving unasked.` : ""}</p>
+    <p class="meta-line">The knee is not at a threshold. It is at the boundary. No
+      amount of tuning how <em>often</em> REMIT asks produces unauthorised movement —
+      only removing the envelope does, and that is a cliff rather than a curve.</p>`;
+  drawFrontier(f.points);
+}
+
+/* ═════════════════════════ 02 · the arena ══════════════════════════════ */
+async function renderArena() {
+  const out = $("#arenaOut");
+  if (!out) return;
+  let a;
+  try { a = await api("/api/results/arena"); } catch (e) { return; }
+  if (a.error) {
+    out.innerHTML = `<p class="meta-line">${esc(a.error)} — ${esc(a.hint || "")}</p>`;
+    return;
+  }
+  const win = a.agents[0];
+  out.innerHTML = `<div class="tw"><table class="arena">
+    <thead><tr><th>#</th><th>agent</th><th class="n">REMIT score</th>
+      <th class="n">economic value</th><th class="n">unauthorised</th>
+      <th class="n">trust</th><th class="n">autonomy</th><th class="n">asked</th></tr></thead>
+    <tbody>${a.agents.map(r => `<tr class="${r.clean ? "" : "dirty"}">
+      <td>${r.rank}</td>
+      <td><b>${esc(r.name)}</b><span class="thesis">${esc(r.thesis)}</span></td>
+      <td class="n"><b>${r.remit_score.toFixed(1)}</b></td>
+      <td class="n">${R2(r.economic_value_paise)}</td>
+      <td class="n ${r.unauthorized_paise ? "bad" : "good"}">${R2(r.unauthorized_paise)}</td>
+      <td class="n">${r.trust.toFixed(2)}</td>
+      <td class="n">${(r.autonomy * 100).toFixed(0)}%</td>
+      <td class="n">${r.escalations}</td></tr>
+      ${r.clean ? "" : `<tr class="dq"><td></td><td colspan="7">disqualified from first
+        place — moved ${R2(r.unauthorized_paise)} across ${r.unauthorized_txns}
+        transactions nobody authorised</td></tr>`}`).join("")}
+    </tbody></table></div>
+    <p class="cf-story">${esc(win.name)} takes the room: ${R2(win.economic_value_paise)}
+      of authorised value at ${(win.autonomy * 100).toFixed(0)}% autonomy, asking
+      ${win.escalations} times across ${a.corpus_size} journeys.</p>
+    <p class="meta-line">${esc(a.method)}</p>
+    <p class="meta-line">${esc(a.scoring)}</p>`;
+}
+
+/* ═════════════════════════ 06 · the lab ════════════════════════════════ */
+async function renderLab() {
+  const out = $("#labOut");
+  if (!out) return;
+  const [m, e] = await Promise.all([
+    api("/api/results/matrix").catch(() => ({ error: "unreachable" })),
+    api("/api/results/eval").catch(() => ({ error: "unreachable" })),
+  ]);
+  let h = "";
+  if (!m.error) {
+    const cats = Object.entries(m.by_category).sort();
+    h += `<div class="stats">
+      <div class="stat"><span class="k">explicit cases</span>
+        <span class="v">${m.cases}</span><span class="n">thirteen categories</span></div>
+      <div class="stat"><span class="k">holding</span>
+        <span class="v ${m.passed === m.cases ? "good" : "bad"}">${m.passed}/${m.cases}</span></div>
+      <div class="stat"><span class="k">universal invariant</span>
+        <span class="v ${m.universal_failures ? "bad" : "good"}">${m.cases - m.universal_failures}/${m.cases}</span>
+        <span class="n">${esc(m.universal_invariant)}</span></div>
+    </div>
+    <div class="matrix">${cats.map(([c, b]) => `<div class="mx ${b.passed === b.n ? "" : "bad"}">
+      <span class="mxc">${esc(c)}</span>
+      <span class="mxb"><i style="width:${100 * b.passed / b.n}%"></i></span>
+      <span class="mxn">${b.passed}/${b.n}</span></div>`).join("")}</div>`;
+    if (m.failed && m.failed.length) {
+      h += `<p class="cf-story">${m.failed.length} case(s) currently do not hold:</p>
+        <ul class="why">${m.failed.slice(0, 8).map(f => `<li><b>${esc(f.id)}</b>
+          ${esc(f.utterance)} — ${esc((f.checks.find(c => !c.passed) || {}).detail
+            || f.universal.detail || "")}</li>`).join("")}</ul>`;
+    }
   }
   if (!e.error) {
     const t = e.test, g = t.outcome, gu = t.guardrails;
@@ -703,9 +824,45 @@ async function renderNumbers() {
       </div>`;
     STATE.p95 = t.efficiency.latency_p95_ms;
   }
-  $("#numbersOut").innerHTML = h;
-  if (!f.error) drawFrontier(f.points);
-  countUp();
+  out.innerHTML = h || '<p class="meta-line">no results generated yet</p>';
+}
+
+/* ═════════════════════════ 07 · the audit trail ════════════════════════ */
+async function renderAudit() {
+  const out = $("#auditOut");
+  if (!out) return;
+  const [l, d] = await Promise.all([
+    api("/api/ledger").catch(() => ({ error: "unreachable" })),
+    api("/api/decisions").catch(() => ({ error: "unreachable" })),
+  ]);
+  let h = "";
+  if (!l.error) {
+    const ev = l.events || [];
+    h += `<div class="stats">
+      <div class="stat"><span class="k">hash chain</span>
+        <span class="v ${l.intact === false ? "bad" : "good"}">${l.intact === false ? "BROKEN" : "intact"}</span>
+        <span class="n">${ev.length} links · single writer, so this proves ordering, not honesty</span></div>
+    </div>
+    <div class="tw"><table><thead><tr><th>#</th><th>event</th><th>correlation</th>
+      <th>hash</th></tr></thead><tbody>
+      ${ev.slice(0, 24).map(x => `<tr><td>${x.seq ?? ""}</td>
+        <td><b>${esc(x.kind || "")}</b></td>
+        <td class="mono">${esc(String(x.correlation_id || "").slice(0, 18))}</td>
+        <td class="mono">${esc(String(x.hash || "").slice(0, 16))}</td></tr>`).join("")}
+      </tbody></table></div>`;
+  }
+  if (Array.isArray(d) && d.length) {
+    h += `<div class="act-head sub-head" style="margin-top:44px">
+      <span class="kicker">decisions taken on this instance</span></div>
+      <div class="tw"><table><thead><tr><th>verdict</th><th class="n">drift</th>
+      <th>policy</th><th>when</th></tr></thead><tbody>
+      ${d.slice(0, 16).map(x => `<tr><td><span class="badge ${esc(x.verdict)}">${esc(x.verdict)}</span></td>
+        <td class="n">${(x.drift && x.drift.score) ?? "—"}</td>
+        <td class="mono">${esc(x.policy_version || "")}</td>
+        <td class="mono">${esc(String(x.ts || "").slice(11, 19))}</td></tr>`).join("")}
+      </tbody></table></div>`;
+  }
+  out.innerHTML = h || '<p class="meta-line">nothing has been decided on this instance yet — run something in room 01</p>';
 }
 
 function css(v) { return getComputedStyle(document.body).getPropertyValue(v).trim(); }
@@ -926,15 +1083,22 @@ function installHUD() {
 
 /* ════════════════════════════ scroll rig ═══════════════════════════════ */
 function installScroll() {
-  const acts = ["act1", "act2", "act3", "act4", "act5"];
+  // The eight rooms, in the order they appear. Two of them share a section id
+  // with the acts that became them, so this list is the order of the DOM and
+  // not a renumbering.
+  const acts = ["act1", "act2", "arena", "act3", "counter", "act4",
+                "lab", "audit", "act5"];
   const mark = id => {
     $$("#rail a, #nav .links a").forEach(a =>
-      a.dataset.on = a.dataset.act === id ? "1" : "0");
+      a.dataset.on = (a.dataset.act === id
+        // act1 and act2 are one room; the nav has a single entry for it.
+        || (id === "act2" && a.dataset.act === "act1")) ? "1" : "0");
   };
   const io = new IntersectionObserver(es => {
     es.forEach(e => { if (e.isIntersecting) mark(e.target.id); });
   }, { rootMargin: "-45% 0px -45% 0px" });
-  acts.forEach(a => io.observe(document.getElementById(a)));
+  acts.map(a => document.getElementById(a)).filter(Boolean)
+      .forEach(el => io.observe(el));
 
   addEventListener("scroll", () => {
     $("#nav").dataset.stuck = scrollY > 40 ? "1" : "0";
@@ -1066,7 +1230,19 @@ document.addEventListener("DOMContentLoaded", async () => {
       "font:12px/1.6 ui-monospace,monospace;color:#A9A6A2");
   } catch { $("#health").textContent = "api unreachable"; }
 
-  await Promise.allSettled([renderNumbers(), renderFailures(), renderWho()]);
+  await Promise.allSettled([
+    renderNumbers(), renderFailures(), renderWho(),
+    renderArena(), renderFrontier(), renderLab(), renderAudit(),
+    renderCompare(),
+  ]);
+
+  // the counterfactual room takes its own sentence
+  const cf = $("#cfForm");
+  if (cf) cf.addEventListener("submit", ev => {
+    ev.preventDefault();
+    const u = $("#cfUtterance").value.trim();
+    if (u) renderCompare(u);
+  });
 
   // hero stats and the ticker are filled from what actually loaded
   const b = STATE.builder, h = STATE.health;

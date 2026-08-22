@@ -18,7 +18,7 @@
      Uses only tokens already in style.css: --bg, --ink, --signal, --mono,
      --sans. No new colour, no new font, no new dependency -- one inline SVG
      path animated by the GSAP that is already on the page. -->
-<div id="intro" role="group" aria-label="REMIT — Revocable, Explainable Mandates for Intent-driven Transactions, by techuilaguy, also known as Pranauv Shrinaath">
+<div id="intro" role="group" aria-label="REMIT, the autonomy lab for agentic commerce. Revocable, Explainable Mandates for Intent-driven Transactions, by techuilaguy, also known as Pranauv Shrinaath. I gave an AI permission to spend money, then tried to work out how much I could trust it.">
   <svg id="webshot" viewBox="0 0 1000 620" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
     <path class="w2" d="M -120 40 Q 240 110 497 292"/>
     <path class="w2" d="M 1120 70 Q 760 140 503 292"/>
@@ -28,8 +28,14 @@
   <div class="intro-mid">
     <h1 class="intro-mark">REMIT</h1>
     <p class="intro-exp">Revocable, Explainable Mandates for Intent-driven Transactions</p>
+    <p class="intro-lab">the autonomy lab for agentic commerce</p>
     <p class="intro-by">by <b>techuilaguy</b></p>
     <p class="intro-aka">a.k.a. Pranauv Shrinaath</p>
+  </div>
+  <div class="intro-said">
+    <p class="said-1">I gave an AI permission to spend money.</p>
+    <p class="said-2">Then I tried to work out how much I could trust it.</p>
+    <p class="said-3">Enter the lab.</p>
   </div>
 </div>
 
@@ -55,11 +61,14 @@
   </a>
 
   <div class="links">
-    <a href="#act1" data-act="act1">the neighbourhood</a>
-    <a href="#act2" data-act="act2">the agent</a>
-    <a href="#act3" data-act="act3">the line</a>
+    <a href="#act1" data-act="act1">commerce</a>
+    <a href="#arena" data-act="arena">arena</a>
+    <a href="#act3" data-act="act3">frontier</a>
+    <a href="#counter" data-act="counter">counterfactual</a>
     <a href="#act4" data-act="act4">break it</a>
-    <a href="#act5" data-act="act5">the engineer</a>
+    <a href="#lab" data-act="lab">lab</a>
+    <a href="#audit" data-act="audit">audit</a>
+    <a href="#act5" data-act="act5">engineering</a>
   </div>
 
   <div class="navright">
@@ -120,9 +129,9 @@
 
 <!-- ══════════════════════════ ACT I ══════════════════════════ -->
 <section class="act" id="act1">
-  <div class="numeral" aria-hidden="true">I</div>
+  <div class="numeral" aria-hidden="true">01</div>
   <div class="act-head">
-    <span class="kicker">Act I · the neighbourhood</span>
+    <span class="kicker">01 · live commerce</span>
     <h2>Say one sentence. The agent does the rest — inside a line you drew.</h2>
     <p class="lede">The catalog is the neighbourhood. The payment is across town.
       What you authorised is a thread anchored to something that does not move,
@@ -142,9 +151,9 @@
 
 <!-- ══════════════════════════ ACT II ══════════════════════════ -->
 <section class="act" id="act2">
-  <div class="numeral" aria-hidden="true">II</div>
+  <div class="numeral" aria-hidden="true">01</div>
   <div class="act-head">
-    <span class="kicker">Act II · the agent moves</span>
+    <span class="kicker">01 · live commerce — the agent moves</span>
     <h2>It searches, compares, picks — and then the merchant gets a turn.</h2>
     <p class="lede">Ranking is deterministic; the model never scores a product. The
       revenue engine proposes accessories with a reason and an exact marginal cost.
@@ -154,17 +163,35 @@
   <div id="act2Out"></div>
 </section>
 
+
+<!-- ══════════════════════════ 02 · REMIT ARENA ══════════════════════════ -->
+<section class="act" id="arena">
+  <div class="numeral" aria-hidden="true">02</div>
+  <div class="act-head">
+    <span class="kicker">02 · REMIT arena</span>
+    <h2>Seven agents. One world. The one that earns most does not win.</h2>
+    <p class="lede">Every agent gets the same merchant, the same catalog, the same
+      prices and the same 540 sentences. Only the policy data differs — and the
+      boundary itself is one key in that data, so all seven execute the same code in
+      the same order. The score is economic value × trust², and money moved outside
+      the mandate is subtracted rather than counted. An agent that spent what nobody
+      authorised cannot place first, however much it made.</p>
+  </div>
+  <div id="arenaOut"></div>
+</section>
+
 <!-- ══════════════════════════ ACT III ══════════════════════════ -->
 <section class="act" id="act3">
-  <div class="numeral" aria-hidden="true">III</div>
+  <div class="numeral" aria-hidden="true">03</div>
   <div class="act-head">
-    <span class="kicker">Act III · the line</span>
+    <span class="kicker">03 · the autonomy frontier</span>
     <h2>Take the human's authority. Move it. Watch the system re-decide.</h2>
     <p class="lede">Same basket, different permission. Every drag re-runs the real
       policy engine — no model call, no payment, no writes — and reports how long the
       pure function actually took.</p>
   </div>
   <div id="act3Out"></div>
+  <div id="frontierOut"></div>
 
   <blockquote class="plate">
     <p>an agent holding your card has great power.</p>
@@ -173,11 +200,34 @@
   </blockquote>
 </section>
 
+
+<!-- ══════════════════════════ 04 · COUNTERFACTUAL ══════════════════════════ -->
+<section class="act" id="counter">
+  <div class="numeral" aria-hidden="true">04</div>
+  <div class="act-head">
+    <span class="kicker">04 · counterfactual</span>
+    <h2>What would have happened if REMIT had not been there?</h2>
+    <p class="lede">The same sentence, run twice in this same process. "Without" is
+      not a different build and not a mock — it is the identical journey under a
+      policy file with <code>integrity_layer</code> set to false. One key. Type
+      anything; both worlds run on the test-mode gateway and no money moves in
+      either.</p>
+  </div>
+  <form class="ask" id="cfForm">
+    <span class="prompt">›</span>
+    <input id="cfUtterance" autocomplete="off" spellcheck="false"
+      placeholder="buy running shoes under 3000"
+      aria-label="A sentence to run in both worlds">
+    <button id="cfBtn" type="submit">run both worlds</button>
+  </form>
+  <div id="compareOut"></div>
+</section>
+
 <!-- ══════════════════════════ ACT IV ══════════════════════════ -->
 <section class="act" id="act4">
-  <div class="numeral" aria-hidden="true">IV</div>
+  <div class="numeral" aria-hidden="true">05</div>
   <div class="act-head">
-    <span class="kicker">Act IV · break it</span>
+    <span class="kicker">05 · break REMIT</span>
     <h2>Go on. Try.</h2>
     <p class="lede">Every lever below is wired to a real code path. Move the price
       after selection, delist the product mid-journey, revoke the authority, forge a
@@ -186,19 +236,43 @@
   <div class="levers" id="levers"></div>
   <div id="breakOut"></div>
 
-  <div class="act-head sub-head">
-    <span class="kicker">and the same journey with the boundary switched off</span>
-    <p class="lede">Not a different build — the identical code path with a permissive
-      policy file. Same user, same merchant, same agent, one line of data changed.</p>
+</section>
+
+
+<!-- ══════════════════════════ 06 · EVALUATION LAB ══════════════════════════ -->
+<section class="act" id="lab">
+  <div class="numeral" aria-hidden="true">06</div>
+  <div class="act-head">
+    <span class="kicker">06 · evaluation lab</span>
+    <h2>260 explicit cases, thirteen categories, and one invariant over all of them.</h2>
+    <p class="lede">Each case asserts a <em>property</em>, not an expected product —
+      pinning a SKU would make this a change-detector. The universal invariant is the
+      one that matters: whatever happens, if money moved on AUTO it moved inside the
+      line that was stated. The matrix caught a real bug on its first run, and that
+      bug is written up in room 08.</p>
   </div>
-  <div id="compareOut"></div>
+  <div id="labOut"></div>
+</section>
+
+<!-- ══════════════════════════ 07 · AUDIT TRAIL ══════════════════════════ -->
+<section class="act" id="audit">
+  <div class="numeral" aria-hidden="true">07</div>
+  <div class="act-head">
+    <span class="kicker">07 · audit trail</span>
+    <h2>Every decision this instance has taken, in order, hash-chained.</h2>
+    <p class="lede">A single writer proves ordering, not honesty — so this is
+      tamper-<em>evident</em>, not tamper-proof, and the difference is stated rather
+      than glossed. Each link carries the previous hash; break one and every link
+      after it stops verifying.</p>
+  </div>
+  <div id="auditOut"></div>
 </section>
 
 <!-- ══════════════════════════ ACT V ══════════════════════════ -->
 <section class="act" id="act5">
-  <div class="numeral" aria-hidden="true">V</div>
+  <div class="numeral" aria-hidden="true">08</div>
   <div class="act-head">
-    <span class="kicker">Act V · the engineer</span>
+    <span class="kicker">08 · engineering</span>
     <h2>What it earned, what it refused, and everything I broke on the way.</h2>
     <p class="lede">540 synthetic journeys, four arms, one catalog, one seed. Every
       number on this page is read out of a generated result file. None of them are
@@ -237,11 +311,14 @@
 </div>
 
 <aside id="rail" aria-hidden="true">
-  <a href="#act1" data-act="act1"><i></i><b>I</b></a>
-  <a href="#act2" data-act="act2"><i></i><b>II</b></a>
-  <a href="#act3" data-act="act3"><i></i><b>III</b></a>
-  <a href="#act4" data-act="act4"><i></i><b>IV</b></a>
-  <a href="#act5" data-act="act5"><i></i><b>V</b></a>
+  <a href="#act1" data-act="act1"><i></i><b>01</b></a>
+  <a href="#arena" data-act="arena"><i></i><b>02</b></a>
+  <a href="#act3" data-act="act3"><i></i><b>03</b></a>
+  <a href="#counter" data-act="counter"><i></i><b>04</b></a>
+  <a href="#act4" data-act="act4"><i></i><b>05</b></a>
+  <a href="#lab" data-act="lab"><i></i><b>06</b></a>
+  <a href="#audit" data-act="audit"><i></i><b>07</b></a>
+  <a href="#act5" data-act="act5"><i></i><b>08</b></a>
 </aside>
 
 <div id="thwip" aria-hidden="true">THWIP</div>

@@ -94,3 +94,25 @@ def test_the_opening_waits_to_be_looked_at():
     body = APP.split("function opening()")[1].split("\nfunction ")[0]
     assert "if (document.hidden) {" in body
     assert "visibilitychange" in body
+
+
+def test_the_opening_says_what_the_product_is():
+    """The brief for the lab: the wordmark alone does not tell anyone what this
+    is. The expansion says what REMIT stands for; this says what it does."""
+    assert "the autonomy lab for agentic commerce" in HTML.lower()
+
+
+def test_the_two_sentences_are_in_the_page_not_only_in_the_animation():
+    """If GSAP never arrives, the shim lands every tween on its end state and
+    these still read. A line that only exists inside a timeline is a line that
+    a reduced-motion visitor never gets."""
+    for line in ("I gave an AI permission to spend money",
+                 "how much I could trust it",
+                 "Enter the lab"):
+        assert line in HTML, line
+
+
+def test_reduced_motion_still_reveals_the_sentences():
+    body = APP.split("function opening()")[1].split("\nfunction ")[0]
+    reduced = body.split("if (REDUCED) {")[1].split("setTimeout(finish")[0]
+    assert ".intro-said p" in reduced
