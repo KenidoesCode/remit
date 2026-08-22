@@ -1632,3 +1632,104 @@ The request lost its noun. `minus` and `non` went the same way. Each one buys a
 rare sentence at the cost of a common one, and **a negation vocabulary that
 swallows a product name is worse than one that misses a constraint, because the
 first is silent.**
+
+---
+
+## 43. Revocation was a demo lever
+
+**What happened.** `intents.revoked_at` had been in the schema since the first
+migration. Nothing ever wrote to it. Nothing ever read it. `AUTH-003` — a hard
+DENY clause whose entire purpose is to refuse a revoked mandate — took its
+input from `inject.get("revoked")`, a boolean the caller passed in on the
+request body.
+
+So the honest description of revocation in REMIT was: *it works when you ask it
+to work.* The Break room's "revoke the intent" lever fired the clause, the
+clause blocked the payment, and the demo was truthful about the mechanism and
+silent about the fact that no human could actually press it.
+
+That is the worst kind of gap, because "can I stop it?" is the question a
+person asks *before* handing an agent money — not after — and REMIT answered it
+on the page while not implementing it in the code.
+
+**What it is now.** Two scopes, because people mean two things: `intent`
+cancels one mandate by id, `principal` is the kill switch and needs no id.
+Persisted, actor-bound, idempotent, in the ledger, and checked **twice** on
+every journey — once by the policy engine and once again immediately before the
+payment is created.
+
+The second check is the interesting one. The revocation that matters is the one
+that lands in the gap *between* the decision and the execution, which is
+exactly the moment somebody reaching for a kill switch is living in. Today a
+single process-wide lock makes that interleaving impossible, so the re-check
+can never fire in this deployment. It is there because **a control that is only
+correct because of a lock it does not own is not a control**, and the day this
+runs in two processes is not the day to find that out.
+
+**Forward only, deliberately.** Revoking after execution is allowed, recorded,
+and changes nothing about the completed payment. Reversing settled money is a
+refund — a different operation with a different authority — and a control plane
+that quietly unwinds completed transactions is one nobody can reason about.
+
+---
+
+## 44. The state machine that only worked when nobody was watching
+
+**What happened.** REMIT already had one real state machine: the payment store,
+with a transition table, an `IllegalTransition` exception and a persisted
+history. The **authority** had none. Its lifecycle was eight free strings
+assigned to a dataclass field at eight points in `journey.run` — `"NONE"`,
+`"BLOCKED"`, `"AWAITING_HUMAN"`, `"APPROVAL_REJECTED"`, `"DECLINED_BY_HUMAN"`,
+`"CREATED"`, `"UNKNOWN"`, `"FAILED"`. Nothing rejected a move between them
+because there were no moves: each was written once, at the end of the function.
+
+That is fine for as long as a journey stays one synchronous call, and it left
+the system unable to answer the question a control plane exists to answer:
+*what state is this authority in, and what may it do next?*
+
+`remit/domain/authority.py` is 14 states and a transition table, driven by the
+real payment path rather than sitting beside it. Two modelling decisions worth
+naming:
+
+- **`EXECUTING → REVOKED` is legal. `EXECUTED → REVOKED` is not.** An order
+  exists at the gateway and the money has not moved; stopping there is exactly
+  what pressing the kill switch means. After it moves, claiming to have revoked
+  it would be claiming to have unwound settled money.
+- **`AUTHORIZED` and `APPROVED` are not interchangeable.** An AUTO decision
+  that a human happened to also confirm was never a step-up, and recording it
+  as APPROVED would claim a person made a decision they were never asked to
+  make.
+
+### Three bugs the concurrency test found in the two things above
+
+Every one of these was invisible sequentially. All three are the same shape:
+**a check and a write that are not one operation.**
+
+**A lost update in the state machine.** `advance()` read the current state,
+validated the edge, then wrote. Two threads both read `AUTHORIZED`, both
+validated `AUTHORIZED → REVOKED`, and both wrote — the history recorded the
+same transition twice. "Same state is a no-op" did not help: both passed that
+check before either wrote. The `UPDATE` is predicated on the state that was
+read (`WHERE intent_id=? AND state=?`) and the rowcount is the serialisation
+point, which is what the approval token's `WHERE used_at IS NULL` and the
+payment's UNIQUE idempotency key were already doing.
+
+**"another row available".** `db.execute(...).fetchone()` on a shared sqlite3
+connection leaves the connection's implicit cursor holding the rows nobody
+asked for, and the next statement from another thread fails. Every store in
+this repository does exactly that and none had ever seen it, because all of
+them run under the API's process-wide lock. The kill switch is the operation
+*least* entitled to require a lock it does not own, so its reads close their
+cursors.
+
+**`IntegrityError` is not the exception you get.** The revoke path catches the
+UNIQUE violation and converts it into the idempotent "already revoked" answer.
+Under thread contention sqlite3 surfaces that same violation as the base
+`DatabaseError`, so catching the specific subclass worked in every sequential
+test and missed the only case it existed for. The catch is wider now, and the
+`if existing is None: raise` beneath it is what keeps that honest.
+
+**The general lesson.** All three were written by someone who had just spent a
+week thinking about exactly this failure mode, in a file whose docstring
+describes exactly this failure mode. Reading your own code does not find them.
+Running two of them at once does.

@@ -125,7 +125,7 @@ class Journey:
     def __init__(self, *, db, catalog: Catalog, compiler, revenue: RevenueEngine,
                  policy: Policy, ledger: Ledger, payments: PaymentStore,
                  broker: ToolBroker, gateway, calibrator=None, index=None,
-                 approvals=None):
+                 approvals=None, revocations=None, authority=None):
         self.db = db
         self.catalog = catalog
         self.compiler = compiler
@@ -141,11 +141,49 @@ class Journey:
         self.index = index
         # Issues and redeems the tokens that bind a human's yes to one basket.
         self.approvals = approvals
+        # The authority's own lifecycle, as a machine with a transition table
+        # rather than as eight strings assigned at the end of this function.
+        # Optional for the same reason as the others: every existing
+        # construction keeps working, and without it the journey simply does
+        # not record a lifecycle -- it never skips a check.
+        self.authority = authority
+        # Persisted cancellation. Until this existed AUTH-003 read a boolean
+        # off the request, which made revocation a demo lever rather than a
+        # control. Optional so every existing construction keeps working; when
+        # it is absent nothing is revoked, which is the old behaviour.
+        self.revocations = revocations
         # Identity until a temperature has been fitted on labelled data.
         # Deliberately explicit: an uncalibrated system says so.
         self.calibrator = calibrator or (lambda x: x)
 
     # ---------- audit helpers ----------
+    def _to(self, env, state: str, now, cid: str, cause: str) -> None:
+        """Move the authority, and refuse the journey if the move is illegal.
+
+        Swallowing an IllegalTransition here would make the machine
+        decorative -- the thing it exists to prevent would simply happen with a
+        log line next to it. It propagates.
+        """
+        if self.authority is None or env is None:
+            return
+        self.authority.advance(intent_id=env.intent_id, to=state, now=now,
+                               cause=cause, correlation_id=cid)
+
+    def _revoked(self, env):
+        """Has this authority been cancelled? Cheap, and asked more than once.
+
+        Returns the Revocation or None. Never raises: a control that throws
+        when its store is unavailable turns a cancelled mandate into a stack
+        trace, and the caller of this is on the path to a payment.
+        """
+        if self.revocations is None:
+            return None
+        try:
+            return self.revocations.check(user_id=env.user_id,
+                                          intent_id=env.intent_id)
+        except Exception:
+            return None
+
     def _mandate_exposure(self, env, exposure, now):
         """What has already been spent under a statement that reads like this one.
 
@@ -324,6 +362,10 @@ class Journey:
             return r
         r.intent = env
         self._persist_intent(env, now, "created from utterance")
+        if self.authority is not None:
+            self.authority.open(intent_id=env.intent_id, user_id=user_id,
+                                now=now, correlation_id=cid)
+            self._to(env, "INTERPRETED", now, cid, "compiled from the utterance")
         self._event("INTENT_CREATED", cid, json.loads(env.model_dump_json()), now)
         self._graph(env.intent_id, cid, "intent", None,
                     {"category": env.category, "ceiling": env.ceiling_paise()}, now)
@@ -542,6 +584,8 @@ class Journey:
         # 6. PRICE + DRIFT + RISK ---------------------------------------
         totals = price_cart(cart, self.catalog)
         r.cart, r.totals = cart, totals
+        self._to(env, "GROUNDED", now, cid,
+                 f"{len(cart.lines)} line(s) bound to real products")
         self._event("CART_PRICED", cid, json.loads(totals.model_dump_json()), now)
         self._graph(env.intent_id, cid, "cart", "selection",
                     {"total": totals.total_paise, "lines": len(cart.lines)}, now)
@@ -585,13 +629,18 @@ class Journey:
 
         # 7. POLICY ------------------------------------------------------
         exposure = self._mandate_exposure(env, exposure, now)
+        revoked_now = self._revoked(env)
+        if revoked_now is not None:
+            r.telemetry = dict(r.telemetry) | {
+                "revocation": revoked_now.dict()}
         oos = [l.product_id for l in cart.lines
                if (self.catalog.get(l.product_id) or None) is None
                or (self.catalog.get(l.product_id).inventory < l.qty)]
         auth = authorize(env=env, cart=cart, totals=totals, drift=drift, risk=risk,
                          exposure=exposure, policy=self.policy, now=now,
                          catalog_version=catalog_now, out_of_stock=oos,
-                         intent_revoked=bool(inject.get("revoked")),
+                         intent_revoked=revoked_now is not None
+                                        or bool(inject.get("revoked")),
                          stale_pricing=stale)
         r.authorization = auth
         self._event("POLICY_DECIDED", cid, auth.dict(), now)
@@ -609,6 +658,8 @@ class Journey:
         if auth.verdict is Verdict.DENY:
             r.note = auth.reason
             r.payment_state = "BLOCKED"
+            self._to(env, "REVOKED" if revoked_now is not None else "REJECTED",
+                     now, cid, f"refused by {', '.join(auth.failed) or 'policy'}")
             self._event("PAYMENT_BLOCKED", cid,
                         {"amount_paise": totals.total_paise,
                          "failed": auth.failed}, now)
@@ -640,6 +691,8 @@ class Journey:
                 human_confirms = True
             elif human_confirms is None:
                 r.note = "awaiting human confirmation"
+                self._to(env, "PENDING_STEP_UP", now, cid,
+                         "policy stopped and asked a person")
                 r.payment_state = "AWAITING_HUMAN"
                 if self.approvals is not None:
                     grant = self.approvals.issue(
@@ -659,6 +712,7 @@ class Journey:
                 return r
             if not human_confirms:
                 r.note = "human declined at the step-up"
+                self._to(env, "CANCELLED", now, cid, "the human said no")
                 r.payment_state = "DECLINED_BY_HUMAN"
                 self._event("PAYMENT_BLOCKED", cid,
                             {"amount_paise": totals.total_paise,
@@ -695,6 +749,27 @@ class Journey:
             authorization_state = "CONFIRMED"
 
         # 8. PAY ---------------------------------------------------------
+        # Asked a second time, immediately before the money moves.
+        #
+        # The interesting revocation is not the one that arrives before the
+        # decision -- AUTH-003 already refuses that one. It is the one that
+        # lands in the gap BETWEEN the decision and the execution, which is
+        # exactly the moment a person reaching for a kill switch is living in.
+        # Today a single process-wide lock makes that interleaving impossible,
+        # so this check can never fire in this deployment. It is here because a
+        # control that is only correct because of a lock it does not own is not
+        # a control, and the day this runs in two processes is not the day to
+        # discover that. FAILURES #43.
+        late = self._revoked(env)
+        if late is not None:
+            self._event("AUTHORIZATION_REVOKED", cid, late.dict(), now)
+            r.payment_state = "BLOCKED"
+            r.note = (f"authority revoked at {late.revoked_at} "
+                      f"({late.scope}); nothing was charged")
+            r.telemetry = dict(r.telemetry) | {"revocation": late.dict()}
+            r.latency_ms = (time.perf_counter() - t0) * 1000
+            return r
+
         # Keyed on WHAT was asked for and WHAT is in the cart -- never on the
         # intent id, which is fresh on every utterance. A repeated utterance is
         # one purchase, not two. FAILURES.md 2026-08-21 15:00.
@@ -705,6 +780,23 @@ class Journey:
             intent_hash=cart_sig,
             envelope_epoch=totals.total_paise,
             revocation_epoch=cart.catalog_version)
+        # The state depends on the VERDICT, not on whether a confirm flag
+        # happened to be set. An AUTO decision that a human also confirmed was
+        # never a step-up, and recording it as APPROVED would claim a human
+        # made a decision they were never asked to make. Where policy did stop,
+        # the authority genuinely passed through PENDING_STEP_UP on its way
+        # here -- the answer simply arrived with the request -- so both moves
+        # are recorded rather than one being skipped.
+        if auth.verdict is Verdict.AUTO:
+            self._to(env, "AUTHORIZED", now, cid,
+                     "policy authorised the agent to proceed alone")
+        else:
+            self._to(env, "PENDING_STEP_UP", now, cid,
+                     "policy required a person")
+            self._to(env, "APPROVED", now, cid,
+                     "a person redeemed a token bound to this basket"
+                     if approval_token else "a person confirmed")
+        self._to(env, "EXECUTING", now, cid, "creating the order")
         pid, created = self.payments.create(
             cart_id=cart.cart_id, intent_id=env.intent_id, idem_key=idem,
             amount_paise=totals.total_paise, now=now, correlation_id=cid,
@@ -740,6 +832,7 @@ class Journey:
             return r
         except Exception as e:
             self.payments.transition(pid, "FAILED", now, f"gateway error: {e}")
+            self._to(env, "FAILED", now, cid, f"gateway error: {e}")
             r.payment_state = "FAILED"
             r.note = f"payment failed: {e}"
             self._event("PAYMENT_FAILED", cid, {"why": str(e)}, now)
@@ -748,6 +841,7 @@ class Journey:
 
         self.payments.attach_order(pid, order["id"])
         r.order_id = order["id"]
+        self._to(env, "EXECUTED", now, cid, f"gateway order {order['id']}")
         r.payment_state = "CREATED"
         self._event("PAYMENT_CREATED", cid,
                     {"payment_id": pid, "order_id": order["id"]}, now)

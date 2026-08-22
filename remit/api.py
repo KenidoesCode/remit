@@ -21,6 +21,7 @@ from pydantic import BaseModel, Field
 from .assembly import App, build, utcnow
 from .auth import COOKIE, MAX_AGE_SECONDS, mint, session_secret, verify
 from .faults import refusal_note, scrub
+from .grants.revocation import NoSuchIntent, NotYours
 from .domain.drift import compute_drift
 from .domain.risk import Exposure, assess
 from .exec.razorpay import FakeGateway, verify_payment_signature
@@ -297,6 +298,69 @@ def _exposure(a: App, user_id: str) -> Exposure:
         (day_start, hour_ago, hour_ago, user_id)).fetchone()
     return Exposure(session_paise=row["hour"], daily_paise=row["day"],
                     txn_count_1h=row["n"])
+
+
+class RevokeRequest(BaseModel):
+    # "principal" is the kill switch and needs no id. "intent" cancels one
+    # mandate. There is deliberately no user field: you revoke your own
+    # authority, and the server knows whose that is.
+    scope: str = "principal"
+    intent_id: str | None = Field(default=None, max_length=64)
+    reason: str | None = Field(default=None, max_length=280)
+
+
+@api.post("/api/revoke")
+def revoke(req: RevokeRequest, request: Request):
+    """Take it back.
+
+    The question a person asks before handing an agent money is not "is your
+    policy engine sound". It is "can I stop it". `intents.revoked_at` has been
+    in the schema since the first migration, was never written and never read,
+    and AUTH-003 -- the hard clause that refuses a revoked mandate -- took its
+    input from a boolean on the request body. Revocation was a demo lever.
+
+    Forward only. This stops what has not happened; it does not unwind a
+    payment that already moved, because a refund is a different operation with
+    a different authority and a control plane that quietly reverses settled
+    money is one nobody can reason about. Revoking after execution is allowed,
+    recorded, and changes nothing about the completed transaction.
+    """
+    with LOCK:
+        a = get_app()
+        who = principal(request)
+        try:
+            rv = a.revocations.revoke(
+                user_id=who, now=utcnow(), scope=req.scope,
+                target=req.intent_id if req.scope == "intent" else who,
+                revoked_by=who, reason=req.reason)
+        except NoSuchIntent:
+            return JSONResponse({"error": "no such authorization"},
+                                status_code=404)
+        except NotYours:
+            # 404 rather than 403: whether somebody else's intent id exists is
+            # not a thing this endpoint should confirm.
+            return JSONResponse({"error": "no such authorization"},
+                                status_code=404)
+        except ValueError as e:
+            return JSONResponse({"error": str(e)}, status_code=400)
+        a.ledger.append("AUTHORIZATION_REVOKED", who, rv.dict(), utcnow())
+        return rv.dict() | {
+            "note": ("nothing further will execute under this authority. "
+                     "Payments that already completed are unaffected -- "
+                     "reversing settled money is a refund, which is a "
+                     "different authority.")}
+
+
+@api.get("/api/revocations")
+def revocations(request: Request):
+    """Everything this principal has cancelled. Scoped to them, like the rest
+    of the surface -- a revocation names an intent id and a reason, and neither
+    is anybody else's to read."""
+    with LOCK:
+        a = get_app()
+        who = principal(request)
+        return {"revocations": a.revocations.listing(user_id=who),
+                "revoked": a.revocations.is_revoked(user_id=who)}
 
 
 @api.post("/api/probe")

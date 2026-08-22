@@ -18,6 +18,8 @@ from .exec.razorpay import FakeGateway, PaymentGateway, RazorpayTestClient
 from .exec.recon import Reconciler
 from .exec.webhooks import WebhookProcessor
 from .grants.approval import ApprovalStore
+from .domain.authority import AuthorityMachine
+from .grants.revocation import RevocationStore
 from .intent.grounding import Lexicon
 from .retrieval.embed import best_available
 from .retrieval.index import VectorIndex
@@ -100,6 +102,10 @@ class App:
     gateway: PaymentGateway
     journey: Journey
     seed_info: dict
+    revocations: object = None      # persisted cancellation, shared with the
+                                    # journey so the API and the decision path
+                                    # cannot disagree about what is revoked
+    authority: object = None        # the authority lifecycle machine
     index: object = None            # VectorIndex over the live catalog
     embedder: object = None         # which embedder actually built it
     # The secret this instance verifies webhooks with. Exposed so that a test,
@@ -125,7 +131,9 @@ class App:
                        broker=self.broker, gateway=self.gateway,
                        calibrator=self.journey.calibrator,
                        index=self.journey.index,
-                       approvals=self.journey.approvals)
+                       approvals=self.journey.approvals,
+                       revocations=self.journey.revocations,
+                       authority=self.journey.authority)
 
 
 def build(*, db_path: str = ":memory:", policy_path: str | None = None,
@@ -178,12 +186,16 @@ def build(*, db_path: str = ":memory:", policy_path: str | None = None,
                       policy=policy, ledger=ledger, payments=payments,
                       broker=broker, gateway=gateway,
                       calibrator=load_calibrator(), index=index,
-                      approvals=ApprovalStore(db))
+                      approvals=ApprovalStore(db),
+                      revocations=RevocationStore(db),
+                      authority=AuthorityMachine(db))
     return App(db=db, catalog=catalog, policy=policy, ledger=ledger,
                payments=payments,
                webhooks=WebhookProcessor(db, payments, secret),
                recon=Reconciler(db, payments, gateway), broker=broker,
                gateway=gateway, journey=journey, seed_info=info,
+               revocations=journey.revocations,
+               authority=journey.authority,
                webhook_secret=secret, index=index, embedder=embedder)
 
 
