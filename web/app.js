@@ -701,6 +701,59 @@ async function renderNumbers() {
   countUp();
 }
 
+/* ═══════════════════ 05 · the self-destruction lab ═════════════════════ */
+async function renderAttacks() {
+  const out = $("#attackOut");
+  if (!out) return;
+  let a, done = {};
+  try { a = await api("/api/attacks"); } catch (e) { return; }
+  try {
+    const pre = await api("/api/results/attacks");
+    if (!pre.error) for (const r of pre.rows) done[r.key] = r;
+  } catch (e) { /* no pre-generated run; live only */ }
+
+  const card = k => {
+    const meta = a.attacks.find(x => x.key === k), r = done[k];
+    const state = !r ? "idle" : (r.broke ? "broke" : "held");
+    return `<button type="button" class="atk ${state}" data-atk="${esc(k)}">
+      <span class="atk-hd"><span class="atk-s">${esc(meta.surface)}</span>
+        <span class="atk-v">${r ? (r.broke ? "BROKE" : "held") : "run"}</span></span>
+      <span class="atk-n">${esc(meta.name)}</span>
+      <span class="atk-i">must stay true: ${esc(meta.invariant)}</span>
+      <span class="atk-r">${r ? esc(r.what_happened) : ""}</span>
+      ${r && r.stopped_by ? `<span class="atk-b">stopped by ${esc(r.stopped_by)}</span>` : ""}
+    </button>`;
+  };
+  const surfaces = ["intent", "catalog", "payment"];
+  out.innerHTML = surfaces.map(sf => `<div class="atk-group">
+    <div class="atk-gh">${sf}</div>
+    <div class="atk-grid">${a.attacks.filter(x => x.surface === sf)
+      .map(x => card(x.key)).join("")}</div></div>`).join("");
+
+  out.addEventListener("click", async ev => {
+    const b = ev.target.closest("button.atk");
+    if (!b || b.dataset.busy) return;
+    b.dataset.busy = "1";
+    b.querySelector(".atk-v").textContent = "running";
+    b.querySelector(".atk-r").textContent = "";
+    try {
+      const r = await api("/api/attack/" + b.dataset.atk, {});
+      b.className = "atk " + (r.broke ? "broke" : "held");
+      b.querySelector(".atk-v").textContent = r.broke ? "BROKE" : "held";
+      b.querySelector(".atk-r").textContent = r.what_happened;
+      const bb = b.querySelector(".atk-b");
+      if (bb) bb.textContent = r.stopped_by ? "stopped by " + r.stopped_by : "";
+      else if (r.stopped_by) {
+        const el = document.createElement("span");
+        el.className = "atk-b"; el.textContent = "stopped by " + r.stopped_by;
+        b.appendChild(el);
+      }
+    } catch (e) {
+      b.querySelector(".atk-v").textContent = "error";
+    } finally { delete b.dataset.busy; }
+  });
+}
+
 /* ═════════════════════ 03 · the autonomy frontier ══════════════════════ */
 async function renderFrontier() {
   const out = $("#frontierOut");
@@ -1232,7 +1285,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   await Promise.allSettled([
     renderNumbers(), renderFailures(), renderWho(),
-    renderArena(), renderFrontier(), renderLab(), renderAudit(),
+    renderArena(), renderFrontier(), renderLab(), renderAudit(), renderAttacks(),
     renderCompare(),
   ]);
 

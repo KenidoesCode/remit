@@ -1008,3 +1008,53 @@ It is an event, with a subject and an object, and a system that cannot say what
 the yes was *about* has not recorded consent — it has recorded a click.
 
 The matrix caught this on its first run. That is the argument for building it.
+
+---
+
+## 30. Two attacks that could not fail
+
+**What happened.** I wrote twenty-two attacks against REMIT and every single one
+of them held on the first run. That should have felt good and instead it felt
+wrong, because I had just spent a week finding real bugs in this system and a
+suite that finds nothing on its first run is usually not measuring anything.
+
+Two of them were not measuring anything.
+
+**The retry storm.** Six identical journeys fired at once, asserting they
+collapse to one order. It reported *"six identical journeys, 0 orders"* and
+passed — because the sentence I chose (`buy sunscreen under 900`) steps up, so
+all six stopped before an order could exist. The attack was aimed at the
+payment layer and never reached it. It would have passed with idempotency
+entirely removed.
+
+**The catalog version.** It moved a price under a priced cart and then asserted
+… nothing. Both branches returned `broke=False`, one of them with a comment
+explaining why that was fine. I had written a function whose only possible
+output was "held".
+
+**The fix, and the rule behind it.** The retry storm now confirms the step-up so
+it reaches the rail, asserts one order id *and* one payment row, and treats
+"zero orders" as a break rather than a pass — an attack that cannot see the
+layer it is aimed at has failed, not succeeded. The catalog attack now asserts
+that CAT-001 actually evaluated, and reports the clause detail either way.
+
+**And then I added one that breaks on purpose.** REMIT has no authentication:
+`user_id` arrives in the request body and nothing verifies it, so exposure,
+velocity, idempotency and approval ownership are all keyed on a string anyone
+can assert. The attack proves it:
+
+```
+BROKE  [payment] Spend as somebody else
+       an unauthenticated caller spent 497600 paise against
+       usr_victim_alice's identity and limits.
+```
+
+It stays in the suite, and a test asserts it *keeps* succeeding. If it ever
+reports "held", either authentication got built — in which case update the
+expectation — or the harness has quietly stopped being able to detect a
+failure, which is the thing this entry is about.
+
+**What it changed.** I now write the failing version of a test first and watch
+it fail, even when the defence already exists. "All green on the first run" is
+a claim about the tests, not about the system, and I had been reading it as the
+second thing.

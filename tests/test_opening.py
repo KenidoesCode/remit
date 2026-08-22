@@ -65,7 +65,8 @@ def test_the_opening_introduces_no_new_colour_or_family():
     # nothing to do with the opening -- a test that fails for a reason it is
     # not about is worse than no test.
     block = CSS.split("the opening")[1].split("/* \u2500")[0]
-    for token in ("var(--bg)", "var(--signal)", "var(--ink)", "var(--m)", "var(--s)"):
+    for token in ("var(--bg)", "var(--signal)", "var(--ink)", "var(--mono)",
+                  "var(--sans)"):
         assert token in block, token
     assert "#" not in block.replace("#intro", "").replace("#webshot", "") \
         .replace("#page", "").replace("#gl", "").replace("#glow", ""), \
@@ -116,3 +117,20 @@ def test_reduced_motion_still_reveals_the_sentences():
     body = APP.split("function opening()")[1].split("\nfunction ")[0]
     reduced = body.split("if (REDUCED) {")[1].split("setTimeout(finish")[0]
     assert ".intro-said p" in reduced
+
+
+def test_every_css_variable_used_is_actually_defined():
+    """An undefined custom property does not error -- it silently falls back to
+    the inherited value, so `font-family:var(--m)` on a stylesheet that only
+    defines `--mono` renders in the body font and looks almost right.
+
+    I shipped fifteen of those. The wordmark in the opening was supposed to be
+    monospace and was not, for a week, on a page whose whole visual identity is
+    a monospace wordmark. Nothing failed; it just quietly looked like something
+    else. FAILURES #31.
+    """
+    import re
+    defined = set(re.findall(r"^\s*(--[a-z0-9-]+)\s*:", CSS, re.M))
+    used = set(re.findall(r"var\((--[a-z0-9-]+)", CSS))
+    missing = sorted(used - defined)
+    assert not missing, f"used but never defined: {missing}"

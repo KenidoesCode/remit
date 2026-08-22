@@ -410,6 +410,42 @@ def _counterfactual_story(w: dict, wo: dict, protected: int, given_up: int) -> s
             "already inside it -- which is most of them, and is the point.")
 
 
+@api.get("/api/attacks")
+def attack_list():
+    """What the lab will try, and the invariant each attempt targets."""
+    from .lab.attacks import ATTACKS
+    return {"attacks": [a.dict() for a in ATTACKS],
+            "note": ("Each of these runs live against a fresh instance when you "
+                     "fire it. One of them is expected to succeed; the list "
+                     "says which and why.")}
+
+
+@api.post("/api/attack/{key}")
+def attack_run(key: str):
+    """Run ONE attack, live, right now, against a throwaway instance.
+
+    A throwaway rather than this one, for two reasons that are not the same:
+    an attack that mutates the catalog or fills the ledger would otherwise
+    change what the next visitor sees, and an attack whose result depends on
+    what a previous visitor did is not a result.
+    """
+    from .lab.attacks import BY_KEY, run_attack
+    a = BY_KEY.get(key)
+    if a is None:
+        return JSONResponse({"error": "unknown attack", "key": key},
+                            status_code=404)
+    with LOCK:
+        from .exec.razorpay import FakeGateway
+        sub = build(now=utcnow(), gateway=FakeGateway())
+        t0 = time.perf_counter()
+        out = run_attack(a, sub, utcnow())
+        out["ms"] = round((time.perf_counter() - t0) * 1000, 1)
+        out["note"] = ("run against a fresh in-memory instance on the test-mode "
+                       "gateway; no money moved and nothing on this deployment "
+                       "changed")
+        return out
+
+
 @api.get("/api/failures")
 def failures():
     """Parsed from FAILURES.md at runtime, so this page cannot drift from the

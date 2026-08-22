@@ -567,17 +567,17 @@ body:not([data-intro="done"]) #glow{visibility:hidden}
 #webshot .anchor{fill:var(--signal);opacity:0}
 .intro-mid{position:relative;text-align:center;padding:0 24px;max-width:min(900px,92vw)}
 .intro-mark{
-  font-family:var(--m);font-weight:700;
+  font-family:var(--mono);font-weight:700;
   font-size:clamp(2.6rem,10vw,6rem);letter-spacing:.22em;
   line-height:1;margin-left:.22em;color:var(--ink);
 }
 .intro-exp{
-  margin-top:clamp(20px,3vh,30px);font-family:var(--s);
-  font-size:clamp(12.5px,1.5vw,17px);color:var(--i2);
+  margin-top:clamp(20px,3vh,30px);font-family:var(--sans);
+  font-size:clamp(12.5px,1.5vw,17px);color:var(--ink-2);
   letter-spacing:-.01em;text-wrap:balance;
 }
 .intro-lab{
-  margin-top:clamp(10px,1.4vh,16px);font-family:var(--m);
+  margin-top:clamp(10px,1.4vh,16px);font-family:var(--mono);
   font-size:clamp(10px,1.05vw,12px);letter-spacing:.24em;text-transform:uppercase;
   color:var(--signal);
 }
@@ -587,23 +587,23 @@ body:not([data-intro="done"]) #glow{visibility:hidden}
   padding:0 24px;text-align:center;pointer-events:none;
 }
 .intro-said p{
-  margin:0;font-family:var(--s);color:var(--ink);
+  margin:0;font-family:var(--sans);color:var(--ink);
   font-size:clamp(17px,2.6vw,30px);line-height:1.35;
   max-width:min(20ch,88vw);text-wrap:balance;
 }
 .intro-said .said-3{
-  font-family:var(--m);font-size:clamp(10px,1.05vw,12px);
+  font-family:var(--mono);font-size:clamp(10px,1.05vw,12px);
   letter-spacing:.26em;text-transform:uppercase;color:var(--signal);
   margin-top:clamp(6px,1.2vh,14px);
 }
 .intro-by{
-  margin-top:clamp(22px,3.4vh,36px);font-family:var(--s);
-  font-size:clamp(13px,1.3vw,15.5px);color:var(--i3);
+  margin-top:clamp(22px,3.4vh,36px);font-family:var(--sans);
+  font-size:clamp(13px,1.3vw,15.5px);color:var(--ink-3);
 }
 .intro-by b{color:var(--ink);font-weight:600}
 .intro-aka{
-  margin-top:6px;font-family:var(--m);font-size:clamp(10px,1vw,11.5px);
-  letter-spacing:.18em;text-transform:uppercase;color:var(--i4);
+  margin-top:6px;font-family:var(--mono);font-size:clamp(10px,1vw,11.5px);
+  letter-spacing:.18em;text-transform:uppercase;color:var(--ink-4);
 }
 @media (prefers-reduced-motion:reduce){
   #webshot .w1,#webshot .w2{stroke-dasharray:none!important;stroke-dashoffset:0!important}
@@ -617,16 +617,16 @@ body:not([data-intro="done"]) #glow{visibility:hidden}
   padding:20px 22px 18px;background:rgba(229,53,43,.045);
 }
 .su-head{
-  font-family:var(--m);font-size:11px;letter-spacing:.18em;text-transform:uppercase;
+  font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;
   color:var(--signal);margin-bottom:10px;
 }
-.su-why{font-family:var(--s);font-size:15px;color:var(--ink);margin:0 0 6px}
-.su-what{font-family:var(--s);font-size:13.5px;color:var(--i2);margin:0 0 16px}
+.su-why{font-family:var(--sans);font-size:15px;color:var(--ink);margin:0 0 6px}
+.su-what{font-family:var(--sans);font-size:13.5px;color:var(--ink-2);margin:0 0 16px}
 .su-what strong{color:var(--ink)}
 .su-actions{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
 .su-actions .ghost{
-  background:none;border:1px solid var(--i4);color:var(--i2);
-  font-family:var(--s);font-size:13px;padding:11px 16px;border-radius:2px;
+  background:none;border:1px solid var(--ink-4);color:var(--ink-2);
+  font-family:var(--sans);font-size:13px;padding:11px 16px;border-radius:2px;
   cursor:pointer;transition:border-color .18s,color .18s;
 }
 .su-actions .ghost:hover{border-color:var(--ink);color:var(--ink)}
@@ -637,43 +637,75 @@ body:not([data-intro="done"]) #glow{visibility:hidden}
 #chips button{display:flex;flex-direction:column;gap:3px;text-align:left;line-height:1.35}
 #chips button .cu{display:block}
 #chips button .cw{
-  display:block;font-family:var(--s);font-size:10.5px;color:var(--i4);
+  display:block;font-family:var(--sans);font-size:10.5px;color:var(--ink-4);
   letter-spacing:0;text-transform:none;
 }
-#chips button:hover .cw{color:var(--i3)}
+#chips button:hover .cw{color:var(--ink-3)}
 
 /* ─────────────────── the lab rooms: arena, matrix, counterfactual ───────
    Same tokens, same two families, same red. A new room is a new argument,
    not a new brand. */
 table.arena td .thesis, .thesis{
-  display:block;font-family:var(--s);font-size:11.5px;color:var(--i4);
+  display:block;font-family:var(--sans);font-size:11.5px;color:var(--ink-4);
   margin-top:3px;max-width:52ch;line-height:1.45;
 }
 table.arena tr.dirty td{background:rgba(229,53,43,.05)}
 table.arena tr.dq td{
-  font-family:var(--m);font-size:10.5px;letter-spacing:.06em;
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;
   color:var(--signal);padding-top:0;border-top:0;text-transform:uppercase;
 }
 .matrix{display:grid;gap:7px;margin-top:22px}
 .mx{display:grid;grid-template-columns:120px 1fr 58px;gap:12px;align-items:center}
-.mxc{font-family:var(--m);font-size:11px;color:var(--i2);letter-spacing:.06em}
+.mxc{font-family:var(--mono);font-size:11px;color:var(--ink-2);letter-spacing:.06em}
 .mxb{height:6px;background:rgba(255,255,255,.07);border-radius:1px;overflow:hidden}
 .mxb i{display:block;height:100%;background:var(--ink);opacity:.75}
 .mx.bad .mxb i{background:var(--signal);opacity:1}
-.mxn{font-family:var(--m);font-size:11px;color:var(--i3);text-align:right}
+.mxn{font-family:var(--mono);font-size:11px;color:var(--ink-3);text-align:right}
 .cf-utt{
-  font-family:var(--m);font-size:13px;color:var(--i2);margin:0 0 18px;
+  font-family:var(--mono);font-size:13px;color:var(--ink-2);margin:0 0 18px;
   letter-spacing:-.01em;
 }
 .cf-story{
-  font-family:var(--s);font-size:16.5px;line-height:1.55;color:var(--ink);
+  font-family:var(--sans);font-size:16.5px;line-height:1.55;color:var(--ink);
   margin:22px 0 8px;max-width:76ch;text-wrap:pretty;
 }
 .cf-cart{list-style:none;margin:14px 0 16px;padding:0}
 .cf-cart li{
   display:flex;justify-content:space-between;gap:14px;
-  font-family:var(--s);font-size:12.5px;color:var(--i2);
+  font-family:var(--sans);font-size:12.5px;color:var(--ink-2);
   padding:5px 0;border-bottom:1px solid rgba(255,255,255,.05);
 }
-.cf-cart li span{font-family:var(--m);font-size:11.5px;color:var(--i3);white-space:nowrap}
-.cf-empty{font-family:var(--s);font-size:12.5px;color:var(--i4);margin:14px 0}
+.cf-cart li span{font-family:var(--mono);font-size:11.5px;color:var(--ink-3);white-space:nowrap}
+.cf-empty{font-family:var(--sans);font-size:12.5px;color:var(--ink-4);margin:14px 0}
+
+/* ───────────────────────── the self-destruction lab ─────────────────────
+   Every card is a button, because an attack you can read about is a claim and
+   an attack you can fire is evidence. */
+.atk-group{margin-top:34px}
+.atk-gh{
+  font-family:var(--mono);font-size:10px;letter-spacing:.24em;text-transform:uppercase;
+  color:var(--signal);margin-bottom:12px;
+}
+.atk-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:1px;
+  background:var(--line-2);border:1px solid var(--line-2)}
+button.atk{
+  background:var(--bg);border:0;text-align:left;cursor:pointer;
+  padding:16px 16px 14px;display:flex;flex-direction:column;gap:7px;
+  transition:background .18s;font:inherit;
+}
+button.atk:hover{background:rgba(255,255,255,.03)}
+.atk-hd{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.atk-s{font-family:var(--mono);font-size:9.5px;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--ink-4)}
+.atk-v{font-family:var(--mono);font-size:9.5px;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--ink-3)}
+button.atk.held .atk-v{color:var(--ink)}
+button.atk.broke .atk-v{color:var(--signal)}
+button.atk.broke{background:rgba(229,53,43,.06)}
+.atk-n{font-family:var(--sans);font-size:14.5px;color:var(--ink);line-height:1.35}
+/* These were set two steps too dim: a card whose result you cannot read is a
+   card that may as well not have run. */
+.atk-i{font-family:var(--sans);font-size:12px;color:var(--ink-3);line-height:1.45}
+.atk-r{font-family:var(--mono);font-size:11.5px;color:var(--ink-2);line-height:1.6}
+.atk-b{font-family:var(--mono);font-size:10.5px;color:var(--ink-3);line-height:1.5}
+button.atk.broke .atk-r{color:var(--ink)}
