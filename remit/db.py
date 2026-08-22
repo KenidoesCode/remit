@@ -6,6 +6,7 @@ Money is always paise (INTEGER). Timestamps are ISO-8601 UTC strings.
 from __future__ import annotations
 
 import sqlite3
+import threading
 from contextlib import contextmanager
 from pathlib import Path
 
@@ -155,6 +156,36 @@ def connect(path: str | Path = "remit.sqlite") -> sqlite3.Connection:
     return db
 
 
+# One RLock per connection. sqlite3.Connection does not support weak
+# references, so this is keyed by id() and cleaned up when a connection is
+# closed -- see close_write_lock(). The dictionary itself is guarded because
+# building the lock is exactly the race it exists to prevent.
+_WRITE_LOCKS: dict[int, threading.RLock] = {}
+_WRITE_LOCKS_GUARD = threading.Lock()
+
+
+def _write_lock_for(db: sqlite3.Connection) -> threading.RLock:
+    key = id(db)
+    with _WRITE_LOCKS_GUARD:
+        lock = _WRITE_LOCKS.get(key)
+        if lock is None:
+            lock = threading.RLock()
+            _WRITE_LOCKS[key] = lock
+        return lock
+
+
+def close_write_lock(db: sqlite3.Connection) -> None:
+    """Drop the lock for a connection being closed.
+
+    id() is reused after an object is freed, so a stale entry would hand a new
+    connection an old lock. Harmless -- it would over-serialise, never
+    under-serialise -- but it would also leak an entry per connection, and the
+    test suite builds thousands.
+    """
+    with _WRITE_LOCKS_GUARD:
+        _WRITE_LOCKS.pop(id(db), None)
+
+
 @contextmanager
 def writing(db: sqlite3.Connection):
     """A write transaction that takes the lock at BEGIN, not at first write.
@@ -172,18 +203,37 @@ def writing(db: sqlite3.Connection):
     Reentrant: nested use joins the outer transaction rather than starting a
     second one, because the alternative is that a helper called from inside a
     transaction silently commits half of it.
+
+    Thread-safe, which the first version was not. `check_same_thread=False`
+    means several threads share one connection, and `if db.in_transaction:` +
+    `BEGIN IMMEDIATE` is a check-then-act across two calls: two threads can
+    both read False and both issue BEGIN, and the loser raises
+    `OperationalError: cannot start a transaction within a transaction`. That
+    is a request that fails AFTER the decision was made -- the same failure
+    shape BEGIN IMMEDIATE was introduced to remove, one level up.
+
+    The per-connection RLock is held for the whole transaction, not just the
+    BEGIN. A connection can only carry one transaction at a time, so threads
+    have to serialise here regardless; taking the lock at the door makes them
+    wait instead of colliding. RLock, so the reentrant case above does not
+    deadlock against itself. FAILURES #50.
     """
-    if db.in_transaction:
-        yield db
-        return
-    db.execute("BEGIN IMMEDIATE")
+    lock = _write_lock_for(db)
+    lock.acquire()
     try:
-        yield db
-    except BaseException:
-        db.execute("ROLLBACK")
-        raise
-    else:
-        db.execute("COMMIT")
+        if db.in_transaction:
+            yield db
+            return
+        db.execute("BEGIN IMMEDIATE")
+        try:
+            yield db
+        except BaseException:
+            db.execute("ROLLBACK")
+            raise
+        else:
+            db.execute("COMMIT")
+    finally:
+        lock.release()
 
 
 TENANT_COLUMNS = {

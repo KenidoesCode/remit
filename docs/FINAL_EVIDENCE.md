@@ -4,7 +4,7 @@
 command that regenerates it. If a claim is not in this table, it is not a claim
 REMIT makes.*
 
-**At:** 22 August 2026 · commit `HEAD` · 696 test cases · 378 test functions ·
+**At:** 22 August 2026 · commit `HEAD` · 699 test cases · 381 test functions ·
 21 policy clauses · 48 failures logged
 
 ---
@@ -12,7 +12,7 @@ REMIT makes.*
 ## How to check this without trusting me
 
 ```bash
-python -m pytest -q                 # 696 cases
+python -m pytest -q                 # 699 cases
 python eval/matrix.py               # 260 cases
 python eval/attacks.py              # 32 attacks
 python eval/run_eval.py             # precision, recall, dangerous FN

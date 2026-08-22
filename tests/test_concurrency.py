@@ -190,3 +190,53 @@ def test_duplicate_webhooks_in_parallel_apply_once(env):
         "SELECT COUNT(*) c FROM webhook_events").fetchone()["c"]
     assert rows == 1, f"{rows} webhook_events rows for one event id"
     assert len(_paid()) == 1
+
+
+def test_many_threads_sharing_one_connection_never_collide_on_begin():
+    """FAILURES #50 -- the regression for a race inside the race-fixer.
+
+    `writing()` used to be `if db.in_transaction: ... else: BEGIN IMMEDIATE`,
+    which is check-then-act across two calls on a connection several threads
+    share. Two threads read False, both BEGIN, and the loser raises
+    OperationalError: cannot start a transaction within a transaction.
+
+    It surfaced as an attack that passed twice and failed once -- found by
+    eval/attacks.py, not by this file, because the existing thread tests went
+    through the API's global lock and the process tests used one connection
+    each. Neither had two threads inside writing() on the SAME connection.
+    """
+    import sqlite3
+    import threading
+
+    from remit.db import writing
+
+    db = sqlite3.connect(":memory:", isolation_level=None,
+                         check_same_thread=False)
+    db.execute("CREATE TABLE t (k INTEGER PRIMARY KEY, n INTEGER)")
+    db.execute("INSERT INTO t (k, n) VALUES (1, 0)")
+
+    N = 32
+    ready = threading.Barrier(N)
+    errors: list[BaseException] = []
+
+    def bump():
+        try:
+            ready.wait(timeout=10)
+            for _ in range(20):
+                # read-then-write: the whole reason writing() exists
+                with writing(db):
+                    cur = db.execute("SELECT n FROM t WHERE k=1").fetchone()[0]
+                    db.execute("UPDATE t SET n=? WHERE k=1", (cur + 1,))
+        except BaseException as e:            # noqa: BLE001 - recorded, then asserted
+            errors.append(e)
+
+    threads = [threading.Thread(target=bump) for _ in range(N)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join(timeout=30)
+
+    assert not errors, f"threads raised: {errors[:3]}"
+    # and the lost-update check, which is the point of holding the lock for the
+    # whole transaction rather than only across BEGIN
+    assert db.execute("SELECT n FROM t WHERE k=1").fetchone()[0] == N * 20

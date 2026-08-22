@@ -1990,3 +1990,100 @@ One deliberate exception: dated snapshots. `HARDENING_AUDIT.md` opens *"433
 tests"* and `FINAL_SCORECARD.md` opens *"636 tests"*, and those were true on
 the days they were written. A historical statement is not a stale one, and the
 test does not touch counts that carry a date.
+
+### The same lesson, one hour later: a route nobody could find
+
+Verifying the deploy, I fetched `/v1/` and counted the routes it advertised.
+**Eight.** The router serves **ten**.
+
+The index's route list was written by hand and had not been updated when
+`POST /v1/step-up` was added — the route that turns a `STEP_UP` verdict into a
+purchase, and therefore the single route an integrating agent most needs. An
+agent reading the protocol description could not have discovered it. Nothing
+failed: the route worked perfectly for anyone who already knew it was there.
+
+`/v1/` now derives its route list from the router. A route with no description
+renders as `(undescribed)` and `test_protocol.py` fails, rather than the route
+being silently omitted.
+
+Writing that test then found a second bug **in the test itself**. My first
+version walked `app.routes` looking for paths starting with `/v1` and found
+**zero** — this FastAPI wraps an included router in an `_IncludedRouter` whose
+real routes hang off `.original_router`. The set was empty, so the test compared
+ten advertised routes against nothing and failed loudly. Had I written the
+assertion the other way round — "every served route is advertised" — an empty
+served set would have made it **pass vacuously forever**.
+
+It now asserts `served` is non-empty before comparing, which is the only reason
+this paragraph is about a near miss instead of a fourth stale number.
+
+## 50. A race inside the thing I wrote to fix races
+
+**What happened.** Verifying the deploy, I ran the attack suite one more time
+than I needed to. **31 of 32.**
+
+```
+revocation_race: the attack raised OperationalError:
+cannot start a transaction within a transaction
+```
+
+I had run it minutes earlier and got 32. I ran it three more times: 32, **31**,
+32.
+
+`writing()` — the context manager added in #47 to stop deferred transactions
+failing halfway — was:
+
+```python
+if db.in_transaction:
+    yield db
+    return
+db.execute("BEGIN IMMEDIATE")
+```
+
+That is check-then-act across two calls, on a connection opened with
+`check_same_thread=False` because FastAPI runs sync endpoints in a threadpool.
+Two threads read `in_transaction` as False, both issue `BEGIN IMMEDIATE`, and
+the loser raises. **A request that fails after the decision has been made** —
+the exact failure shape #47 existed to remove, reintroduced one level up by the
+fix for it.
+
+**Why nothing caught it.** Every concurrency test I had was the wrong shape:
+
+- `test_concurrency.py` drove 40 threads through the API, which takes a global
+  lock first, so only one thread was ever inside `writing()`.
+- `test_multiprocess.py` used real processes, and each has its own connection —
+  `BEGIN IMMEDIATE` handles that correctly, which is the whole point of it.
+- The attack suite calls the engine directly, with threads, on one shared
+  connection. Nothing else in the repository did.
+
+So 698 tests passed and a 1-in-3 defect sat in the money path. **The suite was
+not weak, it was uniform** — every test made the same assumption about how
+concurrency arrives, and the assumption was wrong in the one place it mattered.
+
+**The fix** is a per-connection `RLock`, held for the whole transaction rather
+than only across the `BEGIN`. A connection can carry one transaction at a time,
+so threads must serialise here regardless; taking the lock at the door makes
+the second thread wait instead of collide. `RLock` because the reentrant case
+must not deadlock against itself. `sqlite3.Connection` does not support weak
+references, so the table is keyed by `id()` and cleaned up on close — a stale
+entry would over-serialise, never under-serialise, but the suite builds
+thousands of connections and the leak is real.
+
+**What it changed.** The regression test puts 32 threads on ONE shared
+connection through a read-then-write, and it asserts two things: no thread
+raised, and the counter reached exactly 640. The second assertion is the one
+worth having — it fails if the lock is released after `BEGIN` instead of after
+`COMMIT`, which looks correct and loses updates.
+
+I confirmed it fails against the old implementation before keeping it. A
+regression test that has never seen the bug is a guess.
+
+**The honest note.** This was found by luck. I ran the suite once more than the
+task required, on an endpoint I had already verified, and the flake happened to
+land. Had it not, I would have pushed a 1-in-3 transaction failure to the money
+path and reported 32/32 truthfully, because that is what I would have seen.
+
+I do not have a process fix for that. What I have is: the attack suite now runs
+five times rather than once before I believe a green result, and #49's lesson
+applies here too — **a number I have seen once is not a number I have
+verified.**

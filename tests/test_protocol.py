@@ -294,3 +294,59 @@ def test_the_external_agent_walks_the_whole_protocol(env):
         assert c.post("/v1/revoke", json={"reason": "done"}).status_code == 200
         assert c.post("/v1/execute", json={"utterance": "buy chips under 200"}
                       ).json()["execution"]["state"] == "BLOCKED"
+
+
+def test_the_index_advertises_every_route_the_protocol_serves():
+    """A route the index does not mention is a route no integrator can find.
+
+    The hand-written list advertised eight routes while ten were served, and
+    the missing one was POST /v1/step-up -- the route that turns a STEP_UP into
+    a purchase, and therefore the one an agent most needs. Nothing failed,
+    because nothing compared the list to the router. FAILURES #49.
+    """
+    from fastapi.testclient import TestClient
+
+    import remit.api as api_mod
+
+    c = TestClient(api_mod.api)
+    advertised = set(c.get("/v1/").json()["routes"])
+
+    # An included router is not necessarily flattened into app.routes -- this
+    # FastAPI keeps it as a nested object -- so walk it. Reading only the top
+    # level found zero /v1 routes and would have "passed" any advertised list
+    # at all, which is a test that asserts nothing.
+    served = set()
+
+    def walk(routes):
+        for r in routes:
+            path = getattr(r, "path", None)
+            if path and path.startswith("/v1"):
+                for m in sorted(getattr(r, "methods", set()) - {"HEAD", "OPTIONS"}):
+                    served.add(f"{m} {path}")
+            nested = getattr(r, "routes", None)
+            if nested is None:
+                # this FastAPI wraps an included router in an _IncludedRouter
+                # that exposes the real one under .original_router
+                orig = getattr(r, "original_router", None)
+                nested = getattr(orig, "routes", None)
+            walk(nested or [])
+
+    walk(api_mod.api.routes)
+    assert served, "found no /v1 routes at all -- the walk is broken, not the app"
+
+    assert advertised == served, (
+        f"served but not advertised: {sorted(served - advertised)}; "
+        f"advertised but not served: {sorted(advertised - served)}")
+
+
+def test_every_advertised_route_has_a_real_description():
+    """`_routes()` falls back to a placeholder rather than crashing, so the
+    placeholder is what this test looks for."""
+    from fastapi.testclient import TestClient
+
+    import remit.api as api_mod
+
+    c = TestClient(api_mod.api)
+    routes = c.get("/v1/").json()["routes"]
+    missing = [k for k, v in routes.items() if "undescribed" in v]
+    assert not missing, f"routes with no description: {missing}"

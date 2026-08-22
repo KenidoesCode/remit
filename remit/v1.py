@@ -175,6 +175,34 @@ def install(api, *, get_app, principal, LOCK, utcnow, exposure_for, key_id):
     set of helpers. Passing them in rather than importing avoids a cycle and,
     more usefully, makes it impossible for this module to acquire its own."""
 
+    # One line per route. A route with no entry here is a route this index
+    # cannot describe, and test_protocol.py fails rather than quietly omitting
+    # it -- which is exactly how /v1/step-up went unadvertised.
+    DESCRIBED = {
+        "GET /v1/": "this description",
+        "POST /v1/intents": "compile an utterance into a bounded authority",
+        "POST /v1/evaluate": "would this be allowed? no money moves",
+        "POST /v1/execute": "do it, if the policy allows",
+        "POST /v1/step-up": "ask the human, returning a token bound to one basket",
+        "POST /v1/approve": "redeem a step-up token bound to one basket",
+        "POST /v1/deny": "decline a step-up",
+        "POST /v1/revoke": "cancel an authority, forward only",
+        "GET /v1/authorization/{intent_id}": "current authority state",
+        "GET /v1/audit/{correlation_id}": "why this happened",
+    }
+
+    def _served() -> list[str]:
+        """Every route this router actually serves, as "METHOD /path"."""
+        out = []
+        for r in v1.routes:
+            for m in sorted(getattr(r, "methods", set()) - {"HEAD", "OPTIONS"}):
+                out.append(f"{m} {r.path}")
+        return sorted(out)
+
+    def _routes() -> dict[str, str]:
+        return {k: DESCRIBED.get(k, "(undescribed -- see test_protocol.py)")
+                for k in _served()}
+
     @v1.get("/")
     def describe():
         """What this is, in one response, so an integrator can start without
@@ -185,21 +213,19 @@ def install(api, *, get_app, principal, LOCK, utcnow, exposure_for, key_id):
                        "authorises; the payment rail executes"),
             "nouns": ["intent", "authority", "action", "decision", "evidence",
                       "execution"],
-            "routes": {
-                "POST /v1/intents": "compile an utterance into a bounded authority",
-                "POST /v1/evaluate": "would this be allowed? no money moves",
-                "POST /v1/execute": "do it, if the policy allows",
-                "POST /v1/approve": "redeem a step-up token bound to one basket",
-                "POST /v1/deny": "decline a step-up",
-                "POST /v1/revoke": "cancel an authority, forward only",
-                "GET /v1/authorization/{intent_id}": "current authority state",
-                "GET /v1/audit/{correlation_id}": "why this happened",
-            },
+            # Derived from the router, not listed by hand. The hand-written
+            # list had gone stale: it advertised eight routes while ten were
+            # served, and POST /v1/step-up -- the one an integrator most needs
+            # to know about, because it is how a DENY becomes a purchase --
+            # was the one missing. An agent reading this index could not have
+            # discovered it. Same lesson as FAILURES #49: derive it.
+            "routes": _routes(),
             "identity": ("session cookie, or Authorization: Bearer <session>. "
                          "No API key: a bearer key would let a caller choose "
                          "whose limits to spend"),
             "notes": ["Razorpay test mode", "synthetic catalog",
-                      "single process, SQLite"],
+                      "SQLite on one host; multi-process correctness is "
+                      "tested, multi-host is not"],
         }
 
     @v1.post("/intents")
