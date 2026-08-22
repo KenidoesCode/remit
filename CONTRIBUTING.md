@@ -46,7 +46,10 @@ REMIT_TEST_URL=http://127.0.0.1:8099 node --test test/integration.test.js
   in the money path has happened here before (`FAILURES #50`) and one green run
   would have hidden it.
 - `npm run build && npm test && npm run typecheck` in `packages/sdk`.
-- `npm pack` and read the file list. Nothing ships that should not.
+- `npm run verify:pack` in `packages/sdk`. Reading `package.json` is not
+  enough: npm rewrites the manifest on the way into the tarball and once
+  **deleted the CLI entry** over a `./` prefix, mentioning it in one warn line
+  (`FAILURES #54`). Check what comes out, not what you asked for.
 - If you changed a number, `python eval/build_manifest.py`.
 
 ## Adding to FAILURES.md

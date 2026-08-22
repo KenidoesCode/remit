@@ -2238,3 +2238,57 @@ pointed at CI as the evidence. The hedge was accurate and I still shipped two
 Windows-breaking bugs behind it, because a caveat is not a test. **The only
 platform claim worth anything is one where the platform actually ran the code**
 — and here the platform was a person, on his own laptop, at 4am.
+
+## 54. npm deleted the CLI and mentioned it in passing
+
+**What happened.** The 2FA challenge that stopped the publish did me a favour,
+because three lines above it was this:
+
+```
+npm warn publish npm auto-corrected some errors in your package.json when publishing.
+npm warn publish "bin[remit]" script name dist/cli.js was invalid and removed
+```
+
+**Removed.** `bin` was `"./dist/cli.js"`. npm dislikes the leading `./`, and on
+a current npm it does not clean the value — it deletes the entry. The package
+that would have gone to the registry had **no `bin` at all**.
+
+So `npm i -g remit-sdk` would have installed no `remit` command. Every CLI
+example in the README, the docs and the homepage would have been wrong, and the
+failure a user hit would be `remit: command not found` — nothing pointing back
+at the package that caused it.
+
+**Why I did not catch it.** I tested the CLI thoroughly: built it, installed the
+tarball globally, ran `--version`, `--help`, `doctor`, fixed a flag-precedence
+bug found that way. All of it used a tarball built by `npm pack`, which does
+**not** apply the same manifest normalisation as `npm publish`. My earlier
+`npm publish --dry-run` did not surface the warning either. The difference only
+appeared on a real publish, on a newer npm, on someone else's machine.
+
+The deeper mistake is that I was reading `package.json` and believing it. **npm
+rewrites the manifest on the way into the tarball**, so the file on disk is a
+request, not a description. Nothing I ran checked what came out the other end.
+
+**The fix** is `scripts/verify-pack.mjs`, wired into `prepublishOnly` so a
+publish cannot ship a package it has not inspected. It reads
+`npm pack --json` — the actual file list — and asserts the bin is declared, has
+no `./` prefix, uses forward slashes, exists on disk, and is in the tarball;
+that the README, LICENSE, ESM, CJS and types all ship; that no source, test,
+script, `.env`, key or `node_modules` does; and that the dependency count is
+still zero.
+
+Two details it took a second attempt to get right. Run inside
+`npm publish --dry-run`, the inner `npm pack` **inherits dry-run** through
+`npm_config_dry_run`, writes nothing, and the check quietly has nothing to look
+at — so it forces `--dry-run=false` and strips the variable. And it reads the
+JSON file list rather than shelling out to `tar`: Windows has shipped bsdtar
+since 1803, but one day after FAILURES #53 the appetite for depending on shell
+tools was low.
+
+Confirmed by putting the bad value back: two checks fail, exit code 1.
+
+**What it changed.** The rule I keep relearning, in a new place. #49 was numbers
+in prose that no test read. #51 was a security control in a docstring that no
+test read. This is a **build artefact** that nothing inspected — I verified the
+thing I built, never the thing that would be distributed. `npm pack` is not
+`npm publish`, and the only honest check is one that looks at the output.
