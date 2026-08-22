@@ -378,6 +378,8 @@ parser silently doubled a customer's budget.
 
 | | |
 |---|---|
+| `docs/WHY_REMIT.md` | how this differs from a spending limit, fraud detection and an LLM judge |
+| `docs/DEMO_SCRIPT.md` | the five-minute walk, timed |
 | `docs/REMIT_PROTOCOL.md` | the six nouns, ten routes, and what an integrator needs |
 | `docs/THREAT_MODEL.md` | who is trusted with what, and which test enforces it |
 | `docs/HARDENING_AUDIT.md` | 61 requirements mapped to file, test and status. 51/100 |

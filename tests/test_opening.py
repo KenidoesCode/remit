@@ -98,9 +98,14 @@ def test_the_opening_waits_to_be_looked_at():
 
 
 def test_the_opening_says_what_the_product_is():
-    """The brief for the lab: the wordmark alone does not tell anyone what this
-    is. The expansion says what REMIT stands for; this says what it does."""
-    assert "the autonomy lab for agentic commerce" in HTML.lower()
+    """The wordmark alone does not tell anyone what this is. The expansion says
+    what REMIT stands for; this says what it does.
+
+    It used to say "the autonomy lab for agentic commerce", which described
+    what the project was going to be. It says what it is now, and the
+    difference matters to a reviewer deciding in five seconds whether this is
+    another AI shopping demo."""
+    assert "model-independent authorization for autonomous commerce" in HTML.lower()
 
 
 def test_the_two_sentences_are_in_the_page_not_only_in_the_animation():
@@ -109,7 +114,7 @@ def test_the_two_sentences_are_in_the_page_not_only_in_the_animation():
     a reduced-motion visitor never gets."""
     for line in ("I gave an AI permission to spend money",
                  "how much I could trust it",
-                 "Enter the lab"):
+                 "AI can be probabilistic. Authorization cannot."):
         assert line in HTML, line
 
 
@@ -134,3 +139,20 @@ def test_every_css_variable_used_is_actually_defined():
     used = set(re.findall(r"var\((--[a-z0-9-]+)", CSS))
     missing = sorted(used - defined)
     assert not missing, f"used but never defined: {missing}"
+
+
+def test_the_opening_states_the_thesis_and_the_positioning():
+    """Two lines the project is not allowed to lose.
+
+    "the autonomy lab for agentic commerce" described what REMIT was going to
+    be. "model-independent authorization for autonomous commerce" describes
+    what it is, and the difference matters to a reviewer deciding in five
+    seconds whether this is another AI shopping demo.
+    """
+    import pathlib
+    html = (pathlib.Path(__file__).resolve().parents[1]
+            / "web" / "index.html").read_text(encoding="utf-8")
+    assert "model-independent authorization for autonomous commerce" in html
+    assert "AI can be probabilistic. Authorization cannot." in html
+    # and the aria-label says the same thing, for somebody who cannot see it
+    assert "model-independent authorization" in html.lower()

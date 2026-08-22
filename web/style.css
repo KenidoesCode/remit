@@ -575,10 +575,15 @@ body:not([data-intro="done"]) #glow{visibility:hidden}
   font-size:clamp(12.5px,1.5vw,17px);color:var(--ink-2);
   letter-spacing:-.01em;text-wrap:balance;
 }
+/* "model-independent authorization for autonomous commerce" is longer than
+   what was here before and has to survive a 390px phone without wrapping into
+   a paragraph. Slightly tighter tracking, and a max-width so it breaks in a
+   place somebody chose. */
 .intro-lab{
   margin-top:clamp(10px,1.4vh,16px);font-family:var(--mono);
-  font-size:clamp(10px,1.05vw,12px);letter-spacing:.24em;text-transform:uppercase;
-  color:var(--signal);
+  font-size:clamp(9px,1.02vw,12px);letter-spacing:.2em;text-transform:uppercase;
+  color:var(--signal);max-width:min(44ch,92vw);line-height:1.6;
+  margin-left:auto;margin-right:auto;
 }
 .intro-said{
   position:absolute;inset:0;display:flex;flex-direction:column;
@@ -590,10 +595,15 @@ body:not([data-intro="done"]) #glow{visibility:hidden}
   font-size:clamp(17px,2.6vw,30px);line-height:1.35;
   max-width:min(20ch,88vw);text-wrap:balance;
 }
+/* The thesis, and the last thing on screen before the product. Wider than
+   the two sentences above it because it is a sentence, not a label -- the
+   20ch clamp meant for "I gave an AI permission to spend money." would break
+   it across four lines. */
 .intro-said .said-3{
-  font-family:var(--mono);font-size:clamp(10px,1.05vw,12px);
-  letter-spacing:.26em;text-transform:uppercase;color:var(--signal);
-  margin-top:clamp(6px,1.2vh,14px);
+  font-family:var(--mono);font-size:clamp(10px,1.05vw,12.5px);
+  letter-spacing:.24em;text-transform:uppercase;color:var(--signal);
+  margin-top:clamp(10px,1.6vh,18px);max-width:min(46ch,92vw);
+  line-height:1.7;
 }
 .intro-by{
   margin-top:clamp(22px,3.4vh,36px);font-family:var(--sans);
