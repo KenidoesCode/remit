@@ -105,15 +105,19 @@ def test_no_prose_hardcodes_a_failure_count_that_has_gone_stale():
     import remit.api as api
 
     real = len(api.failures()["entries"])
-    pattern = re.compile(r"FAILURES\.md is (\d+) entries")
+    # Both phrasings this repository uses. "49 failures logged" in a doc
+    # header is the same claim as "FAILURES.md is 49 entries" and drifts the
+    # same way -- it did, in docs/FINAL_EVIDENCE.md, within the hour.
+    pattern = re.compile(r"FAILURES\.md is (\d+) entries|(\d+) failures logged")
     wrong = []
     for f in _prose_files():
         if f.name == Path(__file__).name or f.name in HISTORICAL:
             continue
         for i, line in enumerate(f.read_text(encoding="utf-8").splitlines(), 1):
-            m = pattern.search(line)
-            if m and int(m.group(1)) != real:
-                wrong.append(f"{f.relative_to(ROOT)}:{i}")
+            for m in pattern.finditer(line):
+                claimed = int(m.group(1) or m.group(2))
+                if claimed != real:
+                    wrong.append(f"{f.relative_to(ROOT)}:{i}: {line.strip()[:90]}")
     assert not wrong, f"FAILURES.md has {real} entries; stale claims at {wrong}"
 
 

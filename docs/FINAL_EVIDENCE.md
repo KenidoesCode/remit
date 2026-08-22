@@ -5,7 +5,7 @@ command that regenerates it. If a claim is not in this table, it is not a claim
 REMIT makes.*
 
 **At:** 22 August 2026 · commit `HEAD` · 699 test cases · 381 test functions ·
-21 policy clauses · 48 failures logged
+21 policy clauses · 49 failures logged
 
 ---
 

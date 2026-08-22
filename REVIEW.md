@@ -615,7 +615,7 @@ The failure log says yes and the payment state machine says no.
 4. Idempotency keyed on meaning, not on ids — a resent sentence buys once.
 5. Drift renormalised over *evaluable* dimensions; unstated is never compliant.
 6. Held-out split scored once; gates reported separately from metrics.
-7. 25 failures logged with causes, including two where the *tests* were wrong.
+7. 49 failures logged with causes, including several where the *tests* were wrong.
 8. Reported a regression in its own headline number rather than burying it.
 9. Three user-facing sentences that each replaced a silent wrong answer.
 10. 4 ms decisions with no model call — a boundary you can afford to run.
