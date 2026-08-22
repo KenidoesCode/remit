@@ -91,7 +91,23 @@ function opening() {
   // half-played intro. Wait for the tab to actually be looked at, then run it
   // from the top. Nothing is hidden in the meantime that they can see.
   if (document.hidden) {
-    document.addEventListener("visibilitychange", () => opening(), { once: true });
+    // "Nothing is hidden in the meantime that they can see" was wrong, and a
+    // screenshot of the live site caught it: every line of the opening sits at
+    // its CSS default until the timeline sets a start state, so a tab that is
+    // painted while hidden -- a tab preview, a thumbnail, a screenshot, or the
+    // single frame between becoming visible and this handler running -- shows
+    // the wordmark, the expansion, the lab line and both sentences stacked on
+    // top of each other. It reads as a broken page, and it is the first thing
+    // anyone sees.
+    //
+    // So hold the container itself at zero. Not through GSAP: this has to be
+    // true whether or not the CDN answered, and it has to be true on the very
+    // next paint rather than on the next animation frame.
+    el.style.opacity = "0";
+    document.addEventListener("visibilitychange", () => {
+      el.style.opacity = "";
+      opening();
+    }, { once: true });
     return;
   }
   // The backstop. If anything below throws, hangs, or GSAP never arrives, the
@@ -1415,6 +1431,11 @@ function installTicker(bits) {
 /* ═══════════════════════════════ boot ══════════════════════════════════ */
 document.addEventListener("DOMContentLoaded", async () => {
   opening();
+  // Drawn first, and outside the await chain below. The walk-through is
+  // static markup until somebody presses a step, so it must not wait on
+  // /api/health or on eight room renders -- and a throw anywhere in that
+  // chain must not be able to leave the page's primary demonstration blank.
+  renderWalk();
   if (GL) {
     GL.init($("#gl"));
     GL.onStrike = () => {
@@ -1487,7 +1508,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     renderArena(), renderFrontier(), renderLab(), renderAudit(), renderAttacks(),
     renderCompare(),
   ]);
-  renderWalk();
 
   // the counterfactual room takes its own sentence
   const cf = $("#cfForm");

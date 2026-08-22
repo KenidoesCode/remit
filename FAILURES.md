@@ -1211,3 +1211,51 @@ suite are still walking the same sentence.
 A demo that makes a claim the suite does not check is a demo that rots. The
 engine changes, the page still draws five green ticks, and the first person to
 notice is a judge.
+
+---
+
+## 35. The first thing anyone sees was a pile-up
+
+**What happened.** A screenshot of the live site, taken ten seconds after a
+clean load, showed the opening rendering two of its phases on top of each
+other: the wordmark, its expansion, the lab line, the byline and both sentences
+of the cold open, all at full opacity, all overlapping. It read as a page whose
+CSS had failed.
+
+**The cause was a comment I wrote.** FAILURES #15 taught me that rAF is
+throttled in a background tab, so the opening defers itself:
+
+```js
+if (document.hidden) {
+  document.addEventListener("visibilitychange", () => opening(), { once: true });
+  return;                 // "Nothing is hidden in the meantime that they can see."
+}
+```
+
+That last sentence was wrong. The timeline sets the start state — everything at
+opacity 0 — as its *first* instruction, and the early return means that
+instruction never runs. Until it does, every element sits at its CSS default,
+which is visible. A hidden tab is not an unpainted tab: a tab preview, a
+thumbnail, a link unfurl, an OS window switcher and the single frame between
+becoming visible and the handler firing all paint it.
+
+And this is the common case, not the rare one. A link someone was sent opens in
+a background tab while they finish reading something else. The person most
+likely to see the broken frame is the person opening the submission.
+
+**The fix.** Hold the container itself at zero before returning, in plain DOM,
+not through GSAP — it has to be true whether or not the CDN answered, and true
+on the very next paint rather than on the next animation frame.
+
+**What it changed.** Three of the entries in this file are browser-behaviour
+bugs (#15, #23, #31) and all three were found by looking at the page. Looking at
+the page is not a test. `tests/test_opening_browser.py` now drives a real
+Chromium against a real server with `document.hidden` forced true, asserts the
+opening paints nothing while hidden, asserts it starts from zero rather than
+jumping to its end state when the tab is looked at, and asserts it tears itself
+down and hands the page over.
+
+It also caught a second thing on the way in: the walk-through was rendered at
+the *end* of boot, behind `/api/health` and eight room renders, so anything
+that threw in that chain would have left the page's primary demonstration
+blank. It is drawn first now, and outside that chain.
