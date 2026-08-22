@@ -1158,3 +1158,56 @@ it.
 **What it changed.** A shared identifier is not an identifier. I had reached for
 the IP because it was the only thing available before authentication existed —
 and then never revisited it once something better did.
+
+---
+
+## 34. The best thing in the system was the least visible thing on the page
+
+**What happened.** The audit before the submission build found exactly one P0
+outside security, and it was not a bug. Every property in
+`remit/grants/approval.py` — an approval that is spent once, that stops
+verifying when the basket changes, that belongs to one person — was implemented,
+tested, and **unreachable from the interface**. A reviewer could reach a
+step-up and press approve. Nothing on the page let them press it *twice*, or
+change the basket after saying yes, or try somebody else's token.
+
+So the strongest claim REMIT makes — *a boolean cannot answer the only question
+a dispute asks, which is approved **what*** — was legible only to someone
+willing to read `tests/test_approval.py`.
+
+**Why that is a failure and not a missing feature.** The project's whole
+argument is that the boundary is real rather than described. A property nobody
+can exercise is a described property. I had written the sentence "your approval
+is a token bound to this basket" into the UI copy and then given the reader no
+way to find out whether it was true.
+
+**The fix.** Five presses in room 01, each one a real POST to `/api/shop`
+against the running engine, each one stating the outcome it expects *before* it
+fires: step-up · approve · replay · tamper · impersonate. Green means an
+assertion passed, not that a caption was written.
+
+Two levers needed care.
+
+`inject {"price": …}` would have produced `cart_changed` and would also have
+moved a real catalog row on every press — the demo would have inflated its own
+prices, one reviewer at a time. `inject {"qty": 2}` mutates the in-flight cart
+only, leaves the catalog untouched, and tells a better story anyway: you said
+yes to one bottle and the agent put two in the basket.
+
+`credentials:"omit"` sends no session cookie, so the server mints a different
+principal for that one request. That is genuinely a second person asking. It is
+also the step that could not have existed a day earlier: before FAILURES #32
+this press would have **succeeded**, and REMIT would have been right to be
+embarrassed by it.
+
+**What it changed.** `tests/test_walkthrough.py` asserts the same five steps in
+the same order against the same endpoint, plus the two things the sequence
+quietly depends on: that the tamper lever leaves no catalog change behind, and
+that a rejected token is not a spent token — because if `cart_changed` also
+burned the token, step 5 would report `already_used` and the page would draw
+the right conclusion from the wrong evidence. One test asserts the page and the
+suite are still walking the same sentence.
+
+A demo that makes a claim the suite does not check is a demo that rots. The
+engine changes, the page still draws five green ticks, and the first person to
+notice is a judge.

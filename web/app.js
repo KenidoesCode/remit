@@ -19,24 +19,14 @@ const GL = window.REMITGL;
 
 class NoEngine extends Error {}
 
-/* Every visitor is their own account.
-   The whole site used to shop as "usr_demo". Exposure, velocity and
-   idempotency are all keyed on the user, so every visitor inherited every
-   previous visitor's spending: after twelve journeys the velocity clause --
-   a hard clause -- refused everything for everyone, and the site looked like
-   it had no payment gateway at all. One id per browser tab fixes the blast
-   radius. sessionStorage is wrapped because a private window can throw on
-   read, and an identity is not worth a blank page. FAILURES #21. */
-const USER_ID = (() => {
-  const fresh = "usr_" + Math.random().toString(36).slice(2, 12);
-  try {
-    const k = "remit.uid";
-    const had = sessionStorage.getItem(k);
-    if (had) return had;
-    sessionStorage.setItem(k, fresh);
-  } catch (e) { /* private mode: an in-memory id is still an id */ }
-  return fresh;
-})();
+/* Identity is not this file's business any more.
+   Every visitor used to mint their own id here and send it in the request
+   body, which meant the server believed whatever the browser said it was --
+   exposure, velocity, the idempotency namespace and approval ownership all
+   keyed on a string a caller could choose. The server now signs a session
+   principal into an httpOnly cookie that this script cannot read or forge,
+   and the request models have no identity field to put one in.
+   FAILURES #32. */
 
 async function api(path, body) {
   const r = await fetch(path, body ? {
@@ -385,6 +375,215 @@ const card = (p, picked) => `<article class="card ${picked ? "picked" : ""}">
   <div class="pr">${R(p.price_paise)}<span class="mrp">${R(p.mrp_paise)}</span></div>
   <div class="sub"><span>${p.rating}★ (${p.reviews})</span><span>${p.ship_days}d</span></div>
 </article>`;
+
+
+/* ═════════════════ the approval walk-through ═════════════════════════════
+   Audit item G1. The sequence step-up → approve → replay rejected →
+   cart-changed rejected → wrong-actor rejected existed in the engine and in
+   tests/test_approval.py, and a reviewer could not walk a single step of it
+   in the interface without knowing what to type. The most valuable property
+   in the system was the least visible thing on the page.
+
+   Every step here is a real POST to /api/shop against the running engine.
+   Nothing is staged, nothing is replayed from a fixture, and each step
+   commits to an expected outcome BEFORE it fires — so a step that goes green
+   is an assertion that passed, not a caption.
+
+   Two of the levers deserve a note, because both look like cheating and
+   neither is:
+
+   · inject {qty:2} mutates the in-flight cart AFTER the human approved it.
+     It changes no catalog row, so a reviewer running this leaves nothing
+     behind for the next one. It is the classic post-consent tamper: you said
+     yes to one bottle and the agent puts two in the basket.
+
+   · credentials:"omit" sends no session cookie, so the server mints a
+     different principal for that one request. That is genuinely a second
+     person asking — the same thing two browsers would do — and it is only
+     answerable because identity now comes from a signature (FAILURES #32).
+     Before that fix this step would have PASSED, and REMIT would have been
+     wrong to let it.
+   ========================================================================= */
+
+const WALK_ASK = "buy whisky under 2000";
+const WALK = { token: null, cid: null, order: null, fresh: null, results: {} };
+
+const WALK_STEPS = [
+  {
+    n: 1, key: "stepup",
+    title: "Ask for something an agent must not buy alone",
+    body: `<span class="mono">${WALK_ASK}</span> — a restricted category. The
+      catalog is willing, the money is available, and REMIT still refuses to
+      let the agent finish.`,
+    expect: "AWAITING_HUMAN, and an approval token bound to five things",
+    run: async () => {
+      const d = await api("/api/shop", { utterance: WALK_ASK, accept_offers: "in_envelope" });
+      WALK.token = (d.approval || {}).token;
+      WALK.cid = d.correlation_id;
+      return { d, ok: d.payment_state === "AWAITING_HUMAN" && !!WALK.token };
+    },
+    show: d => {
+      const a = d.approval || {};
+      const failed = ((d.authorization || {}).clauses || []).filter(c => !c.passed);
+      return `${walkVerdict(d)}
+        ${failed.length ? `<p class="w-line">${esc(failed[0].clause_id)} · ${esc(failed[0].detail)}</p>` : ""}
+        <div class="w-binds">
+          <div><span>who</span><b>your session principal</b></div>
+          <div><span>what</span><b class="mono">${esc((a.intent_hash || "").slice(0, 16))}…</b></div>
+          <div><span>which basket</span><b class="mono">${esc((a.cart_hash || "").slice(0, 16))}…</b></div>
+          <div><span>how much</span><b>${R2(a.amount_paise || 0)}</b></div>
+          <div><span>until</span><b class="mono">${esc(String(a.expires_at || "").slice(11, 19))}Z</b></div>
+        </div>
+        <p class="w-line">Nothing is reserved and no order exists yet.</p>`;
+    },
+  },
+  {
+    n: 2, key: "approve",
+    title: "Approve it",
+    body: `Redeem that token. This is the only press on the page that moves
+      money, and it produces a real Razorpay <b>test-mode</b> order.`,
+    expect: "CREATED, with a live order id",
+    run: async () => {
+      const d = await api("/api/shop", {
+        utterance: WALK_ASK, accept_offers: "in_envelope",
+        human_confirms: true, approval_token: WALK.token,
+      });
+      WALK.order = d.order_id; WALK.cid = d.correlation_id || WALK.cid;
+      return { d, ok: d.payment_state === "CREATED" && !!d.order_id };
+    },
+    show: d => `${walkVerdict(d)}
+      <p class="w-line">order <span class="mono">${esc(d.order_id || "—")}</span>
+        · ${R2((d.totals || {}).total_paise || 0)} · test mode</p>
+      ${d.order_id ? `<div class="pay"><button class="cta" data-walkpay="${esc(d.correlation_id)}">
+        Pay ${R2(d.totals.total_paise)} with Razorpay</button>
+        <span class="mono muted">card 4111 1111 1111 1111 · any future expiry · any CVV</span></div>` : ""}`,
+  },
+  {
+    n: 3, key: "replay",
+    title: "Press the same approval a second time",
+    body: `A retrying agent, a double-tapped button, a resent request. The
+      token is spent; single-use is enforced by an <span class="mono">UPDATE …
+      WHERE used_at IS NULL</span>, not by having read the row a moment ago.`,
+    expect: "APPROVAL_REJECTED · already_used",
+    run: async () => {
+      const d = await api("/api/shop", {
+        utterance: WALK_ASK, accept_offers: "in_envelope",
+        human_confirms: true, approval_token: WALK.token,
+      });
+      return { d, ok: d.payment_state === "APPROVAL_REJECTED" && /already_used/.test(d.note || "") };
+    },
+    show: d => `${walkVerdict(d)}<p class="w-line">${esc(d.note || "")}</p>`,
+  },
+  {
+    n: 4, key: "tamper",
+    title: "Say yes to one bottle — and have the agent put two in the basket",
+    body: `Takes a fresh approval, then changes the cart <em>after</em> you
+      approved it. Your yes was for a basket, and this is not that basket.`,
+    expect: "APPROVAL_REJECTED · cart_changed",
+    run: async () => {
+      const one = await api("/api/shop", { utterance: WALK_ASK, accept_offers: "in_envelope" });
+      WALK.fresh = (one.approval || {}).token;
+      const d = await api("/api/shop", {
+        utterance: WALK_ASK, accept_offers: "in_envelope",
+        human_confirms: true, approval_token: WALK.fresh, inject: { qty: 2 },
+      });
+      return { d, ok: d.payment_state === "APPROVAL_REJECTED" && /cart_changed/.test(d.note || "") };
+    },
+    show: d => `${walkVerdict(d)}<p class="w-line">${esc(d.note || "")}</p>
+      <p class="w-line short">The token still exists and is still unused — it was
+        refused before it was spent, which is why step 5 can use it.</p>`,
+  },
+  {
+    n: 5, key: "actor",
+    title: "Let somebody else's browser try your approval",
+    body: `Sends the same still-unused token with no session cookie, so the
+      server issues a different principal for that one request. This is the
+      attack REMIT failed against itself until yesterday.`,
+    expect: "APPROVAL_REJECTED · wrong_actor",
+    run: async () => {
+      const r = await fetch("/api/shop", {
+        method: "POST", credentials: "omit",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          utterance: WALK_ASK, accept_offers: "in_envelope",
+          human_confirms: true, approval_token: WALK.fresh,
+        }),
+      });
+      const d = await r.json();
+      return { d, ok: d.payment_state === "APPROVAL_REJECTED" && /wrong_actor/.test(d.note || "") };
+    },
+    show: d => `${walkVerdict(d)}<p class="w-line">${esc(d.note || "")}</p>
+      <p class="w-line short">Identity is an HMAC over an opaque id in an httpOnly
+        cookie. This script cannot read it and cannot forge it — there is no field
+        in the request to put one in. FAILURES #32.</p>`,
+  },
+];
+
+const walkVerdict = d => {
+  const v = (d.authorization || {}).verdict;
+  return `<div class="verdict-row">
+    <span class="badge ${esc(d.payment_state === "APPROVAL_REJECTED" ? "DENY" : (v || "STEP_UP"))}">
+      ${esc(d.payment_state)}</span>
+    ${v ? `<span class="mono muted">the policy engine said ${esc(v)} · ${d.latency_ms}ms</span>` : ""}</div>`;
+};
+
+function renderWalk() {
+  const host = $("#walkOut");
+  if (!host) return;
+  const done = Object.values(WALK.results).filter(r => r.ok).length;
+  const ran = Object.keys(WALK.results).length;
+  host.innerHTML = `
+    <div class="w-score ${ran === 5 && done === 5 ? "all" : ""}">
+      <b>${done}</b> of 5 assertions holding${ran < 5 ? ` · ${5 - ran} not run yet` : ""}
+      ${ran === 5 && done === 5 ? "<span>every press did what it said it would</span>" : ""}
+    </div>
+    ${WALK_STEPS.map(s => {
+      const r = WALK.results[s.key];
+      const ready = s.n === 1 || WALK.results[WALK_STEPS[s.n - 2].key];
+      return `<section class="wstep ${r ? (r.ok ? "ok" : "bad") : ""} ${ready ? "" : "wait"}">
+        <div class="wnum">${s.n}</div>
+        <div class="wbody">
+          <h4>${esc(s.title)}</h4>
+          <p class="w-body">${s.body}</p>
+          <p class="w-expect"><span>expects</span> ${esc(s.expect)}</p>
+          <div class="w-act">
+            <button class="ghost" data-walk="${s.key}" ${ready ? "" : "disabled"}>
+              ${r ? "run again" : (ready ? "run this step" : "finish the step above first")}</button>
+            ${r ? `<span class="w-mark">${r.ok ? "✓ held" : "✕ did not hold"}</span>` : ""}
+          </div>
+          ${r ? `<div class="wout">${r.html}</div>` : ""}
+        </div>
+      </section>`;
+    }).join("")}
+    <p class="meta-line">Reset the sequence by reloading — every step issues its own
+      token, so running it twice costs nothing and leaves no catalog change behind.</p>`;
+
+  $$("[data-walk]", host).forEach(b => b.addEventListener("click", () => runWalkStep(b.dataset.walk)));
+  $$("[data-walkpay]", host).forEach(b =>
+    b.addEventListener("click", () => pay(b.dataset.walkpay)));
+}
+
+async function runWalkStep(key) {
+  const s = WALK_STEPS.find(x => x.key === key);
+  if (!s) return;
+  // Clear everything downstream: a re-run of step 2 invalidates what step 3
+  // and 4 concluded, and leaving those green would be a lie about state.
+  WALK_STEPS.filter(x => x.n >= s.n).forEach(x => delete WALK.results[x.key]);
+  WALK.results[key] = { ok: false, html: '<div class="skel"></div>' };
+  renderWalk();
+  try {
+    const { d, ok } = await s.run();
+    WALK.results[key] = { ok, html: s.show(d) };
+  } catch (e) {
+    WALK.results[key] = {
+      ok: false,
+      html: `<div class="err">${esc(e instanceof NoEngine
+        ? "the decision engine is not attached to this deployment"
+        : e.message)}</div>`,
+    };
+  }
+  renderWalk();
+}
 
 /* ═══════════════════ paying the order REMIT authorised ═════════════════ */
 /* The policy engine decides whether an order may exist. This is the other
@@ -1052,7 +1251,7 @@ async function ask(utterance, humanConfirms, approvalToken) {
   wire([["dispatch", "compiling the sentence into an intent envelope…"]]);
   try {
     const d = await api("/api/shop", {
-      utterance, accept_offers: "in_envelope", user_id: USER_ID,
+      utterance, accept_offers: "in_envelope",
       ...(humanConfirms === null || humanConfirms === undefined
           ? {} : { human_confirms: humanConfirms }),
       // The approval is a token bound to the basket that was on screen, not a
@@ -1288,6 +1487,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     renderArena(), renderFrontier(), renderLab(), renderAudit(), renderAttacks(),
     renderCompare(),
   ]);
+  renderWalk();
 
   // the counterfactual room takes its own sentence
   const cf = $("#cfForm");

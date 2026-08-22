@@ -6,7 +6,7 @@ re-run. Nothing here is aspirational.*
 
 **Audited at:** `main`, 22 August 2026
 **Live:** https://remit-vvug.onrender.com (Razorpay **test mode**, real orders)
-**Suites run:** `pytest -q` (377 passed) · `eval/run_eval.py` · `eval/matrix.py`
+**Suites run:** `pytest -q` (392 passed) · `eval/run_eval.py` · `eval/matrix.py`
 (260/260) · `eval/attacks.py` (22/23) · `eval/arena.py` · `eval/frontier.py`
 
 ---
@@ -52,7 +52,7 @@ outcome.
 
 ## B. Critical security issues
 
-### B1 — **P0 — Caller-supplied identity. The trust boundary is open.**
+### B1 — ~~**P0 — Caller-supplied identity. The trust boundary is open.**~~ **CLOSED, Phase 1**
 
 `remit/api.py:112,122` — `user_id: str = "usr_demo"` on `ShopRequest` and
 `CompareRequest`; `api.py:174-175` passes `req.user_id` straight into exposure
@@ -73,6 +73,16 @@ BROKE  [payment] Spend as somebody else
 
 Every other control in this system is downstream of identity. **This is the one
 issue that can invalidate the entire trust boundary, and it is Phase 1.**
+
+**Closed at `1be3743`.** `remit/auth.py` mints an opaque principal, signs it
+with HMAC-SHA256 and puts it in an httpOnly cookie; the middleware resolves it
+before the rate limiter; `ShopRequest` and `CompareRequest` have no identity
+field at all. `tests/test_identity.py` covers the seven ownership cases, the
+`identity_forgery` attack reports `held`, and the same three checks pass against
+the live deployment: a body-supplied `user_id` is ignored, a cookie-less caller
+reading another principal's checkout gets 404 where the owner gets 200, and a
+cookie-less caller redeeming a valid approval gets `wrong_actor`. What this is
+*not* is a login — see the module docstring, which says so at length.
 
 ### B2 — **P1 — No origin policy.**
 
@@ -190,9 +200,13 @@ name the gap.
 
 ## G. Demo gaps
 
-- **P0** The step-up → approve → **replay rejected** → **cart-changed rejected**
+- ~~**P0** The step-up → approve → **replay rejected** → **cart-changed rejected**
   sequence exists in the engine and in tests, but a reviewer cannot walk it in
-  the UI without knowing what to click.
+  the UI without knowing what to click.~~ **CLOSED, Phase 2.** Five presses in
+  room 01 (`#walk`), each a real POST to `/api/shop`, each declaring its expected
+  outcome before it fires: step-up · approve · replay (`already_used`) · tamper
+  (`cart_changed`) · impersonate (`wrong_actor`). Backed by
+  `tests/test_walkthrough.py`. FAILURES #34.
 - **P1** No guided path. Eight rooms and no "press this first".
 - **P2** The Break room requires the reviewer to pick an attack; it does not
   accept an arbitrary sentence to attack *with*.
@@ -232,8 +246,8 @@ Ordered by the brief's phases, filtered by what this repository actually needs.
 
 | # | Work | Priority | Why |
 |---|---|---|---|
-| 1 | **Session principal, server-derived.** Signed httpOnly cookie; money endpoints ignore body identity. Seven ownership tests. Update the `identity_forgery` attack to hit HTTP and report `held`. | **P0** | B1. Everything else is downstream |
-| 2 | **Approval flow walkable in the UI**, including replay and cart-mutation rejection as visible steps | **P0** | G1 — it is the hero demo and it is currently invisible |
+| ✅ 1 | **Session principal, server-derived.** Signed httpOnly cookie; money endpoints ignore body identity. Seven ownership tests. Update the `identity_forgery` attack to hit HTTP and report `held`. | **P0** | B1. Everything else is downstream |
+| ✅ 2 | **Approval flow walkable in the UI**, including replay and cart-mutation rejection as visible steps | **P0** | G1 — it is the hero demo and it is currently invisible |
 | 3 | **"Why did REMIT stop this?" inspector** | P1 | E, and it is cheap |
 | 4 | **Mutation corpus** (Layer C): one axis at a time, invariant per axis | P1 | D2 |
 | 5 | **Arena information architecture**: headline metrics, compact rows, details on demand | P1 | E1 |
@@ -256,6 +270,12 @@ microservices; blockchain; zk proofs. The brief forbids all four.
 ## The one-line verdict
 
 The trust core is genuinely good and the evaluation discipline is better than
-the code it evaluates. There is exactly **one P0**, it is authentication, REMIT
-already proves it against itself on its own public page, and until it is fixed
-every other guarantee in this repository rests on a string in a request body.
+the code it evaluates. There was exactly **one P0**, it was authentication,
+REMIT proved it against itself on its own public page, and until it was fixed
+every other guarantee in this repository rested on a string in a request body.
+
+**Both P0s are closed** (B1, Phase 1 · G1, Phase 2) and verified against the
+live deployment rather than only in the suite. What is left is P1 and below,
+and the largest of those is not a bug: every corpus in this repository was
+written by its author, and no amount of engineering makes that go away — it
+gets named, not solved (D1).

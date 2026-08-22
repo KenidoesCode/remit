@@ -709,3 +709,75 @@ button.atk.broke{background:rgba(229,53,43,.06)}
 .atk-r{font-family:var(--mono);font-size:11.5px;color:var(--ink-2);line-height:1.6}
 .atk-b{font-family:var(--mono);font-size:10.5px;color:var(--ink-3);line-height:1.5}
 button.atk.broke .atk-r{color:var(--ink)}
+
+/* ── the approval walk-through ──────────────────────────────────────────────
+   Five steps, each one a real request. The step number carries the state:
+   dim while unrun, red-ruled while it holds, filled while it does not. No new
+   colours — the only two states a step can be in are already in the palette. */
+.walk{margin-top:30px;display:grid;gap:10px}
+.w-score{
+  font-family:var(--mono);font-size:12px;letter-spacing:.04em;
+  color:var(--ink-3);border:1px solid var(--line);padding:14px 18px;
+  display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;
+}
+.w-score b{font-size:22px;color:var(--ink);font-weight:500;line-height:1}
+.w-score.all{border-color:var(--signal)}
+.w-score.all span{color:var(--signal)}
+.wstep{
+  display:grid;grid-template-columns:52px 1fr;gap:0;
+  border:1px solid var(--line-2);background:var(--bg-2);
+  transition:border-color .3s ease,opacity .3s ease;
+}
+.wstep.wait{opacity:.42}
+.wstep.ok{border-color:var(--line)}
+.wstep.bad{border-color:var(--stop)}
+.wnum{
+  font-family:var(--mono);font-size:13px;color:var(--ink-4);
+  border-right:1px solid var(--line-2);
+  display:flex;align-items:flex-start;justify-content:center;padding-top:22px;
+}
+.wstep.ok .wnum{color:var(--signal);border-right-color:var(--signal-dim)}
+.wstep.bad .wnum{color:#fff;background:var(--stop);border-right-color:var(--stop)}
+.wbody{padding:20px 22px 22px;min-width:0}
+.wbody h4{font-size:clamp(16px,2vw,19px);font-weight:500;letter-spacing:-.01em}
+.w-body{color:var(--ink-2);font-size:14.5px;margin-top:7px;max-width:64ch}
+.w-expect{
+  font-family:var(--mono);font-size:11.5px;color:var(--ink-3);
+  margin-top:12px;letter-spacing:.02em;
+}
+.w-expect span{color:var(--ink-4);text-transform:uppercase;letter-spacing:.1em;margin-right:8px}
+.w-act{display:flex;align-items:center;gap:14px;margin-top:15px;flex-wrap:wrap}
+/* A <button> with .ghost inherits the UA's white chrome -- the label vanishes
+   into it. Same reset the step-up actions already carry. */
+.w-act .ghost{
+  background:none;border:1px solid var(--ink-4);color:var(--ink-2);
+  font-family:var(--sans);font-size:13px;padding:10px 15px;border-radius:2px;
+  cursor:pointer;transition:border-color .18s,color .18s;
+}
+.w-act .ghost:hover:not([disabled]){border-color:var(--ink);color:var(--ink)}
+.w-act .ghost[disabled]{opacity:.45;cursor:default}
+.w-mark{font-family:var(--mono);font-size:11.5px;letter-spacing:.04em;color:var(--ink-3)}
+.wstep.ok .w-mark{color:var(--signal)}
+.wstep.bad .w-mark{color:var(--stop)}
+.wout{margin-top:18px;border-top:1px solid var(--line-2);padding-top:16px}
+.wout .verdict-row{margin:0}
+.w-line{font-family:var(--mono);font-size:12px;color:var(--ink-3);margin-top:9px;
+  line-height:1.65;word-break:break-word}
+.w-line.short{color:var(--ink-4)}
+.w-binds{
+  margin-top:14px;display:grid;gap:1px;background:var(--line-2);
+  border:1px solid var(--line-2);
+}
+.w-binds div{
+  background:var(--bg);padding:9px 13px;display:flex;justify-content:space-between;
+  gap:16px;font-family:var(--mono);font-size:11.5px;
+}
+.w-binds span{color:var(--ink-4);text-transform:uppercase;letter-spacing:.09em}
+.w-binds b{color:var(--ink-2);font-weight:400;text-align:right}
+.wout .skel{height:64px;margin-top:0}
+@media (max-width:620px){
+  .wstep{grid-template-columns:38px 1fr}
+  .wbody{padding:16px 15px 18px}
+  .w-binds div{flex-direction:column;gap:3px}
+  .w-binds b{text-align:left}
+}
