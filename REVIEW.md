@@ -14,19 +14,80 @@ cannot be evidenced, it says so instead of rounding up.*
 
 | | |
 |---|---|
-| Python | 9,146 lines across the tracked tree |
-| Tests | **184 passing** (128 test functions, parametrised) |
-| Policy clauses | **19**, declared in `policy/authorize.yaml`, evaluated by a pure function |
-| Catalog | 186 products · 14 categories · 10 merchants · 593 grounded phrases |
-| Logged failures | **25**, each with cause, fix and what it changed |
+| Python | 12,167 lines across the tracked tree |
+| Tests | **377 passing** |
+| Policy clauses | **21**, declared in `policy/authorize.yaml`, evaluated by a pure function |
+| Catalog | 186 products · 14 categories · 10 merchants · 593 grounded phrases · 186 vectors |
+| Edge-case matrix | **260/260** explicit cases across 13 categories, plus one universal invariant |
+| Attack lab | **22 of 23** invariants hold. The 23rd succeeds on purpose — see below |
+| Logged failures | **31**, each with cause, fix and what it changed |
 | Decision records | **35** |
 | Held-out split (n=108, scored once) | precision **0.6346** · recall **1.0** · dangerous FN **0** · unauthorised **₹0.00** |
-| Latency | p50 **3.19 ms** · p95 **4.38 ms**, no model call on the decision path |
-| Experiment (540 journeys, 4 arms) | unbounded agent moved **₹737,930.43** across 147 unauthorised transactions; REMIT moved **₹0.00** |
+| Latency | p50 **3.2 ms** · p95 **4.4 ms**, no model call on the decision path |
+| Arena (7 agents, 540 journeys each) | won by the **frugal** agent; the unbounded agent earns the most gross revenue and finishes last |
 | The exchange rate | **₹1.95** of unauthorised movement prevented per **₹1** of revenue given up |
+| The frontier | ₹0 unauthorised up to **41.1%** autonomy; **₹359,262** the moment the envelope stops being consulted |
 
-The last line is the one I would lead with, and it is the one that got worse
-and more honest this week. See dimension 8.
+**The attack that succeeds, stated here rather than buried:** REMIT has no
+authentication. `user_id` arrives in the request body and nothing verifies it,
+so exposure, velocity, idempotency and approval ownership are all keyed on a
+string anyone can assert. Attack 23 spends ₹4,976 against another identity, and
+a test asserts it *keeps* succeeding — because a suite where everything holds
+cannot tell you whether it is able to detect a failure at all.
+
+---
+
+# What changed after the first scorecard
+
+The scorecard below was written before the lab existed. Four systems landed
+after it, and three of the sixteen dimensions moved enough that leaving the
+original numbers would be dishonest. The rest stand.
+
+**AI depth: 6 → 7.** There is now a real retrieval layer — a vector index with
+two embedders behind one protocol, hard-filtered on both sides, with `/health`
+reporting which embedder actually ran so "semantic search" never implies a
+neural model that is not installed. The floor was set by measurement rather
+than by eye, and the measurement is unflattering: on this catalog the
+deterministic embedder's score distributions for "things we cannot sell" and
+"real meaning-only requests" **overlap** — `buy a house` scores 0.237 and
+`snacks for a party` scores 0.174, because *house* and *household* share four
+character n-grams. No threshold separates those. The collision is a test rather
+than a tuned number, and the mop is offered, never bought. The neural embedder
+is implemented and **unmeasured**: this build environment's egress blocks the
+model host, and I would rather say that than quote a figure I did not produce.
+
+**Security: 5 → 7.** Approvals are no longer booleans. A step-up issues a token
+bound to the user, the intent's semantic hash, a cart signature over (product,
+quantity, unit price), the exact total and an expiry — so a changed price, a
+changed line, a reused click, a stolen token and a stale consent each fail with
+the reason named. Single-use is an `UPDATE ... WHERE used_at IS NULL`, so two
+tabs racing the same click cannot both pay. The webhook secret no longer has a
+published default and fails closed. Bodies are bounded and there is a per-IP
+budget. Still no authentication, and the attack lab demonstrates exactly what
+that costs rather than describing it.
+
+**Evaluation quality: 8 → 9.** 260 explicit cases across thirteen categories,
+each asserting a property rather than a SKU, plus one universal invariant over
+all of them — and it earned its place by catching a real bug on its first run
+(FAILURES #29). Twenty-three attacks across three surfaces, each naming the
+invariant it targets before it runs. Two of those attacks could not fail when I
+wrote them, and that is written up too (FAILURES #30).
+
+**And two dimensions I would now score more harshly than I did.**
+
+*Product UX* was 7 on a five-act page. It is eight rooms now and the surface
+area for a first-time visitor got larger, not smaller. The rooms are better than
+the wall of numbers they replaced, but "a judge with forty minutes" was already
+the weak point and I have added to it.
+
+*Communication* was 8. There are now nineteen markdown files. That is worse,
+not better, and the fix is a shorter README rather than another document.
+
+The weighted total moves from **73.9** to roughly **77**. I am not going to
+present that as precision it does not have — the weights are mine and the
+scores are mine, and the honest summary is "the same project, with the
+evaluation and the security materially stronger and the surface area a little
+out of hand".
 
 ---
 
@@ -74,7 +135,7 @@ renormalised over only the ones the utterance made evaluable; and
 `integrity_layer: true/false` — one policy flag that turns the whole boundary
 off, so "with REMIT" and "without REMIT" is a **data change, not a code path**.
 That last one is the reason the comparison in the experiments is trustworthy:
-both arms run the same 9,146 lines.
+both arms run the same 12,167 lines.
 
 **What is missing.** Individually, none of the pieces is new. Idempotency keys,
 policy engines, HMAC webhook verification and calibration are all standard. The

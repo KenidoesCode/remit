@@ -1,27 +1,74 @@
 # REMIT
 
-**R**evocable, **E**xplainable **M**andates for **I**ntent-driven **T**ransactions
+**The autonomy lab for agentic commerce.**
 
-AI buyers are about to become a new participant in commerce.
-They will search. They will compare. They will select. They will pay.
+*(**R**evocable, **E**xplainable **M**andates for **I**ntent-driven **T**ransactions)*
 
-But there is a problem.
+I gave an AI permission to spend money. Then I tried to work out how much I
+could trust it.
 
-A human authorises an intent **once**, while an agent makes dozens of decisions
-before money actually moves. It picks a product. It picks a variant. It accepts
-an upsell. Shipping changes. A price moves. A catalog is edited underneath it.
-By the time a rupee leaves an account, the transaction may bear very little
-resemblance to the sentence that started it.
+That is the whole project. Not "an AI shopping agent with guardrails" — an
+**environment for measuring how much economic autonomy an AI agent should have
+when it is moving real money**, and for finding the point where the extra value
+of that autonomy starts violating the authority a human actually delegated.
 
-**REMIT explores what happens in that gap.**
-
-> REMIT is an AI buyer and merchant growth engine that optimises commerce
-> revenue while measuring and enforcing whether the final transaction still
-> matches the human's original intent.
+The gap is real and it is structural. A human authorises an intent **once**;
+the agent then makes dozens of decisions before money moves. It picks a
+product, picks a variant, accepts an upsell, absorbs a shipping change, is
+handed a price that moved underneath it. By the time a rupee leaves an account,
+the transaction may bear very little resemblance to the sentence that started
+it — and nothing in the payment stack can tell that apart from a legitimate
+purchase, because both arrive as a valid API call with a valid key.
 
 Razorpay AI Buildathon — **Track 01, AI Growth & Agentic Commerce**.
+Live, in Razorpay test mode: **https://remit-vvug.onrender.com**
 
 ---
+
+## Four systems
+
+| | | |
+|---|---|---|
+| **1. Agentic commerce engine** | the AI actually shops and pays | `remit/buyer`, `remit/retrieval`, `remit/domain` |
+| **2. Authority engine** | decides what the AI is allowed to do | `remit/policy`, `remit/domain/drift.py`, `remit/grants` |
+| **3. Autonomy evaluation lab** | measures how much autonomy is safe | `eval/`, `remit/lab` |
+| **4. REMIT Arena** | compares agents under identical conditions | `remit/arena`, `eval/arena.py` |
+
+Eight rooms on the site, in this order: **live commerce · arena · autonomy
+frontier · counterfactual · break REMIT · evaluation lab · audit trail ·
+engineering.**
+
+---
+
+## The one number
+
+> **₹1.95** of unauthorised movement prevented for every **₹1** of revenue
+> REMIT gives up.
+
+That replaced a much prettier number, and the story of why is in FAILURES #18.
+
+---
+
+## The frontier
+
+Sweep the policy from locked to unbounded, re-run all 540 journeys at every
+point, and the curve has a knee — but not where I expected it:
+
+```
+policy               autonomy   unauthorised
+permissive              41.1%          ₹0.00
+unbounded               41.1%          ₹0.00
+envelope ignored        61.9%    ₹359,262.43   <- the knee
+no limits either        69.4%    ₹737,930.43
+```
+
+**No amount of tuning how often REMIT asks produces unauthorised movement.**
+Only removing the envelope does. The trade-off is a cliff, not a curve — which
+is the argument for having an envelope at all, and I nearly missed it by
+sweeping the wrong axis for a week (FAILURES #26).
+
+---
+
 
 ## The result, in one table
 
