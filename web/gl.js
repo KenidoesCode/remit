@@ -182,7 +182,91 @@
 
   GL.pulse = function () { GL.ripple = 1; };
 
+  /* ---- protected content zones ---------------------------------------
+     The field is decoration. Decoration that crosses a letter is not
+     atmosphere, it is a rendering bug wearing a mood.
+
+     So the page hands this layer a list of rectangles -- headings, body copy,
+     code, buttons, tables, the nav -- and the field simply does not draw
+     inside them. Nothing about the text moves, is padded, is boxed or is given
+     a backing plate to hide behind. THE LINE MOVES.
+
+     Coordinates are CSS pixels in viewport space, which is what
+     getBoundingClientRect returns and what a `position:fixed` canvas already
+     draws in. No conversion, and therefore no conversion bug.
+
+     `pad` is deliberate: a node is a round sprite several pixels wide, and a
+     zone that only excludes the centre still lets its edge graze a descender.
+  ========================================================================== */
+  GL.zones = [];
+  GL.zonePad = 10;
+
+  GL.setZones = function (rects) {
+    GL.zones = Array.isArray(rects) ? rects : [];
+  };
+
+  /* The page can instead hand over a FUNCTION, called at the top of every
+     frame. That is the version that actually works.
+
+     Computing zones on scroll and drawing on rAF are two different clocks. The
+     page reveals sections with an opacity/transform animation, so a heading
+     measured 16ms ago is not where it is now, and the field drew straight
+     through content whose zone was correct-but-late. Measured in the same tick
+     as the draw, they cannot disagree. */
+  GL.zoneProvider = null;
+
+  function inZone(x, y) {
+    const z = GL.zones, pad = GL.zonePad;
+    for (let i = 0; i < z.length; i++) {
+      const r = z[i];
+      if (x >= r.x - pad && x <= r.x + r.w + pad &&
+          y >= r.y - pad && y <= r.y + r.h + pad) return true;
+    }
+    return false;
+  }
+
+  /* A segment is excluded when either end sits in a zone OR the segment
+     crosses one. Endpoint-only testing let a long thread pass clean through a
+     heading with both of its nodes safely outside -- which is exactly the
+     case that looks worst, because a line through text reads as a strikethrough. */
+  function segHitsZone(x0, y0, x1, y1) {
+    const z = GL.zones, pad = GL.zonePad;
+    for (let i = 0; i < z.length; i++) {
+      const r = z[i];
+      const rx0 = r.x - pad, ry0 = r.y - pad;
+      const rx1 = r.x + r.w + pad, ry1 = r.y + r.h + pad;
+      // cheap reject on bounding boxes first
+      if (Math.max(x0, x1) < rx0 || Math.min(x0, x1) > rx1 ||
+          Math.max(y0, y1) < ry0 || Math.min(y0, y1) > ry1) continue;
+      if ((x0 >= rx0 && x0 <= rx1 && y0 >= ry0 && y0 <= ry1) ||
+          (x1 >= rx0 && x1 <= rx1 && y1 >= ry0 && y1 <= ry1)) return true;
+      // Liang-Barsky: does the segment clip the rectangle at all?
+      let t0 = 0, t1 = 1;
+      const dx = x1 - x0, dy = y1 - y0;
+      const p4 = [-dx, dx, -dy, dy];
+      const q4 = [x0 - rx0, rx1 - x0, y0 - ry0, ry1 - y0];
+      let hit = true;
+      for (let k = 0; k < 4; k++) {
+        if (p4[k] === 0) { if (q4[k] < 0) { hit = false; break; } continue; }
+        const rr = q4[k] / p4[k];
+        if (p4[k] < 0) { if (rr > t1) { hit = false; break; } if (rr > t0) t0 = rr; }
+        else { if (rr < t0) { hit = false; break; } if (rr < t1) t1 = rr; }
+      }
+      if (hit) return true;
+    }
+    return false;
+  }
+
+  /* Set window.__REMIT_GL_DEBUG = true before a frame and the exact geometry
+     drawn is recorded. The collision test reads THIS rather than sampling
+     pixels: a pixel test on a translucent field is a threshold argument, and
+     the geometry is the ground truth. */
+  GL.drawn = { points: [], lines: [] };
+
   GL.frame = function (now) {
+    if (GL.zoneProvider) {
+      try { GL.zones = GL.zoneProvider() || []; } catch (e) { /* never break the frame */ }
+    }
     GL.raf = requestAnimationFrame(GL.frame);
     if (!GL.ok) return;
     const t = (now - GL.t0) / 1000;
@@ -246,6 +330,7 @@
             // sqrt falloff: linear made almost every thread invisible,
             // which defeated the point of drawing a web.
             const a = Math.sqrt(1 - Math.sqrt(d2) / REACH) * threadBase;
+            if (segHitsZone(px[i], py[i], px[j], py[j])) continue;
             L.push(px[i], py[i], a, 1, 0, px[j], py[j], a, 1, 0);
           }
         }
@@ -293,14 +378,16 @@
       }
       if (!blocked && s.t >= 1 && !s.landed) { s.landed = true; GL.ripple = 1; }
       // the tip
-      P.push(tipx, tipy, 0.95, 9 * GL.dpr, 1);
+      if (!inZone(tipx, tipy)) P.push(tipx, tipy, 0.95, 9 * GL.dpr, 1);
       if (s.t > 2.6) GL.shot = null;
     }
 
     /* ---- home + destination --------------------------------------------- */
-    P.push(w * 0.06, h * 0.5, 0.55, 8 * GL.dpr, 0);
-    P.push(w * 0.94, h * 0.5, GL.mood === "stop" ? 0.25 : 0.5, 8 * GL.dpr,
-           GL.mood === "stop" ? 0 : 1);
+    if (!inZone(w * 0.06, h * 0.5)) P.push(w * 0.06, h * 0.5, 0.55, 8 * GL.dpr, 0);
+    if (!inZone(w * 0.94, h * 0.5)) {
+      P.push(w * 0.94, h * 0.5, GL.mood === "stop" ? 0.25 : 0.5, 8 * GL.dpr,
+             GL.mood === "stop" ? 0 : 1);
+    }
 
     /* ---- the ripple: the field feels the strike -------------------------- */
     if (GL.ripple > 0.002) {
@@ -309,8 +396,10 @@
       const N = 64;
       for (let k = 0; k < N; k++) {
         const th0 = (k / N) * 6.283, th1 = ((k + 1) / N) * 6.283;
-        L.push(ax + Math.cos(th0) * rr, h * 0.5 + Math.sin(th0) * rr, a, 1, 1,
-               ax + Math.cos(th1) * rr, h * 0.5 + Math.sin(th1) * rr, a, 1, 1);
+        const rx0 = ax + Math.cos(th0) * rr, ry0 = h * 0.5 + Math.sin(th0) * rr;
+        const rx1 = ax + Math.cos(th1) * rr, ry1 = h * 0.5 + Math.sin(th1) * rr;
+        if (segHitsZone(rx0, ry0, rx1, ry1)) continue;
+        L.push(rx0, ry0, a, 1, 1, rx1, ry1, a, 1, 1);
       }
       GL.ripple *= 0.955;
     } else GL.ripple = 0;
@@ -318,11 +407,18 @@
     /* ---- nodes ----------------------------------------------------------- */
     for (let i = 0; i < GL.nodes.length; i++) {
       const p = GL.nodes[i];
+      if (inZone(px[i], py[i])) continue;
       const a = 0.62 * (0.45 + p.z * 0.55);
       P.push(px[i], py[i], a, p.r * p.z * 2.6 * GL.dpr, 0);
     }
 
     /* ---- draw ------------------------------------------------------------ */
+    if (typeof window !== "undefined" && window.__REMIT_GL_DEBUG) {
+      const pts = [], lns = [];
+      for (let i = 0; i < P.length; i += 5) pts.push([P[i], P[i + 1]]);
+      for (let i = 0; i < L.length; i += 10) lns.push([L[i], L[i + 1], L[i + 5], L[i + 6]]);
+      GL.drawn = { points: pts, lines: lns };
+    }
     const nL = L.length / 5, nP = P.length / 5;
     const arr = new Float32Array(L.length + P.length);
     arr.set(L, 0); arr.set(P, L.length);

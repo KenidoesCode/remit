@@ -1102,3 +1102,117 @@ button.atk.broke .atk-r{color:var(--ink)}
 @media (prefers-reduced-motion:reduce){
   .sdk-copy{transition:none}
 }
+
+/* ── Summary · compact SDK discovery ─────────────────────────────────────
+   One signal, not a second documentation page: "this is real infrastructure,
+   and you can install it." Sits at the container edge like every other
+   section's output block. */
+.sdk-mini{
+  margin-top:clamp(26px,3.6vh,44px);
+  display:flex;flex-wrap:wrap;align-items:center;
+  gap:14px clamp(16px,2.2vw,28px);
+}
+.sdk-mini-label{
+  display:flex;align-items:center;gap:9px;
+  font-family:var(--mono);font-size:11px;letter-spacing:.16em;
+  text-transform:uppercase;opacity:.55;white-space:nowrap;
+}
+.sdk-mini-label .pip{
+  width:6px;height:6px;background:var(--signal);border-radius:50%;
+  display:inline-block;flex:none;
+}
+.sdk-cmd-mini{
+  padding:11px 12px 11px 14px;flex:1 1 300px;min-width:0;max-width:420px;
+}
+.sdk-cmd-mini code{font-size:clamp(12.5px,1.3vw,14px)}
+.sdk-mini-links{display:flex;flex-wrap:wrap;gap:18px}
+.sdk-mini-links a{
+  font-family:var(--mono);font-size:11px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--ink);opacity:.6;
+  text-decoration:none;border-bottom:1px solid transparent;
+  padding-bottom:2px;transition:opacity .18s ease,border-color .18s ease;
+}
+.sdk-mini-links a:hover,.sdk-mini-links a:focus-visible{
+  opacity:1;border-bottom-color:var(--signal);
+}
+@media (max-width:700px){
+  .sdk-mini{flex-direction:column;align-items:flex-start}
+  .sdk-cmd-mini{max-width:100%;width:100%}
+}
+
+/* secondary install: present, but not a twin of the primary one */
+.sdk-cmd-secondary{padding:11px 12px 11px 14px;opacity:.78}
+.sdk-cmd-secondary code{font-size:clamp(12px,1.25vw,13.5px)}
+.sdk-cmd-note{
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;
+  text-transform:uppercase;opacity:.45;white-space:nowrap;flex:none;
+}
+.sdk-cmd-note code{font-size:10.5px;text-transform:none;letter-spacing:0}
+
+/* ── the flow: the idea, faster than a wall of code ────────────────────── */
+.sdk-flow{
+  margin-top:clamp(24px,3.2vh,38px);
+  display:flex;flex-direction:column;gap:12px;
+}
+.sdk-flow-row{
+  display:flex;flex-wrap:wrap;align-items:stretch;gap:10px;
+  border:1px solid var(--line);
+  background:rgba(255,255,255,.015);
+  padding:14px clamp(12px,1.6vw,18px);
+}
+.sdk-flow-step{
+  display:flex;flex-direction:column;gap:5px;min-width:0;
+  font-family:var(--mono);font-size:12px;line-height:1.4;opacity:.82;
+}
+.sdk-flow-step b{
+  font-weight:400;font-size:10px;letter-spacing:.16em;
+  text-transform:uppercase;opacity:.45;
+}
+.sdk-flow-step.ok{color:var(--ink)}
+.sdk-flow-step.ok b{color:var(--ink);opacity:.55}
+.sdk-flow-step.stop b{color:var(--signal);opacity:.9}
+.sdk-flow-step.stop{color:var(--signal)}
+.sdk-flow-arrow{
+  align-self:center;opacity:.28;font-size:13px;flex:none;
+}
+@media (max-width:760px){
+  .sdk-flow-arrow{display:none}
+  .sdk-flow-row{flex-direction:column;gap:12px}
+  .sdk-flow-step{flex-direction:row;align-items:baseline;gap:10px}
+  .sdk-flow-step b{flex:0 0 68px}
+}
+
+/* ── open source · the natural last action ──────────────────────────────── */
+.oss-actions{
+  display:flex;flex-wrap:wrap;gap:12px;
+  margin-top:clamp(26px,3.4vh,40px);
+}
+.oss-star{position:relative;overflow:hidden;min-width:262px;text-align:center}
+.oss-star-a,.oss-star-b{
+  display:block;transition:transform .34s cubic-bezier(.22,1,.36,1),opacity .24s ease;
+}
+.oss-star-b{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  transform:translateY(105%);opacity:0;font-size:10.5px;letter-spacing:.1em;
+  padding:0 12px;
+}
+.oss-star:hover .oss-star-a,.oss-star:focus-visible .oss-star-a{
+  transform:translateY(-105%);opacity:0;
+}
+.oss-star:hover .oss-star-b,.oss-star:focus-visible .oss-star-b{
+  transform:translateY(0);opacity:1;
+}
+.oss-star:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
+.oss-star:active{transform:translateY(1px)}
+.oss-note{
+  margin:clamp(20px,2.6vh,30px) 0 0;max-width:60ch;
+  font-size:13px;line-height:1.65;opacity:.42;
+}
+@media (prefers-reduced-motion:reduce){
+  .oss-star-a,.oss-star-b{transition:none}
+  .oss-star-b{display:none}
+}
+@media (max-width:520px){
+  .oss-star{min-width:0;width:100%}
+  .oss-actions .sdk-btn{width:100%;text-align:center}
+}

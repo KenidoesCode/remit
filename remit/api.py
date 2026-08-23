@@ -1048,8 +1048,19 @@ def executive():
             "Synthetic catalog: 186 products, one seed, written by the author.",
             "Every evaluation corpus was written by the author. That is the "
             "largest threat to every number here and no amount of volume fixes it.",
-            "One process, SQLite, no tenancy, no IdP. Prototype readiness is "
-            "scored at 51/100 in docs/HARDENING_AUDIT.md.",
+            # This said "no tenancy" and cited 51/100 for a week after tenancy
+            # was built and the scorecard was replaced. A limitations list that
+            # goes stale in the flattering direction is one thing; this one went
+            # stale in BOTH directions, understating what exists and citing a
+            # score that no longer had a document behind it. FAILURES #55.
+            "SQLite on one host. Multi-process correctness is tested; "
+            "multi-host is a design, not an implementation.",
+            "A signed session is a real identity boundary and is not an "
+            "identity provider. No SSO, no MFA, no federation.",
+            "The audit chain is hash-linked with no external trust anchor: "
+            "tamper-evident against partial edits, not tamper-proof.",
+            "Prototype readiness is scored criterion by criterion in "
+            "docs/PROTOTYPE_READINESS.md, and it is not 100.",
         ],
     }
 

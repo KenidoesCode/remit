@@ -71,6 +71,7 @@
     <a href="#lab" data-act="lab">lab</a>
     <a href="#audit" data-act="audit">audit</a>
     <a href="#act5" data-act="act5">engineering</a>
+    <a href="#opensource" data-act="opensource">open source</a>
   </div>
 
   <div class="navright">
@@ -141,6 +142,26 @@
       one that matters most is the one that is zero.</p>
   </div>
   <div id="execOut"></div>
+
+  <!-- SDK discovery. Small on purpose: Summary is the cinematic overview, and
+       this is one signal -- "this is real infrastructure, you can install it" --
+       not a second documentation page. -->
+  <div class="sdk-mini">
+    <div class="sdk-mini-label">
+      <span class="pip" aria-hidden="true"></span>OPEN SOURCE SDK
+    </div>
+    <div class="sdk-cmd sdk-cmd-mini">
+      <span class="sdk-prompt" aria-hidden="true">$</span>
+      <code>npm install remit-sdk</code>
+      <button class="sdk-copy" type="button" data-copy="npm install remit-sdk"
+              aria-label="Copy npm install remit-sdk">copy</button>
+    </div>
+    <div class="sdk-mini-links">
+      <a href="#sdk">VIEW SDK</a>
+      <a href="https://github.com/KenidoesCode/remit" target="_blank" rel="noopener">VIEW SOURCE</a>
+      <a href="https://www.npmjs.com/package/remit-sdk" target="_blank" rel="noopener">NPM</a>
+    </div>
+  </div>
 </section>
 
 <!-- ══════════════ SDK · BUILD WITH REMIT ══════════════ -->
@@ -163,9 +184,10 @@
         <button class="sdk-copy" type="button" data-copy="npm install remit-sdk"
                 aria-label="Copy npm install remit-sdk">copy</button>
       </div>
-      <div class="sdk-cmd">
+      <div class="sdk-cmd sdk-cmd-secondary">
         <span class="sdk-prompt" aria-hidden="true">$</span>
         <code id="sdkCmd2">npm i -g remit-sdk</code>
+        <span class="sdk-cmd-note">the <code>remit</code> CLI</span>
         <button class="sdk-copy" type="button" data-copy="npm i -g remit-sdk"
                 aria-label="Copy npm i -g remit-sdk">copy</button>
       </div>
@@ -176,16 +198,41 @@
 
     <pre class="sdk-code" aria-label="Example usage"><code><span class="k">import</span> { Remit } <span class="k">from</span> <span class="s">"remit-sdk"</span>;
 
-<span class="k">const</span> remit = <span class="k">new</span> Remit({ baseUrl: <span class="s">"https://remit-vvug.onrender.com"</span> });
+<span class="k">const</span> remit = <span class="k">new</span> Remit({ baseUrl });
 
-<span class="c">// what the human said becomes a bounded authority</span>
-<span class="k">const</span> { intent } = <span class="k">await</span> remit.intents.create({ text: <span class="s">"buy a laptop under 50000"</span> });
+<span class="c">// the human's words become a bounded authority</span>
+<span class="k">const</span> { intent } = <span class="k">await</span> remit.intents.create({
+  text: <span class="s">"buy a laptop under 50000"</span>
+});
 
 <span class="c">// ask before doing. no money moves.</span>
-<span class="k">const</span> decision = <span class="k">await</span> remit.authorization.evaluate({ text: intent.utterance });
+<span class="k">const</span> d = <span class="k">await</span> remit.authorization.evaluate({
+  text: intent.utterance
+});
 
-decision.verdict;  <span class="c">// "STEP_UP"</span>
-decision.failed;   <span class="c">// ["MATCH-001"] — a laptop stand is not a laptop</span></code></pre>
+d.verdict;  <span class="c">// "STEP_UP"</span>
+d.failed;   <span class="c">// ["MATCH-001"]</span></code></pre>
+  </div>
+
+  <div class="sdk-flow" aria-label="What the SDK actually does">
+    <div class="sdk-flow-row">
+      <span class="sdk-flow-step"><b>HUMAN</b>buy a laptop under &#8377;50,000</span>
+      <span class="sdk-flow-arrow" aria-hidden="true">&rarr;</span>
+      <span class="sdk-flow-step"><b>AGENT</b>laptop &#8377;46,000</span>
+      <span class="sdk-flow-arrow" aria-hidden="true">&rarr;</span>
+      <span class="sdk-flow-step ok"><b>REMIT</b>AUTO</span>
+      <span class="sdk-flow-arrow" aria-hidden="true">&rarr;</span>
+      <span class="sdk-flow-step"><b>RECEIPT</b>verified locally</span>
+    </div>
+    <div class="sdk-flow-row">
+      <span class="sdk-flow-step"><b>HUMAN</b>the same sentence</span>
+      <span class="sdk-flow-arrow" aria-hidden="true">&rarr;</span>
+      <span class="sdk-flow-step"><b>AGENT</b>laptop + warranty + bag</span>
+      <span class="sdk-flow-arrow" aria-hidden="true">&rarr;</span>
+      <span class="sdk-flow-step stop"><b>REMIT</b>STEP_UP</span>
+      <span class="sdk-flow-arrow" aria-hidden="true">&rarr;</span>
+      <span class="sdk-flow-step"><b>WHY</b>nobody authorised the extras</span>
+    </div>
   </div>
 
   <ul class="sdk-facts">
@@ -410,6 +457,37 @@ decision.failed;   <span class="c">// ["MATCH-001"] — a laptop stand is not a 
   </div>
   <div id="whoOut"></div>
 </section>
+
+<!-- ══════════════ OPEN SOURCE ══════════════ -->
+<section class="act" id="opensource">
+  <div class="numeral" aria-hidden="true">OSS</div>
+  <div class="act-head">
+    <span class="kicker">open source</span>
+    <h2>Think this should exist?</h2>
+    <p class="lede">REMIT is MIT licensed, the evidence regenerates from one
+      command, and the failures are written down rather than tidied away.
+      Inspect it, break it, build on it &mdash; and if you want to see where it
+      goes, follow it.</p>
+  </div>
+
+  <div class="oss-actions">
+    <a class="sdk-btn oss-star" href="https://github.com/KenidoesCode/remit"
+       target="_blank" rel="noopener">
+      <span class="oss-star-a">&#9733; STAR REMIT ON GITHUB</span>
+      <span class="oss-star-b" aria-hidden="true">&#9733; IF THIS IDEA DESERVES TO EXIST</span>
+    </a>
+    <a class="sdk-btn ghost" href="https://www.npmjs.com/package/remit-sdk"
+       target="_blank" rel="noopener">VIEW ON NPM</a>
+    <a class="sdk-btn ghost" href="https://github.com/KenidoesCode/remit/tree/main/docs/sdk"
+       target="_blank" rel="noopener">READ THE DOCS</a>
+    <a class="sdk-btn ghost" href="#act4">TRY TO BREAK IT</a>
+  </div>
+
+  <p class="oss-note">No star counter here on purpose &mdash; GitHub already
+    knows the number, and a figure typed into a page is exactly the kind of
+    thing the rest of this project exists to argue against.</p>
+</section>
+
 
 </main>
 

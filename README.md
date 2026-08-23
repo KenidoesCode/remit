@@ -1,459 +1,348 @@
+<div align="center">
+
 # REMIT
 
-**Model-independent authorization for autonomous commerce.**
+### Model-independent authorization for autonomous commerce.
 
-> AI can be probabilistic. Authorization cannot.
+**AI can be probabilistic. Authorization cannot.**
 
-*(**R**evocable, **E**xplainable **M**andates for **I**ntent-driven **T**ransactions)*
+[![npm](https://img.shields.io/npm/v/remit-sdk?color=E5352B&label=remit-sdk)](https://www.npmjs.com/package/remit-sdk)
+[![license](https://img.shields.io/badge/license-MIT-E5352B)](LICENSE)
+[![node](https://img.shields.io/badge/node-%3E%3D18.17-E5352B)](packages/sdk/package.json)
+[![protocol](https://img.shields.io/badge/protocol-v1-E5352B)](docs/REMIT_PROTOCOL.md)
+
+**[Live demo](https://remit-vvug.onrender.com)** ·
+**[npm](https://www.npmjs.com/package/remit-sdk)** ·
+**[SDK docs](docs/sdk/)** ·
+**[Break it](https://remit-vvug.onrender.com/#act4)** ·
+**[Star it](https://github.com/KenidoesCode/remit)**
+
+</div>
 
 ---
 
-## Build with REMIT
+An agent can now search, compare, decide and **pay**. A model output is not an
+authorization, and a spending limit is not one either — it can only ask *how
+much*, never *is this the thing the human asked for*.
+
+REMIT is the boundary in between.
 
 ```bash
 npm install remit-sdk
 ```
 
+---
+
+## The example that is the whole product
+
+A person tells their agent:
+
+> **"buy a laptop under ₹50,000"**
+
+The best match this shop has for "laptop" is a **laptop stand**, at ₹4,446.
+
+| | verdict |
+|---|---|
+| A spending limit | **allows it.** ₹4,446 is under ₹50,000. That is the only question it can ask. |
+| REMIT | **`STEP_UP` — `MATCH-001`.** A modifier match is not a product match. Ask a person. |
+
+Run it yourself, right now, against the live deployment:
+
 ```bash
-npm i -g remit-sdk       # the `remit` CLI
+npx remit-sdk evaluate "buy a laptop under 50000"
 ```
+
+The second case is the one that matters more. Same sentence, agent proposes
+laptop **+ warranty + bag**: REMIT steps up, because nobody authorised the
+extras. Not because the total is too high — because the *basket* is not what
+was asked for.
+
+---
+
+## What REMIT is
+
+**Not** an agent. **Not** a payment provider. **Not** a model.
+
+```
+   AI proposes   →   REMIT authorizes   →   Razorpay executes   →   the ledger records
+```
+
+The intelligence can change. The authorization cannot.
+
+REMIT's decider is a **pure function**: 21 policy clauses over a compiled
+authority envelope, with `now` as an argument. No I/O, no network, no clock of
+its own, and **it reads no free text at all** — so there is no input through
+which a model could talk it into anything.
+
+---
+
+## Architecture
+
+```mermaid
+flowchart TD
+    U["HUMAN<br/>a sentence"] --> A["AGENT<br/><i>untrusted</i>"]
+    A --> M["MODEL<br/><i>untrusted</i>"]
+    M --> S["REMIT SDK<br/><i>untrusted</i>"]
+    S --> B{{"TRUST BOUNDARY"}}
+    B --> G["SEMANTIC GROUNDING"]
+    G --> E["AUTHORITY ENVELOPE<br/>bounded in amount, time, category, actor"]
+    E --> P["POLICY ENGINE<br/>21 clauses · pure function"]
+    P --> D{"DECISION"}
+    D -->|AUTO| X["EXECUTION"]
+    D -->|STEP_UP| H["A HUMAN<br/>an agent may not approve"]
+    D -->|DENY| N["nothing moves"]
+    H -->|approves| X
+    X --> R["RAZORPAY<br/>test mode"]
+    R --> L["EVENT LEDGER<br/>hash-linked"]
+    L --> V["RECEIPT<br/>verified client-side"]
+```
+
+Everything above the boundary is untrusted — including this project's own SDK.
+Every guarantee holds for someone using `curl`.
+
+---
+
+## Try it in 60 seconds
+
+```bash
+npm install -g remit-sdk
+
+remit doctor
+remit evaluate "buy a yoga mat under 2000"      # AUTO
+remit evaluate "buy a laptop under 50000"       # STEP_UP — MATCH-001
+remit execute  "buy a yoga mat under 2000"
+remit receipt verify <correlation-id>
+```
+
+`remit doctor` checks Node, the SDK, the endpoint, protocol compatibility and
+identity — and reports only what it actually checked on that run:
+
+```
+REMIT DOCTOR
+------------
+
+  ok   Node.js  v22.22.2
+  ok   SDK  remit-sdk 0.1.0
+  ok   fetch  available
+  ok   API reachable  https://remit-vvug.onrender.com
+  ok   Protocol compatible  server 1.0, SDK speaks 1.x
+  ok   Identity  session issued by the server
+
+REMIT IS READY.
+```
+
+---
+
+## The SDK
 
 ```ts
 import { Remit } from "remit-sdk";
 
 const remit = new Remit({ baseUrl: "https://remit-vvug.onrender.com" });
-const decision = await remit.authorization.evaluate({ text: "buy a laptop under 50000" });
 
-decision.verdict;   // "STEP_UP"
-decision.failed;    // ["MATCH-001"] -- a laptop stand is not a laptop
+const { intent } = await remit.intents.create({ text: "buy a laptop under 50000" });
+const decision   = await remit.authorization.evaluate({ text: intent.utterance });
+
+if (decision.verdict === "AUTO") {
+  const result = await remit.payments.execute({ text: intent.utterance });
+  const receipt = await remit.receipts.verify(result.decision.correlation_id);
+}
 ```
 
-TypeScript, ESM and CommonJS, zero runtime dependencies, and an audit receipt
-you can verify locally rather than take on trust.
+TypeScript, ESM + CJS, **zero runtime dependencies**.
 
-The npm package is `remit-sdk` because `remit` is taken on npm by an unrelated
-library; the CLI binary is still `remit`. Docs: [`docs/sdk/`](docs/sdk/).
-Source: [`packages/sdk/`](packages/sdk/).
+Two things it deliberately does **not** have:
 
+- **No API key.** A bearer key is a credential that says *spend as whoever this
+  belongs to* — exactly the bug that lets a caller choose whose limits to spend.
+  Identity is a session the server signs.
+- **No `idempotencyKey`.** REMIT derives idempotency server-side from the
+  *meaning* of a request, so a caller-chosen key could span two purchases and an
+  SDK-generated one would make every retry a new purchase. Both are weaker
+  guarantees wearing a familiar name.
 
-## The problem
-
-I gave an AI permission to spend money. Then I tried to work out how much I
-could trust it.
-
-A human authorises an intent **once**. The agent then makes dozens of decisions
-before a rupee moves: it picks a product, picks a variant, accepts an upsell,
-absorbs a shipping change, is handed a price that moved underneath it. By the
-time money leaves the account, the transaction may bear very little
-resemblance to the sentence that started it — and nothing in the payment stack
-can tell that apart from a legitimate purchase, because both arrive as a valid
-API call with a valid key.
-
-**A limit is not an authority.**
-
-> "buy a laptop under ₹50,000"
-
-A spending limit permits all of this: a laptop **stand**, a laptop bag, a
-₹3,000 warranty, a refurbished unit, the same laptop from a different merchant,
-or three separate purchases of ₹16,000. Every one is under ₹50,000. None of
-them is what was said.
-
-₹50,000 does not mean *anything under ₹50,000*. It means **the things the human
-asked for, under the constraints they stated, inside that number** — and the
-gap between those two readings is where an autonomous agent lives.
-
-## The thesis
-
-```
-HUMAN INTENT → AI INTERPRETATION → SEMANTIC GROUNDING → INTENT ENVELOPE
-     → AGENT ACTION → DRIFT → POLICY → AUTHORIZATION → PAYMENT → AUDIT
-```
-
-The agent interprets. A **deterministic policy engine** decides whether the
-action is still inside what the human actually authorised. Only then does money
-move.
-
-The model may be wrong. It may hallucinate, be prompt-injected, be swapped for
-a different vendor, or be compromised at the provider. **The authorization
-boundary has to hold anyway** — so it is a pure function with no I/O, no text
-input and nothing to persuade. It runs in **27 microseconds** and it is the
-only trusted decision-maker in the system.
-
-Razorpay AI Buildathon — **Track 01, AI Growth & Agentic Commerce**.
-Live, in Razorpay test mode: **https://remit-vvug.onrender.com**
+→ **[SDK documentation](docs/sdk/)** · **[source](packages/sdk/)** ·
+**[npm](https://www.npmjs.com/package/remit-sdk)**
 
 ---
 
-## The thirty-second version
+## Bring your own model
 
-| | |
-|---|---|
-| unauthorised money moved | **₹0.00** across 540 evaluated journeys and 32 live attacks |
-| dangerous false negatives | **0** — held-out split, scored once |
-| the control arm (an LLM with a payment key, no envelope) | **₹7,37,930** moved that nobody authorised, across 147 transactions |
-| attacks that held | **32/32**, run live against a throwaway instance |
-| decision cost | **27.3 µs** p50 · ~32,000/second/core |
-| tests | **630+**, including real concurrency, property, browser and recovery tests |
-| prototype readiness | **51/100**, scored honestly in `docs/HARDENING_AUDIT.md` |
+There is no `RemitGPT` and there never will be. OpenAI, Anthropic, Gemini, a
+local Llama, or a deterministic function — whatever produces the proposal
+crosses the same boundary, because the boundary lives on the server and does not
+know which model produced its input.
 
-REMIT is **not** the highest-earning agent in its own benchmark, and the page
-says so: the frugal agent beats it, *because REMIT sometimes buys the wrong
-thing — not because it lets money escape.*
+A model that returns `{"verdict":"AUTO","authorized":true}` gets **13
+authorization-shaped fields stripped**, and the attempt is *recorded* — an
+interpreter that keeps trying to authorise payments is a fact worth having in
+the audit trail.
 
-## Try to break it
-
-The most useful thing on the site is the attack lab. 32 attacks across intent,
-catalog and payment, run live rather than replayed from a file:
-
-prompt injection · approval replay · approval theft · split spending · foreign
-currency · merchant substitution · revocation race · illegal state jump ·
-restart replay · negation inversion · protocol bypass · a model that returns
-its own verdict · duplicate webhooks · out-of-order webhooks · forged webhooks
-
-The second most useful thing is **`FAILURES.md`** — 46 entries of what I broke
-and why, including three found this week in code I had just written, and six
-where the bug was in my own tests.
-
-## An agent that has never heard of REMIT
-
-```bash
-python agents/external_agent.py https://remit-vvug.onrender.com
-```
-
-That file imports `json` and `urllib`. Nothing else — a test asserts it stays
-that way. It creates an authority from a sentence, asks whether it may act
-before acting, executes once, retries and gets the same payment back, is
-refused a dollar-denominated ceiling, spends a step-up approval exactly once,
-reconstructs why any of it happened, and is stopped dead by a revocation.
-
-That is what makes REMIT a protocol rather than a website with an engine behind
-it. See `docs/REMIT_PROTOCOL.md`.
+This is also why REMIT does not use an LLM judge: putting a model in front of a
+model puts two persuadable systems in series and calls it defence in depth.
 
 ---
 
+## Security model
 
-## Four systems
-
-| | | |
+| Layer | Trusted? | Responsibility |
 |---|---|---|
-| **1. Agentic commerce engine** | the AI actually shops and pays | `remit/buyer`, `remit/retrieval`, `remit/domain` |
-| **2. Authority engine** | decides what the AI is allowed to do | `remit/policy`, `remit/domain/drift.py`, `remit/grants` |
-| **3. Autonomy evaluation lab** | measures how much autonomy is safe | `eval/`, `remit/lab` |
-| **4. REMIT Arena** | compares agents under identical conditions | `remit/arena`, `eval/arena.py` |
+| Agent | no | proposes an action |
+| Model | no | interprets a sentence |
+| SDK / client | no | carries the proposal |
+| **REMIT** | **yes** | decides whether it is authorised |
+| Razorpay | — | executes, in test mode |
+| Ledger | — | records the decision |
+| Receipt | — | proves what was decided |
 
-Nine rooms on the site: **the sixty-second summary · live commerce · arena ·
-autonomy frontier · counterfactual · break REMIT · evaluation lab · audit trail
-· engineering.**
+Covered: semantic authority, identity, tenant isolation, revocation,
+idempotency, replay, concurrency, multi-process correctness, an authority state
+machine and a hash-linked audit chain.
 
-Plus a tenth surface that is not a room: `/v1`, the protocol, which an external
-agent uses instead.
+**Not** covered, stated plainly: no external trust anchor (tamper-**evident**,
+not tamper-proof), no identity provider, one host, secrets in environment
+variables, no WAF.
 
----
-
-## The one number
-
-> **₹1.95** of unauthorised movement prevented for every **₹1** of revenue
-> REMIT gives up.
-
-That replaced a much prettier number, and the story of why is in FAILURES #18.
-
----
-
-## The frontier
-
-Sweep the policy from locked to unbounded, re-run all 540 journeys at every
-point, and the curve has a knee — but not where I expected it:
-
-```
-policy               autonomy   unauthorised
-permissive              41.1%          ₹0.00
-unbounded               41.1%          ₹0.00
-envelope ignored        61.9%    ₹359,262.43   <- the knee
-no limits either        69.4%    ₹737,930.43
-```
-
-**No amount of tuning how often REMIT asks produces unauthorised movement.**
-Only removing the envelope does. The trade-off is a cliff, not a curve — which
-is the argument for having an envelope at all, and I nearly missed it by
-sweeping the wrong axis for a week (FAILURES #26).
+→ [Security model](docs/sdk/security-model.md) ·
+[Threat model](docs/sdk/threat-model.md) ·
+[Security report](docs/SECURITY_REPORT.md) ·
+[Production gaps](docs/PRODUCTION_GAPS.md)
 
 ---
 
+## Evidence
 
-## The result, in one table
-
-Four arms. One corpus of **540 synthetic shopping journeys**. Same catalog,
-same seed, real runs. Generated by `eval/experiments.py`; nothing below is typed
-by hand.
-
-| arm | revenue | vs baseline | AOV | unauthorised | asked a human |
-|---|---:|---:|---:|---:|---:|
-| no revenue engine, no integrity layer | ₹955,606.43 | — | ₹2,568.83 | **₹560,575.43** | 0 |
-| revenue engine ON, no integrity layer | ₹1,270,852.43 | ₹315,246.00 | ₹3,416.26 | **₹737,930.43** | 0 |
-| full REMIT, human approves at step-up | ₹892,184.43 | -₹63,422.00 | ₹2,695.42 | **₹0.00** | 203 |
-| full REMIT, human declines every step-up | ₹348,142.00 | -₹607,464.43 | ₹2,698.77 | **₹0.00** | 203 |
-
-**Let an agent optimise merchant revenue with no authorisation boundary and it
-earns ₹315,246.00 more than a plain checkout — while moving ₹737,930.43 across
-147 transactions the human never authorised.**
-
-**REMIT moves ₹0.00 unauthorised.** The price of that is
-₹1,270,852.43 − ₹892,184.43 = **₹378,668.00** of revenue given up, so
-the exchange rate is **₹1.95 of unauthorised movement prevented for every ₹1
-forgone**. Against a plain checkout with no boundary at all, REMIT costs
-**6.64%** of gross and removes
-**₹560,575.43** of unauthorised movement.
-
-There used to be a nicer number here — "REMIT keeps 73.2% of the upside". It is
-gone because it was partly earned by REMIT quietly buying a yoga mat when it
-could not understand you, and those purchases were revenue. See FAILURES #18.
-
----
-
-## The gate
-
-One number is not a metric. It is a constraint, and it is checked on every run:
-
-| gate — held-out test split, n=108, scored once | value |
-|---|---|
-| rupees of unauthorised movement | **₹0.00** |
-| duplicate payments under a retry storm | **0** |
-| webhook state violations (forged / duplicate / out-of-order) | **0** |
-| recall on "this needed a human" | **1.0** |
-| dangerous false negatives | **0** |
-
-Everything else is a number we report and argue about:
-
-| quality | test split |
-|---|---|
-| category accuracy | 0.8989 |
-| ceiling exact match | 1.0 |
-| quantity accuracy | 1.0 |
-| purchase-authority accuracy | 1.0 |
-| amount-error distribution | `{"exact": 87}` |
-| precision on "needed a human" | 0.5556 |
-| unnecessary confirmations | 32 |
-| decision latency p95 | 3.87 ms |
-
-Precision is the honest weak number and it is not tuned away. §*What REMIT gets
-wrong* in `EVALUATION.md` explains why part of it is a definitional artefact and
-part of it is real friction.
-
----
-
-## The frontier
-
-Sweep the policy from locked to unbounded and re-run the entire corpus at each
-point. Every row is a real run.
-
-| policy | autonomy | asks / 100 | revenue (human declines) | unauthorised |
-|---|---:|---:|---:|---:|
-| locked | 10.0% | 70.4 | ₹92,767.00 | ₹0.00 |
-| very strict | 8.9% | 71.5 | ₹117,544.00 | ₹0.00 |
-| strict | 8.9% | 71.5 | ₹121,980.00 | ₹0.00 |
-| cautious | 10.7% | 69.6 | ₹158,728.00 | ₹0.00 |
-| balanced (default) | 22.2% | 58.1 | ₹329,159.00 | ₹0.00 |
-| relaxed | 24.6% | 55.7 | ₹361,235.00 | ₹0.00 |
-| loose | 39.4% | 40.9 | ₹466,111.00 | ₹0.00 |
-| very loose | 45.2% | 35.2 | ₹527,834.00 | ₹0.00 |
-| permissive | 54.4% | 25.9 | ₹703,046.00 | **₹68,175.00** |
-| unbounded | 54.4% | 25.9 | ₹703,046.00 | **₹68,175.00** |
-
-**Autonomy is free up to 45.2%.** Between `locked` and
-`very loose` the agent gets 35.2
-percentage points more autonomy, asks
-35.2 fewer
-questions per hundred journeys, and earns
-₹527,834.00 instead of ₹92,767.00
-— at **₹0.00** of unauthorised movement.
-
-**One step further and it stops being free.** At `permissive`,
-**₹68,175.00** starts moving that nobody asked for.
-
-That is the whole product, in one chart: *the exchange rate between autonomy and
-authority, measured rather than asserted.*
-
----
-
-## The experience
-
-Five acts. The reviewer meets the product first, the engineering second, and the
-person last.
-
-**I — the neighbourhood.** The human is home. The catalog is the neighbourhood.
-The payment is the destination. What you authorised is the **property line**, and
-the agent may wander anywhere inside it without asking.
-
-![Act I](docs/screenshots/01-neighbourhood.png)
-
-**II — the agent moves.** It searches, ranks deterministically, picks, and then
-the merchant gets a turn. Every offer carries a reason, an exact marginal cost,
-and whether it would cross the line. Nothing is added silently.
-
-**III — the line.** *The signature interaction.* Drag the marker. Same basket,
-different permission. Every drag re-runs the real policy engine — no model call,
-no payment, no writes — and shows you the microseconds it took. Clauses flip red
-one at a time and the money stops.
-
-![Act III](docs/screenshots/02-property-line.png)
-
-**IV — break it.** Ten levers, each wired to a real code path: move the price
-after selection, delist the product mid-journey, revoke the authority, expire the
-intent, forge a webhook signature. REMIT tells you which clause caught it.
-
-![Act IV](docs/screenshots/03-break-it.png)
-
-And the same journey with the boundary switched off — not a different build, the
-identical code path with a permissive policy file:
-
-![With and without](docs/screenshots/04-with-without.png)
-
-*Boundary off: **₹4,545** charged against a **₹2,500** authorisation, AUTO, money
-moved. REMIT: ₹2,425, drift 0, ₹0 unauthorised.*
-
-**V — the engineer.** The numbers, the frontier, and `stuff i broke` — the ten
-real failures parsed live out of `FAILURES.md`.
-
-![Act V](docs/screenshots/05-the-numbers.png)
-
-Full terminal output of the seven-scene CLI demo: `docs/hero-demo-output.txt`.
-Creative direction, brand and interaction docs: `creative/`.
-
----
-
-## How it works
-
-```
-utterance
-  -> INTENT ENVELOPE          immutable, versioned, hash-addressed
-  -> SEARCH + RANK            deterministic; the model does not score products
-  -> SELECT
-  -> REVENUE ENGINE           proposes; never adds silently
-  -> CART                     priced deterministically from catalog x quantity
-  -> DRIFT ENGINE             12 named dimensions, published weights, pure function
-  -> RISK ENGINE              expected loss in rupees vs the cost of asking
-  -> POLICY ENGINE            deterministic, clause-by-clause: AUTO | STEP_UP | DENY
-  -> [step-up]                a human, holding the actual number
-  -> PAYMENT                  idempotent, through the Razorpay adapter, test mode
-  -> WEBHOOKS -> RECONCILER   duplicate, out-of-order, forged, missing
-  -> DOCKET                   hash-chained, tamper-evident
-```
-
-**The invariant the whole design exists to hold:**
-
-> The model may interpret, recommend and propose.
-> **The model may not compute an amount, and it may never authorise money.**
-
-Enforced structurally, not by prompt: financial tools are not even *visible* to
-the model (`ToolBroker.describe`), and `ToolBroker.call` raises if `actor="model"`
-reaches one.
-
----
-
-## Run it
+One command regenerates all of it:
 
 ```bash
-pip install -r requirements.txt
-
-pytest                                   # 70 tests, offline, no API key
-PYTHONPATH=. python demo/hero.py         # the 7-scene demo, offline
-PYTHONPATH=. uvicorn remit.api:api --port 8000   # the product, at localhost:8000
-
-python eval/generate.py                  # rebuild the corpus
-python eval/calibrate.py                 # fit the calibrator on TRAIN only
-python eval/run_eval.py                  # the scorecard
-python eval/experiments.py               # the four arms
-python eval/frontier.py                  # the frontier (~2 min)
+python verify.py
 ```
-
-Live Razorpay test mode: `cp .env.example .env`, add `rzp_test_` keys, then
-`REMIT_LIVE=1 uvicorn remit.api:api`. REMIT refuses any key that does not begin
-with `rzp_test_`.
-
----
-
-## What is real, and what is not
-
-**Real:** every rupee figure on every screen is computed at run time from the
-same code the tests use. The policy engine is pure and its 21 clauses are
-data. Payments go through a Razorpay adapter that is the only file in the
-repo that knows Razorpay exists. Idempotency, the payment state machine,
-webhook signature verification, duplicate and out-of-order handling, and the
-reconciler are all exercised by the chaos suite.
-
-**Not real, and labelled:** the corpus is synthetic and written by the author —
-believe the *shape*, not the absolute numbers. The catalog is a fictional set of
-merchants. `FakeGateway` is the default so the whole system runs offline; the
-live path uses Razorpay test mode, where **no money moves and UPI Reserve Pay /
-SBMD is not available at all**. Nothing here simulates a mandate and calls it
-real. See `LIMITATIONS.md`.
-
----
-
-## Documents
-
-`PRODUCT.md` · `ARCHITECTURE.md` · `EVALUATION.md` · `THREAT_MODEL.md` ·
-`DECISIONS.md` · `FAILURES.md` · `LIMITATIONS.md` · `API.md` · `DEMO_SCRIPT.md` ·
-`INTERVIEW.md` · `SETUP.md` · `AGENTS.md`
-
-`FAILURES.md` is the one to read first if you only read one. It is the real
-list of things that broke while building this, including the moment my own
-parser silently doubled a customer's budget.
-
----
-
-## Documentation
 
 | | |
 |---|---|
-| `docs/WHY_REMIT.md` | how this differs from a spending limit, fraud detection and an LLM judge |
-| `docs/DEMO_SCRIPT.md` | the five-minute walk, timed |
-| `docs/REMIT_PROTOCOL.md` | the six nouns, ten routes, and what an integrator needs |
-| `docs/THREAT_MODEL.md` | who is trusted with what, and which test enforces it |
-| `docs/HARDENING_AUDIT.md` | 61 requirements mapped to file, test and status. 51/100 |
-| `docs/FINAL_AUDIT.md` | the pre-submission audit: what is strong, what is open |
-| `docs/SCALE_ARCHITECTURE.md` | measured first. Throughput *falls* under concurrency, and why |
-| `docs/OBSERVABILITY.md` | what is measured, and the longer list of what is not |
-| `docs/PRODUCTION_GAPS.md` | buildathon mode vs production mode, line by line |
-| `docs/REVIEWER_SIMULATION.md` | eight hostile personas, asked what would make them reject this |
-| `docs/WHY_RAZORPAY_MIGHT_REJECT_REMIT.md` | written before submission, not after |
-| `FAILURES.md` | 46 entries. The most credible artefact in the repository |
-| `DECISIONS.md` | the ADRs — why local, why deterministic, why no blockchain |
+| Tests | **719** |
+| Attack suite | **32 / 32 held** (run 3× — a 1-in-3 flake has happened here) |
+| Behaviour matrix | **260 / 260** |
+| Unauthorised money moved | **₹0.00** across 540 journeys |
+| Duplicate payments | **0** |
+| Dangerous false negatives | **0** |
+| Escalation recall | **1.0** |
+| Escalation precision | 0.6511 full corpus · **0.6346 held-out**, scored once |
+| `authorize()` p50 | **27.3 µs** |
 
-## Run it
+**The precision number is not good, and it is the honest one.** 0.6346 means
+about one escalation in three was unnecessary friction. That is the trade:
+recall 1.0 and zero dangerous false negatives, bought with false positives. The
+held-out split was scored **once** and never tuned against.
+
+**Every corpus here was written by the author.** That is the single largest
+threat to all of it, generating more cases makes it worse rather than better,
+and it is why independent evaluation is scored `EXTERNAL` rather than passed.
+
+→ [Baseline](docs/FINAL_BASELINE.md) · [Full evidence index](docs/FINAL_EVIDENCE.md) ·
+[Readiness](docs/PROTOTYPE_READINESS.md)
+
+---
+
+## REMIT does not win its own benchmark
+
+Seven agent policies, same 540 journeys, same catalog, same code:
+
+| Agent | Score | Revenue | Unauthorised |
+|---|---|---|---|
+| **Frugal buyer** | **100.0** | ₹913,566 | ₹0 |
+| Growth hacker | 99.01 | ₹904,504 | ₹0 |
+| **REMIT (balanced)** | **97.66** | ₹892,184 | ₹0 |
+| Unbounded agent | 10.26 | **₹1,270,852** | **₹737,930** |
+
+Frugal Buyer beats REMIT, and the result is left in because it is true: on a
+corpus where the cheapest satisfying purchase is usually right, "buy the
+cheapest thing" beats "check whether this is what was authorised" — until the
+agent is wrong.
+
+The last row is the argument. The **highest-earning** agent moved ₹737,930
+nobody authorised.
+
+---
+
+## Things I broke so you don't have to
+
+[`FAILURES.md`](FAILURES.md) is **54 entries** long. A few worth reading:
+
+| # | What happened |
+|---|---|
+| 45 | A restart re-bumped `catalog_version`, re-keying idempotency — **double charge on redeploy** |
+| 47 | Six processes **forked the audit chain permanently**; a threading lock had hidden it |
+| 48 | Cross-tenant idempotency collision: tenant B told "replayed", handed A's order, given **nothing** |
+| 50 | A race **inside** the context manager written to fix races. 1-in-3, in the money path |
+| 51 | `/v1` documented Bearer auth for two weeks and never implemented it — headless clients silently got a new identity every call |
+| 52 | My own receipt verifier cried tampering on a **healthy** chain |
+
+Several of those were found by writing a test that read the prose, or by
+building a client against my own protocol. None were removed for being
+embarrassing.
+
+---
+
+## Razorpay
+
+REMIT integrates with **Razorpay test mode**: real orders, real webhooks,
+**no real money**.
+
+REMIT **explores** what an authorization layer between autonomous agents and a
+payment rail would need to guarantee, and **demonstrates** it end to end against
+that rail. It is **not affiliated with, endorsed by, or adopted by Razorpay**,
+and nothing here reflects internal Razorpay information.
+
+---
+
+## Run it yourself
 
 ```bash
+git clone https://github.com/KenidoesCode/remit
+cd remit
 pip install -r requirements.txt
-uvicorn remit.api:api --reload          # http://127.0.0.1:8000
-
-pytest -q                               # 630+ tests
-python eval/run_eval.py                 # 540-case evaluation
-python eval/matrix.py                   # 260 explicit edge cases
-python eval/attacks.py                  # 32 attacks, live
-python eval/scale.py                    # load ladder, writes results/scale.json
-python agents/external_agent.py http://127.0.0.1:8000
+python -m uvicorn remit.api:api --port 8099
 ```
 
-No API key required for any of it. `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET`
-switch the gateway from the fake to Razorpay **test mode**; without them
-everything still runs, and `/health` says which gateway is actually attached
-rather than implying one.
+```bash
+python verify.py          # tests, attacks, matrix, evaluation
+remit --url http://127.0.0.1:8099 doctor
+```
 
-## Who built this
+### Repository
 
-**Pranauv Shrinaath S.** — *techuilaguy*, your friendly neighbourhood
-developer. B.Tech CSE (AI/ML) at SRM, class of 2028. Blockchain domain director
-at Codenex. I build things I probably should not be attempting yet, and then I
-write down what broke.
+| | |
+|---|---|
+| [`remit/`](remit/) | the engine: policy, grounding, authority, ledger, `/v1` |
+| [`packages/sdk/`](packages/sdk/) | the TypeScript SDK and `remit` CLI |
+| [`policy/`](policy/) | the 21 clauses, as data |
+| [`eval/`](eval/) | attacks, matrix, corpus, scale ladder |
+| [`tests/`](tests/) | 719 tests |
+| [`docs/`](docs/) | protocol, security, threat model, readiness |
+| [`web/`](web/) | the site |
+| [`FAILURES.md`](FAILURES.md) | every real defect, and its regression test |
 
-That last part is not a personality trait, it is the method. `FAILURES.md` is
-46 entries long because every one of them cost me something and I would rather
-a reviewer read them from me than find them themselves.
+---
+
+## Contributing
+
+[`CONTRIBUTING.md`](CONTRIBUTING.md) · [`SECURITY.md`](SECURITY.md) ·
+[`CHANGELOG.md`](packages/sdk/CHANGELOG.md) · [`LICENSE`](LICENSE)
+
+The most useful contribution is an attack that works. If you find one, it goes
+in `FAILURES.md` with your name on it and a regression test underneath it.
+
+---
+
+<div align="center">
+
+**Built by [techuilaguy](https://github.com/KenidoesCode)** — Pranauv Shrinaath S.
+*your friendly neighbourhood developer*
 
 > With great autonomy comes great authorization.
 
----
+**[⭐ Star REMIT](https://github.com/KenidoesCode/remit)** if you want to see
+where this goes.
 
-*Razorpay test mode. Real orders, no real money. Synthetic catalog, written by
-the author — which is the largest threat to every number in this file, and is
-said here rather than left to be discovered.*
+</div>

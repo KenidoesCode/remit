@@ -13,3 +13,7 @@ deploy/one.html
 packages/sdk/node_modules/
 packages/sdk/dist/
 packages/sdk/*.tgz
+
+# scratch
+node_modules/
+*.mjs.tmp

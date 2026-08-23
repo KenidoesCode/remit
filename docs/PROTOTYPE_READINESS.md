@@ -5,7 +5,7 @@ evidence actually shows. `PASS` requires evidence that exists. `PARTIAL` names
 what remains. `EXTERNAL` means the code is complete and verification needs
 something this environment cannot provide — and it is never counted as PASS.*
 
-**At:** 22 August 2026 · 704 test cases · 260/260 matrix · 32/32 attacks ·
+**At:** 23 August 2026 · 719 test cases · 260/260 matrix · 32/32 attacks ·
 ₹0 unauthorised · precision 0.6346 held-out · recall 1.0 · 0 dangerous FN
 
 ---
@@ -119,7 +119,14 @@ identical verdicts, and `v1.py` is grepped for `authorize(`, `create_order`,
 ### 16 · External integration — **PASS**
 `agents/external_agent.py` imports `json` and `urllib`. A test asserts it stays
 that way.
-**Evidence:** `test_protocol.py::test_the_external_agent_imports_nothing_from_this_repository`.
+
+**And now the stronger form of the same claim:** `remit-sdk@0.1.0` is published
+on the public npm registry. It was installed **from registry.npmjs.org** into a
+directory containing no REMIT source, and driven end to end — intent, decision,
+execute, retry (same payment, `replayed: true`), receipt verified against
+locally recomputed hashes, revoke, and a refused purchase afterwards. The
+malicious-agent example blocked 9/9 from that same directory.
+**Evidence:** `test_protocol.py::test_the_external_agent_imports_nothing_from_this_repository`; `npm view remit-sdk`; `docs/FINAL_0_TO_100_AUDIT.md`.
 
 ### 17 · Recovery and reconciliation — **PARTIAL**
 Restart tested against a real file for payments, revocations, authority state,

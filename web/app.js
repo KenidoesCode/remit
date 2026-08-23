@@ -1761,6 +1761,75 @@ document.addEventListener("DOMContentLoaded", async () => {
     e.preventDefault();
     ask($("#utterance").value.trim() || $("#utterance").placeholder);
   });
+  // ── protected content zones ───────────────────────────────────────────
+  //
+  // The decorative field is told, every frame's worth of layout, exactly where
+  // the readable content is. It then does not draw there. Nothing about the
+  // text changes: no padding, no backing plate, no reduced contrast. The
+  // decoration yields.
+  //
+  // Only what is ON SCREEN is sent. The canvas is position:fixed, so viewport
+  // coordinates from getBoundingClientRect are already the canvas's own
+  // coordinate system -- no conversion, and therefore no conversion bug.
+  const PROTECT = [
+    "#nav", "#hero h1", "#hero .lede", "#hero .eyebrow", ".cta",
+    ".act-head h2", ".act-head .lede", ".act-head .kicker",
+    "p", "li", "td", "th", "code", "pre", "button", "a.sdk-btn",
+    ".num", ".stat", ".sdk-cmd", ".sdk-code", ".sdk-facts", ".sdk-thesis",
+    "input", "label", "h1", "h2", "h3", "h4",
+    "#hero a", ".act-head a", ".chips button", ".ask button", ".ask input",
+  ].join(",");
+
+  // The element LIST changes rarely (sections mount, data renders), so it is
+  // cached and refreshed on mutation. The RECTS change every frame while a
+  // reveal animation is running, so they are measured inside the draw tick --
+  // see GL.zoneProvider. One querySelectorAll per mutation, one layout read
+  // per frame, and zones that cannot be stale by construction.
+  let zoneEls = [];
+  let zoneElsRaf = 0;
+
+  function refreshZoneElements() {
+    zoneElsRaf = 0;
+    zoneEls = Array.prototype.slice.call(document.querySelectorAll(PROTECT));
+  }
+
+  function scheduleZoneElements() {
+    if (zoneElsRaf) return;
+    zoneElsRaf = requestAnimationFrame(refreshZoneElements);
+  }
+
+  function currentZones() {
+    const vh = innerHeight, vw = innerWidth;
+    const out = [];
+    for (let i = 0; i < zoneEls.length; i++) {
+      const el = zoneEls[i];
+      if (!el.isConnected) continue;
+      const r = el.getBoundingClientRect();
+      if (r.width <= 0 || r.height <= 0) continue;
+      if (r.bottom < -40 || r.top > vh + 40) continue;
+      if (r.right < -40 || r.left > vw + 40) continue;
+      out.push({ x: r.left, y: r.top, w: r.width, h: r.height });
+    }
+    return out;
+  }
+
+  const _gl = window.REMITGL;
+  if (_gl) _gl.zoneProvider = currentZones;
+
+  addEventListener("resize", scheduleZoneElements, { passive: true });
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(scheduleZoneElements);
+  new MutationObserver(scheduleZoneElements).observe(document.body, {
+    childList: true, subtree: true,
+  });
+  refreshZoneElements();
+
+  // Exposed for the collision test, which needs a synchronous recompute after
+  // it scrolls rather than waiting on a mutation.
+  window.__remitUpdateZones = function () {
+    refreshZoneElements();
+    if (_gl) _gl.zones = currentZones();
+  };
+
   // ── copy buttons on the install commands ──────────────────────────────
   // navigator.clipboard needs a secure context and permission, and it rejects
   // silently in enough situations (http, iframes, older browsers) that a copy

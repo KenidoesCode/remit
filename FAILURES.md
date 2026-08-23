@@ -2292,3 +2292,52 @@ in prose that no test read. #51 was a security control in a docstring that no
 test read. This is a **build artefact** that nothing inspected — I verified the
 thing I built, never the thing that would be distributed. `npm pack` is not
 `npm publish`, and the only honest check is one that looks at the output.
+
+## 55. A test that kept a stale number alive
+
+**What happened.** The site's "what this is not" block — the honest-limits list,
+the one part of the summary whose entire job is to undersell the project — said:
+
+> *"One process, SQLite, **no tenancy**, no IdP. Prototype readiness is scored
+> at **51/100** in docs/HARDENING_AUDIT.md."*
+
+Tenancy shipped days earlier (#48). Multi-process correctness shipped with it
+(#47). The 51/100 came from a scorecard that had since been replaced by a
+criterion-by-criterion readiness document with a different scale entirely.
+
+So the block was **wrong in both directions at once**: it understated what the
+system does, and it cited a score with no live document behind it. I have spent
+this whole project arguing that a number without evidence is worthless, on a
+page that was carrying one.
+
+**The part that stings.** When I fixed it, the test suite went red:
+
+```
+for must in ("test mode", "synthetic", "author", "51/100"):
+    assert must in text
+```
+
+`tests/test_opening_browser.py` **asserted the stale string**. I had written a
+test to make sure the honest-limits block could never quietly disappear — a
+good instinct — and implemented it by pinning a literal figure. From that moment
+the number could not drift without breaking the build, which sounds like the
+right property and is the opposite of it: the number was already wrong, and the
+only thing still insisting on it was the test.
+
+A test that pins a number does not keep the number true. **It keeps the number.**
+
+**The fix.** The test now asserts the *substance* — that the block still names
+test mode, the synthetic catalog, the self-authored corpus, and readiness — and
+adds one negative assertion, that the text does **not** say "no tenancy",
+because that is the specific claim that went stale in the flattering-to-nobody
+direction.
+
+`tests/test_stated_numbers.py` (#49) could not have caught this: it reads
+Markdown and Python source, and this string was rendered into the DOM by
+JavaScript from an API response. Same class of bug, one layer out of reach of
+the tool built for it — which is worth knowing about the tool.
+
+**What it changed.** The limits block now lists seven things instead of four,
+including two that did not exist before (no external trust anchor, no identity
+provider) and one correction (multi-process is tested; multi-*host* is not).
+Longer, less flattering, and true.

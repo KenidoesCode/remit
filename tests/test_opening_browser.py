@@ -356,8 +356,16 @@ def test_the_executive_room_states_its_own_limits(site, browser):
     # rather than "the copy is not on screen yet".
     text = pg.evaluate(
         "document.querySelector('#execOut .ex-limits').textContent").lower()
-    for must in ("test mode", "synthetic", "author", "51/100"):
+    # Substance, not a pinned figure. This used to assert the literal string
+    # "51/100", which meant the test PROTECTED a stale number: tenancy had been
+    # built and the scorecard replaced, and the only thing still insisting on
+    # the old score was the test asserting it. A test that pins a number keeps
+    # the number alive after it stops being true. FAILURES #55.
+    for must in ("test mode", "synthetic", "author", "readiness"):
         assert must in text, (must, text[:200])
+    # And the specific claim that went stale in the OTHER direction: it said
+    # "no tenancy" long after tenancy shipped.
+    assert "no tenancy" not in text, "the limits block understates what exists"
     ctx.close()
 
 
