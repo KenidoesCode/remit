@@ -107,6 +107,7 @@ function opening() {
 
   const done = () => {
     lock(false);
+    window.__remitIntroPlaying = false;
     removeEventListener("wheel", swallow);
     removeEventListener("touchmove", swallow);
     document.body.dataset.intro = "done";
@@ -171,88 +172,124 @@ function opening() {
   // sentences and a beat between them, which no amount of easing makes fit in
   // three seconds. The backstop moves with it -- and it is still a plain
   // setTimeout, because an intro that can strand the page is not a feature.
-  // 8.65s of timeline plus a margin. It has to clear the timeline (or it cuts
-  // the opening off mid-sentence) without being a second gate of its own.
-  const hardStop = setTimeout(done, 9400);
+  // ~8.3s of timeline, plus the capped wait for type metrics below it, plus a
+  // margin. It has to clear both (or it cuts the opening off mid-sentence)
+  // without becoming a second gate of its own.
+  const hardStop = setTimeout(done, 9700);
   const finish = () => { clearTimeout(hardStop); done(); };
 
-  try {
-    // Route BEFORE measuring: the dash animation is driven by
-    // getTotalLength(), so a path re-routed afterwards animates against a
-    // stale length and never fully draws.
-    if (window.__remitRouteSignals) window.__remitRouteSignals();
-    const paths = [...el.querySelectorAll("#webshot path")];
-    if (REDUCED) {
+  // ── wait for the type to stop moving, THEN route, THEN measure ────────
+  // Routing picks a lane by measuring where the text actually is. Run it at
+  // DOMContentLoaded and it measures FALLBACK type: the byline and the a.k.a.
+  // line sit at different heights once the real face arrives, and a lane that
+  // was clear becomes a line through both of them.
+  //
+  // The old code papered over that by re-routing at 400ms and 1400ms, which
+  // fixed the geometry and broke the drawing -- the dash lengths had already
+  // been measured, so the ribbon rendered as disconnected fragments. Both
+  // bugs are the same mistake: measuring something before it stopped moving.
+  //
+  // So: settle, route, measure, play, and never touch it again. The wait is
+  // capped, because document.fonts.ready can hang on a slow network and an
+  // opening that waits forever is worse than one that plays in a fallback
+  // face. FAILURES #56.
+  const play = () => {
+    try {
+      // Route BEFORE measuring: the dash animation is driven by
+      // getTotalLength(), so a path re-routed afterwards animates against a
+      // stale length and never fully draws.
+      const webshot = document.getElementById("webshot");
+      if (window.__remitRouteSignals) window.__remitRouteSignals();
+      // Routed. From here the geometry is frozen until done() releases it.
+      window.__remitIntroPlaying = true;
+      const paths = [...el.querySelectorAll("#webshot path")];
+      if (REDUCED) {
+        gsap.set(".intro-mark, .intro-exp, .intro-lab, .intro-by, .intro-aka",
+                 { opacity: 1 });
+        gsap.set(".intro-said p", { opacity: 1 });
+        gsap.set("#webshot .anchor", { opacity: 1 });
+        if (webshot) webshot.setAttribute("data-armed", "1");
+        // Reduced motion removes the MOTION, not the reading time. Everything is
+        // on screen at once, so it needs less than the animated path but still
+        // enough to read three lines.
+        setTimeout(finish, 3800);
+        return;
+      }
+      paths.forEach(p => {
+        const len = p.getTotalLength();
+        p.style.strokeDasharray = len;
+        p.style.strokeDashoffset = len;
+      });
+      // Only now is the ribbon safe to look at. Until the dashes exist the
+      // paths render at full length, and that undrawn line is half of the
+      // half-second of clutter a first-time visitor sees. CSS hides #webshot
+      // until this attribute appears.
+      if (webshot) webshot.setAttribute("data-armed", "1");
       gsap.set(".intro-mark, .intro-exp, .intro-lab, .intro-by, .intro-aka",
-               { opacity: 1 });
-      gsap.set(".intro-said p", { opacity: 1 });
-      gsap.set("#webshot .anchor", { opacity: 1 });
-      // Reduced motion removes the MOTION, not the reading time. Everything is
-      // on screen at once, so it needs less than the animated path but still
-      // enough to read three lines.
-      setTimeout(finish, 4200);
-      return;
-    }
-    paths.forEach(p => {
-      const len = p.getTotalLength();
-      p.style.strokeDasharray = len;
-      p.style.strokeDashoffset = len;
-    });
-    gsap.set(".intro-mark, .intro-exp, .intro-lab, .intro-by, .intro-aka",
-             { opacity: 0, y: 14 });
-    gsap.set(".intro-said p", { opacity: 0, y: 10 });
-    gsap.set(".intro-mark", { letterSpacing: "0.5em" });
+               { opacity: 0, y: 14 });
+      gsap.set(".intro-said p", { opacity: 0, y: 10 });
+      gsap.set(".intro-mark", { letterSpacing: "0.5em" });
 
-    const t = gsap.timeline({ onComplete: finish });
-    t.to(paths[2], { strokeDashoffset: 0, duration: .52, ease: "power3.in" }, .22)
-     .to([paths[0], paths[1]], { strokeDashoffset: 0, duration: .5,
-                                 ease: "power2.in", stagger: .05 }, .34)
-     .to("#webshot .anchor", { opacity: 1, duration: .12 }, .74)
-     .fromTo("#webshot .anchor", { attr: { r: 1 } }, { attr: { r: 5.5 },
-              duration: .5, ease: "power3.out" }, .74)
-     .to(".intro-mark", { opacity: 1, y: 0, letterSpacing: "0.22em",
-                          duration: .7, ease: "expo.out" }, .78)
-     .to(".intro-exp", { opacity: 1, y: 0, duration: .55, ease: "expo.out" }, 1.16)
-     .to(".intro-lab", { opacity: 1, y: 0, duration: .55, ease: "expo.out" }, 1.42)
-     .to(".intro-by", { opacity: 1, y: 0, duration: .45, ease: "expo.out" }, 1.78)
-     .to(".intro-aka", { opacity: 1, y: 0, duration: .45, ease: "expo.out" }, 1.98)
-     // the title card clears, and then the two sentences that are the whole
-     // reason this thing exists. The gap between them is deliberate: the
-     // second line is a different thought and it should arrive as one.
-     // ~8.6s end to end, and every number here is a trade between two real
-     // failure modes.
-     //
-     // The first version ran the two sentences in 1.7s each, which is about
-     // the time it takes to NOTICE a sentence rather than read one. The
-     // correction over-shot: 16 seconds is not a title sequence, it is a
-     // toll gate on the front door, and a visitor who has to wait that long
-     // to reach the product mostly leaves.
-     //
-     // So: the title card gets 2.4s (it is four lines, but they are short and
-     // largely typographic), and each sentence holds ~2.2s at full strength --
-     // eight and twelve words, which reads comfortably at ~4 words/second and
-     // is above the 3.5s-combined floor the copy needs.
-     .to(".intro-mid", { scale: .97, opacity: 0, duration: .4,
-                         ease: "power2.inOut" }, 2.05)
-     // The fade-in is counted, not ignored: a line is not readable until it is
-     // actually opaque, so a 0.55s ease and a 2.2s window leave only ~1.8s of
-     // legible text. The test measures RENDERED opacity and caught exactly
-     // that. Shorter fades, and the dim points moved out to match.
-     .to(".said-1", { opacity: 1, y: 0, duration: .4, ease: "expo.out" }, 2.2)
-     .to(".said-1", { opacity: .3, duration: .35 }, 4.55)
-     .to(".said-2", { opacity: 1, y: 0, duration: .4, ease: "expo.out" }, 4.7)
-     .to(".said-2", { opacity: .3, duration: .35 }, 7.05)
-     // the payoff line, which is also the line on the hero
-     .to(".said-3", { opacity: 1, y: 0, duration: .45, ease: "expo.out" }, 7.15)
-     // the thread pulls the mark into the system it made
-     .to(paths, { strokeDashoffset: (i, tgt) => -tgt.getTotalLength(),
-                  duration: .55, ease: "power2.inOut" }, 7.45)
-     .to("#webshot .anchor", { opacity: 0, duration: .3 }, 2.1)
-     .to(".intro-said", { opacity: 0, y: -8, duration: .45,
-                          ease: "power2.inOut" }, 7.6);
-  } catch (e) {
-    finish();
-  }
+      // ── the opening, retimed ────────────────────────────────────────────
+      // Three revisions got here, and the arithmetic is the point.
+      //
+      // The two sentences CANNOT be shortened. They are eight and twelve words,
+      // a first-time reader takes unfamiliar copy at roughly four words a
+      // second, and tests/test_hero_signal.py samples RENDERED opacity and
+      // refuses anything under 2.0s a line. Cutting them to feel snappier is
+      // not a faster opening, it is an unreadable one, and the test is there
+      // precisely so that trade cannot be made by accident.
+      //
+      // So the time comes from everywhere else instead: the title card is
+      // compressed from 2.05s to 1.34s, the gaps between lines are tightened,
+      // and the tail no longer dawdles. That pays for the one-second hold on
+      // the payoff line -- which is the last thing on screen and had none --
+      // and still lands at ~8.3s against the old 8.6s, with a second of it now
+    // spent holding the payoff line instead of hurrying past it.
+      const t = gsap.timeline({ onComplete: finish });
+      t.to(paths[2], { strokeDashoffset: 0, duration: .44, ease: "power3.in" }, .10)
+       .to([paths[0], paths[1]], { strokeDashoffset: 0, duration: .42,
+                                   ease: "power2.in", stagger: .04 }, .20)
+       .to("#webshot .anchor", { opacity: 1, duration: .1 }, .52)
+       .fromTo("#webshot .anchor", { attr: { r: 1 } }, { attr: { r: 5.5 },
+                duration: .42, ease: "power3.out" }, .52)
+       .to(".intro-mark", { opacity: 1, y: 0, letterSpacing: "0.22em",
+                            duration: .6, ease: "expo.out" }, .30)
+       .to(".intro-exp", { opacity: 1, y: 0, duration: .45, ease: "expo.out" }, .62)
+       .to(".intro-lab", { opacity: 1, y: 0, duration: .45, ease: "expo.out" }, .80)
+       .to(".intro-by", { opacity: 1, y: 0, duration: .38, ease: "expo.out" }, 1.00)
+       .to(".intro-aka", { opacity: 1, y: 0, duration: .38, ease: "expo.out" }, 1.14)
+       // the title card clears, and the two sentences the project came out of
+       .to(".intro-mid", { scale: .97, opacity: 0, duration: .34,
+                           ease: "power2.inOut" }, 1.34)
+       .to("#webshot .anchor", { opacity: 0, duration: .28 }, 1.38)
+       // Each holds ~2.35s of MEASURED full opacity. 2.07s was the estimate; the
+       // test came back with 1983ms, which is the entire reason it samples the
+       // rendered value rather than trusting the numbers on these lines. The
+       // sampler also varies by ~100ms between runs, so the margin is real.
+       .to(".said-1", { opacity: 1, y: 0, duration: .34, ease: "expo.out" }, 1.48)
+       .to(".said-1", { opacity: .3, duration: .3 }, 4.00)
+       .to(".said-2", { opacity: 1, y: 0, duration: .34, ease: "expo.out" }, 4.10)
+       .to(".said-2", { opacity: .3, duration: .3 }, 6.62)
+       // The payoff, and the last thing on screen before the product. It gets a
+       // full second to itself -- it had none, and a line that arrives and is
+       // immediately swept away reads as a transition rather than a statement.
+       .to(".said-3", { opacity: 1, y: 0, duration: .4, ease: "expo.out" }, 6.72)
+       // ... one second of nothing happening, deliberately ...
+       // the thread pulls the mark into the system it made
+       .to(paths, { strokeDashoffset: (i, tgt) => -tgt.getTotalLength(),
+                    duration: .5, ease: "power2.inOut" }, 7.82)
+       .to(".intro-said", { opacity: 0, y: -8, duration: .38,
+                            ease: "power2.inOut" }, 7.90);
+    } catch (e) {
+      finish();
+    }
+  };
+  const settled = (document.fonts && document.fonts.ready)
+    ? Promise.race([document.fonts.ready,
+                    new Promise((r) => setTimeout(r, 600))])
+    : Promise.resolve();
+  settled.then(play, play);
 }
 
 /* ═════════════════════════ hero choreography ═══════════════════════════ */
@@ -2013,7 +2050,18 @@ document.addEventListener("DOMContentLoaded", async () => {
   function routeAllSignals() {
     signalRaf = 0;
     routeSignal("#heroSignal", "#hero", ".hero-mark", ".hero-expand", ".sig-node");
-    routeSignal("#webshot", "#intro", ".intro-mid", ".intro-said", ".anchor", "largest");
+    // The intro ribbon is DRAWN by animating a dash offset measured from the
+    // path's own length at t=0. Rewriting `d` after that measurement leaves
+    // the dasharray describing a path that no longer exists, so the line
+    // renders as disconnected fragments with a hole in the middle -- which is
+    // exactly what shipped, because two re-route timers fire at 400ms and
+    // 1400ms, in the middle of an opening that runs for eight seconds.
+    //
+    // A re-route mid-animation is not an improvement. It is the bug. So the
+    // opening owns this geometry for as long as it is playing, and nothing
+    // else may touch it. FAILURES #56.
+    if (!window.__remitIntroPlaying)
+      routeSignal("#webshot", "#intro", ".intro-mid", ".intro-said", ".anchor", "largest");
   }
   function scheduleSignals() {
     if (signalRaf) return;

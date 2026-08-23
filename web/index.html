@@ -254,9 +254,7 @@
   <div class="act-head">
     <span class="kicker">00 · in one minute</span>
     <h2>An agent with a payment key will eventually be wrong. This is what happens when it is.</h2>
-    <p class="lede">Every number below is read out of a generated result file and
-      carries the key it came from. Nothing on this page is typed by hand, and the
-      one that matters most is the one that is zero.</p>
+    <p class="lede">Every number here is read out of a generated result file. None are typed by hand &mdash; and the one that matters most is zero.</p>
   </div>
   <div id="execOut"></div>
 
@@ -287,10 +285,7 @@
   <div class="act-head">
     <span class="kicker">build with remit</span>
     <h2>REMIT is infrastructure, so it installs like infrastructure.</h2>
-    <p class="lede">Everything on this page runs through the same
-      <code>/v1</code> protocol an external agent talks to. The SDK is that
-      protocol with types on it &mdash; no second engine, no second
-      authorization check.</p>
+    <p class="lede">The SDK is the same <code>/v1</code> protocol an external agent talks to, with types on it. No second engine, no second authorization check.</p>
   </div>
 
   <div class="sdk-wrap">
@@ -308,9 +303,6 @@
         <button class="sdk-copy" type="button" data-copy="npm i -g remit-sdk"
                 aria-label="Copy npm i -g remit-sdk">copy</button>
       </div>
-      <p class="sdk-note">The package is <code>remit-sdk</code>: <code>remit</code>
-        was already taken on npm by an unrelated library. The CLI binary is
-        still <code>remit</code>.</p>
     </div>
 
     <pre class="sdk-code" aria-label="Example usage"><code><span class="k">import</span> { Remit } <span class="k">from</span> <span class="s">"remit-sdk"</span>;
@@ -353,14 +345,11 @@ d.failed;   <span class="c">// ["MATCH-001"]</span></code></pre>
   </div>
 
   <ul class="sdk-facts">
-    <li>TypeScript SDK, ESM and CommonJS</li>
+    <li>TypeScript &mdash; ESM and CommonJS</li>
     <li>Zero runtime dependencies</li>
-    <li>Agent independent</li>
     <li>Model independent &mdash; bring your own</li>
-    <li>Authorization first</li>
-    <li>Audit receipts, verified locally</li>
-    <li>Revocation, forward only</li>
-    <li>Razorpay test-mode integration</li>
+    <li>Receipts verified locally</li>
+    <li>Razorpay test mode</li>
   </ul>
 
   <div class="sdk-links">
@@ -381,9 +370,7 @@ d.failed;   <span class="c">// ["MATCH-001"]</span></code></pre>
   <div class="act-head">
     <span class="kicker">01 · live commerce</span>
     <h2>Say one sentence. The agent does the rest — inside a line you drew.</h2>
-    <p class="lede">The catalog is the neighbourhood. The payment is across town.
-      What you authorised is a thread anchored to something that does not move,
-      and the agent may wander anywhere on this side of it without asking.</p>
+    <p class="lede">The catalog is the neighbourhood; the payment is across town. The agent may wander anywhere inside the line you drew, without asking.</p>
   </div>
 
   <form class="ask" id="askForm">
@@ -403,10 +390,7 @@ d.failed;   <span class="c">// ["MATCH-001"]</span></code></pre>
   <div class="act-head">
     <span class="kicker">01 · live commerce — the agent moves</span>
     <h2>It searches, compares, picks — and then the merchant gets a turn.</h2>
-    <p class="lede">Ranking is deterministic; the model never scores a product. The
-      revenue engine proposes accessories with a reason and an exact marginal cost.
-      Nothing is added silently, and offers are accepted against a running total, so
-      three that each fit cannot jointly break the envelope.</p>
+    <p class="lede">Ranking is deterministic &mdash; the model never scores a product. Offers are accepted against a running total, so three that each fit cannot jointly break the envelope.</p>
   </div>
   <div id="act2Out"></div>
 
@@ -414,11 +398,7 @@ d.failed;   <span class="c">// ["MATCH-001"]</span></code></pre>
   <div class="act-head sub-head walk-head" id="walk">
     <span class="kicker">01 · the approval walk-through</span>
     <h2>What an approval is worth, in five presses.</h2>
-    <p class="lede">A step-up that returns <span class="mono">true</span> from a
-      checkbox is not an approval — it is a boolean, and a boolean cannot answer
-      the only question a dispute asks: <em>approved what?</em> Every press below
-      is a real request to the running engine. Each one states what it expects
-      before it fires, and then shows what actually came back.</p>
+    <p class="lede">A checkbox returning true is a boolean, and a boolean cannot answer the only question a dispute asks: approved <em>what</em>? Every press below hits the running engine.</p>
   </div>
   <div class="walk" id="walkOut"></div>
 </section>
@@ -430,12 +410,7 @@ d.failed;   <span class="c">// ["MATCH-001"]</span></code></pre>
   <div class="act-head">
     <span class="kicker">02 · REMIT arena</span>
     <h2>Seven agents. One world. The one that earns most does not win.</h2>
-    <p class="lede">Every agent gets the same merchant, the same catalog, the same
-      prices and the same 540 sentences. Only the policy data differs — and the
-      boundary itself is one key in that data, so all seven execute the same code in
-      the same order. The score is economic value × trust², and money moved outside
-      the mandate is subtracted rather than counted. An agent that spent what nobody
-      authorised cannot place first, however much it made.</p>
+    <p class="lede">Same merchant, same catalog, same 540 sentences; only the policy data differs, and the boundary is one key in it. Money moved outside the mandate is subtracted &mdash; so the biggest earner cannot place first.</p>
   </div>
   <div id="arenaOut"></div>
 </section>
@@ -446,9 +421,7 @@ d.failed;   <span class="c">// ["MATCH-001"]</span></code></pre>
   <div class="act-head">
     <span class="kicker">03 · the autonomy frontier</span>
     <h2>Take the human's authority. Move it. Watch the system re-decide.</h2>
-    <p class="lede">Same basket, different permission. Every drag re-runs the real
-      policy engine — no model call, no payment, no writes — and reports how long the
-      pure function actually took.</p>
+    <p class="lede">Same basket, different permission. Every drag re-runs the real policy engine &mdash; no model call, no payment &mdash; and reports how long the pure function took.</p>
   </div>
   <div id="act3Out"></div>
   <div id="frontierOut"></div>
@@ -467,11 +440,7 @@ d.failed;   <span class="c">// ["MATCH-001"]</span></code></pre>
   <div class="act-head">
     <span class="kicker">04 · counterfactual</span>
     <h2>What would have happened if REMIT had not been there?</h2>
-    <p class="lede">The same sentence, run twice in this same process. "Without" is
-      not a different build and not a mock — it is the identical journey under a
-      policy file with <code>integrity_layer</code> set to false. One key. Type
-      anything; both worlds run on the test-mode gateway and no money moves in
-      either.</p>
+    <p class="lede">The same sentence, twice, in this process. &ldquo;Without&rdquo; is not a mock &mdash; it is the identical journey with <code>integrity_layer</code> set to false. One key. No money moves in either.</p>
   </div>
   <form class="ask" id="cfForm">
     <span class="prompt">›</span>
@@ -485,11 +454,7 @@ d.failed;   <span class="c">// ["MATCH-001"]</span></code></pre>
   <div class="act-head sub-head" id="limits">
     <span class="kicker">04 · a limit is not an authority</span>
     <h2>Every row below is under the number the human said. Only two are what they asked for.</h2>
-    <p class="lede">A spending limit can ask exactly one question: <em>how much</em>.
-      It cannot ask <em>what</em>, and those come apart the moment an agent has a
-      choice. Nothing here is scripted to a verdict — each row runs through the
-      real pipeline on a throwaway instance, so if REMIT starts allowing the
-      laptop stand, this table will say so.</p>
+    <p class="lede">A spending limit can ask one question: how much. It cannot ask <em>what</em>. Nothing here is scripted &mdash; if REMIT starts allowing the laptop stand, this table will say so.</p>
   </div>
   <div id="limitsOut"></div>
 </section>
@@ -500,20 +465,14 @@ d.failed;   <span class="c">// ["MATCH-001"]</span></code></pre>
   <div class="act-head">
     <span class="kicker">05 · break REMIT</span>
     <h2>Go on. Try.</h2>
-    <p class="lede">Every lever below is wired to a real code path. Move the price
-      after selection, delist the product mid-journey, revoke the authority, forge a
-      webhook. REMIT names the clause that caught it.</p>
+    <p class="lede">Every lever is wired to a real code path. Move the price after selection, delist mid-journey, revoke the authority, forge a webhook. REMIT names the clause that caught it.</p>
   </div>
   <div class="levers" id="levers"></div>
   <div id="breakOut"></div>
 
   <div class="act-head sub-head" style="margin-top:52px">
     <span class="kicker">the self-destruction lab</span>
-    <p class="lede">Twenty-three attacks REMIT runs against itself, across the three
-      surfaces an agentic commerce system actually exposes. Each one names the
-      invariant it is trying to break <em>before</em> it runs, and fires live against
-      a throwaway instance when you press it. One of them is expected to succeed —
-      the list says which, and why.</p>
+    <p class="lede">Twenty-three attacks REMIT runs against itself, live, on a throwaway instance. Each names the invariant it is trying to break. <b>One is expected to succeed</b> &mdash; the list says which, and why.</p>
   </div>
   <div id="attackOut"></div>
 
@@ -526,11 +485,7 @@ d.failed;   <span class="c">// ["MATCH-001"]</span></code></pre>
   <div class="act-head">
     <span class="kicker">06 · evaluation lab</span>
     <h2>260 explicit cases, thirteen categories, and one invariant over all of them.</h2>
-    <p class="lede">Each case asserts a <em>property</em>, not an expected product —
-      pinning a SKU would make this a change-detector. The universal invariant is the
-      one that matters: whatever happens, if money moved on AUTO it moved inside the
-      line that was stated. The matrix caught a real bug on its first run, and that
-      bug is written up in room 08.</p>
+    <p class="lede">Each case asserts a property, not an expected product &mdash; pinning a SKU would make this a change-detector. The invariant: if money moved on AUTO, it moved inside the line that was stated.</p>
   </div>
   <div id="labOut"></div>
 </section>
@@ -541,10 +496,7 @@ d.failed;   <span class="c">// ["MATCH-001"]</span></code></pre>
   <div class="act-head">
     <span class="kicker">07 · audit trail</span>
     <h2>Every decision this instance has taken, in order, hash-chained.</h2>
-    <p class="lede">A single writer proves ordering, not honesty — so this is
-      tamper-<em>evident</em>, not tamper-proof, and the difference is stated rather
-      than glossed. Each link carries the previous hash; break one and every link
-      after it stops verifying.</p>
+    <p class="lede">A single writer proves ordering, not honesty &mdash; this is tamper-<b>evident</b>, not tamper-proof. Each link carries the previous hash; break one and every link after it stops verifying.</p>
   </div>
   <div id="auditOut"></div>
 </section>
@@ -555,17 +507,13 @@ d.failed;   <span class="c">// ["MATCH-001"]</span></code></pre>
   <div class="act-head">
     <span class="kicker">08 · engineering</span>
     <h2>What it earned, what it refused, and everything I broke on the way.</h2>
-    <p class="lede">540 synthetic journeys, four arms, one catalog, one seed. Every
-      number on this page is read out of a generated result file. None of them are
-      typed by hand.</p>
+    <p class="lede">540 synthetic journeys, four arms, one catalog, one seed. Every number is read out of a generated result file, not typed by hand.</p>
   </div>
   <div id="numbersOut"></div>
 
   <div class="act-head sub-head">
     <span class="kicker">stuff i broke</span>
-    <p class="lede">Written when it happened, not reconstructed. Parsed straight out
-      of FAILURES.md at request time, so this page cannot drift from the repo — it
-      <em>is</em> the repo.</p>
+    <p class="lede">Written when it happened, not reconstructed. Parsed out of <code>FAILURES.md</code> at request time, so this page cannot drift from the repo.</p>
   </div>
   <div id="failOut"></div>
 
@@ -581,10 +529,7 @@ d.failed;   <span class="c">// ["MATCH-001"]</span></code></pre>
   <div class="act-head">
     <span class="kicker">open source</span>
     <h2>Think this should exist?</h2>
-    <p class="lede">REMIT is MIT licensed, the evidence regenerates from one
-      command, and the failures are written down rather than tidied away.
-      Inspect it, break it, build on it &mdash; and if you want to see where it
-      goes, follow it.</p>
+    <p class="lede">MIT licensed. The evidence regenerates from one command, and the failures are written down rather than tidied away.</p>
   </div>
 
   <div class="oss-actions">
@@ -599,10 +544,6 @@ d.failed;   <span class="c">// ["MATCH-001"]</span></code></pre>
        target="_blank" rel="noopener">READ THE DOCS</a>
     <a class="sdk-btn ghost" href="#act4">TRY TO BREAK IT</a>
   </div>
-
-  <p class="oss-note">No star counter here on purpose &mdash; GitHub already
-    knows the number, and a figure typed into a page is exactly the kind of
-    thing the rest of this project exists to argue against.</p>
 </section>
 
 
@@ -610,13 +551,11 @@ d.failed;   <span class="c">// ["MATCH-001"]</span></code></pre>
 
 <footer>
   <div class="close">
-    <p>I'd rather build things like this with people who are just as curious about
-      where the money actually goes.</p>
+    <p>I&rsquo;d rather build things like this with people who are just as curious
+      about where the money actually goes.</p>
     <div class="sig">
-      <b>techuilaguy</b> · pranauv shrinaath s. · srm institute of science and technology
+      <b>techuilaguy</b> &middot; pranauv shrinaath s. &middot; srm institute of science and technology
     </div>
-    <p class="fine">Assembled mostly between 11pm and 4am, powered by something with
-      wings. No affiliation — just gratitude, and a recycling problem.</p>
   </div>
 </footer>
 

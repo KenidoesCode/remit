@@ -2341,3 +2341,70 @@ the tool built for it — which is worth knowing about the tool.
 including two that did not exist before (no external trust anchor, no identity
 provider) and one correction (multi-process is tested; multi-*host* is not).
 Longer, less flattering, and true.
+
+---
+
+## 56. The half-second of clutter at the front door, and the ribbon I broke fixing it
+
+**What happened.** Somebody opened the site for the first time and described
+what they saw better than any of my tests had: *things shatter and become
+clumsy for half a second, and then everything becomes clear.*
+
+They were right, and it was two bugs standing next to each other.
+
+**The shatter.** Every line of the opening — the wordmark, the expansion, the
+lab line, the byline, the a.k.a. and all three sentences — is *placed* on
+screen by the GSAP timeline, which begins by setting them all to `opacity: 0`
+and then reveals them in order. Until that JavaScript runs they sit at their
+CSS defaults, which is fully visible. They are all absolutely positioned in the
+same centred box.
+
+So the first paint is seven lines of type stacked on top of each other. Then
+the library loads, the timeline starts, everything vanishes, and the animation
+plays. Load, shatter, settle.
+
+I had already found and fixed this **in a hidden tab** (#35, and the branch
+guarding it is still there). What I never considered is that the visible tab
+has the same gap — it is just shorter. On a fast connection it is two frames
+and I never saw it. On a phone, it is the first impression.
+
+The start state belonged in CSS, where it is true on the first frame, rather
+than in JavaScript, where it is true on the first frame *that runs*.
+
+**The ribbon.** The red thread through the opening is drawn by animating a
+stroke dash offset measured from each path's own length at `t=0`. Two timers
+re-route those paths at 400ms and 1400ms — to correct for type metrics settling
+— which rewrites `d` and leaves the dash lengths describing a path that no
+longer exists. The thread rendered as **disconnected fragments with a hole in
+the middle**, and had been doing so on the live site.
+
+The comment directly above the measurement said *"Route BEFORE measuring: a
+path re-routed afterwards animates against a stale length and never fully
+draws."* I wrote that. I then shipped two timers that do exactly it.
+
+**The fix, and the fix that was wrong.** My first attempt simply froze the
+geometry while the opening plays. That fixed the fragments and broke the
+routing: the thread now went through the byline and the a.k.a. line, because
+the one route it kept was measured against **fallback type**, before the real
+face loaded. That is what the 400ms and 1400ms timers were compensating for.
+`tests/test_hero_signal.py` caught it immediately, at 1440px, by name.
+
+Both bugs are the same mistake: **measuring something before it has stopped
+moving.** So the opening now waits for `document.fonts.ready` (capped at 600ms,
+because that promise can hang and an opening that waits forever is worse than
+one that plays in Helvetica), *then* routes, *then* measures, then plays — and
+nothing touches that geometry again until it is done.
+
+**The regression test.** `test_nothing_is_stacked_before_the_animation_library_arrives`
+stalls the GSAP request by 1.2s and asserts nothing is on screen. Against the
+old CSS it fails with all seven lines listed by name. It also checks the ribbon
+is not painted before its dashes exist.
+
+**Two more things this turned up.** `test_the_opening_cannot_strand_the_product`
+asserted `"catch (e) {\n    finish();"` — four literal spaces — and went red
+the moment the body was wrapped in a function. It was asserting whitespace.
+And the no-new-colour test stripped four known ids and then banned every
+remaining `#`, so it failed on the comment "FAILURES #56" while being unable to
+catch a real `#E5352B` behind a fifth id. It now strips comments and matches
+the shape of a hex colour. Both were verified to still fail against a genuine
+violation before being kept.

@@ -5,7 +5,7 @@ this environment. `PARTIAL` names the specific missing thing. `EXTERNAL` means
 the code is complete and verification needs something this environment cannot
 provide — and is never counted as a pass.*
 
-**At:** 23 August 2026 · 753 tests · 32/32 attacks · 260/260 matrix ·
+**At:** 23 August 2026 · 754 tests · 32/32 attacks · 260/260 matrix ·
 ₹0 unauthorised · `remit-sdk@0.1.0` live on npm
 
 Regenerate the numbers: `python verify.py`
@@ -59,7 +59,7 @@ it. What the remaining nine are is stated below rather than averaged away.
 | 21 | Held-out evaluation | **PASS** | dev/test split; TEST scored **once** |
 | 22 | Precision | **PASS** | 0.6346 held-out. Bad, reported, never tuned against |
 | 23 | Recall | **PASS** | 1.0, 0 dangerous false negatives |
-| 24 | Failure history | **PASS** | `FAILURES.md`, 54 entries, none removed |
+| 24 | Failure history | **PASS** | `FAILURES.md`, 55 entries, none removed |
 | 25 | Observability | **PARTIAL** | per-stage p50/p95/p99 with sample counts. **No collector, tracing or alerting** |
 | 26 | Recovery | **PARTIAL** | restart tested against a real file. **No backups, no PITR, no tested restore** |
 | 27 | Reconciliation | **PASS** | `UNKNOWN` state owned by the reconciler; unresolvable payments surfaced |

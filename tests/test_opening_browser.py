@@ -386,3 +386,66 @@ def test_the_page_says_remit_does_not_win_its_own_benchmark(site, browser):
     assert "not the highest-earning" in text or "frugal agent beats" in text, \
         "the page stopped saying that REMIT loses its own benchmark"
     ctx.close()
+
+
+def test_nothing_is_stacked_before_the_animation_library_arrives(site, browser):
+    """The half-second of clutter a first-time visitor actually saw.
+
+    Every line of the opening is placed on screen by the GSAP timeline. Until
+    that runs they sit at their CSS defaults -- so the frames between first
+    paint and `gsap.set(..., {opacity: 0})` show the wordmark, the expansion,
+    the lab line, the byline, the a.k.a. and all three sentences stacked on
+    top of each other in the same centred box. Then the timeline starts, hides
+    them, and plays. Load, shatter, settle.
+
+    `test_a_hidden_tab_never_paints_a_stacked_opening` covers the hidden-tab
+    version of this. This is the ordinary one: a visible tab on a slow
+    connection, which is every first visit on a phone.
+
+    Reproduced by stalling the animation library rather than by guessing at
+    frame timings -- if the start state lives in CSS the delay is invisible,
+    and if it lives in JavaScript the pile-up is on screen for as long as the
+    stall lasts. FAILURES #56.
+    """
+    page = browser.new_page(viewport={"width": 1440, "height": 900})
+    try:
+        # Hold every animation library at the door.
+        def stall(route):
+            time.sleep(1.2)
+            route.continue_()
+        page.route("**/gsap*.js", stall)
+        page.route("**/ScrollTrigger*.js", stall)
+
+        page.goto(site, wait_until="commit")
+        page.wait_for_timeout(500)          # mid-stall: no GSAP has run yet
+
+        visible = page.evaluate("""() => {
+          const out = [];
+          document.querySelectorAll(
+            "#intro .intro-mark, #intro .intro-exp, #intro .intro-lab," +
+            "#intro .intro-by, #intro .intro-aka, #intro .intro-said p"
+          ).forEach((el) => {
+            const cs = getComputedStyle(el);
+            if (parseFloat(cs.opacity || "1") > 0.05 &&
+                cs.visibility !== "hidden" && cs.display !== "none")
+              out.push((el.className || el.tagName) + " :: " +
+                       (el.textContent || "").trim().slice(0, 44));
+          });
+          return out;
+        }""")
+        assert not visible, (
+            "the opening is on screen before anything animated it -- "
+            "these lines are stacked in one box:\n  " + "\n  ".join(visible))
+
+        # And the ribbon, which is revealed by animating a dash offset that
+        # only exists once JavaScript has measured it. Before that, the paths
+        # render at full length: the finished line, drawn instantly.
+        assert page.evaluate("""() => {
+          const svg = document.getElementById("webshot");
+          if (!svg) return true;
+          if (svg.hasAttribute("data-armed")) return true;   // JS got there
+          return getComputedStyle(svg).visibility === "hidden";
+        }"""), "the intro ribbon is painted before its dashes are measured"
+    finally:
+        page.unroute_all(behavior="ignoreErrors")
+        page.close()

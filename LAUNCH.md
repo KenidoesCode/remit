@@ -89,7 +89,7 @@ Open source, MIT, with a TypeScript SDK on npm and a CLI.
 > · A race **inside** the code I wrote to fix races. One in three, in the money
 >   path, found by running the attack suite one more time than I needed to.
 >
-> All 53 of those are written down in FAILURES.md, with the regression test
+> All 55 of those are written down in FAILURES.md, with the regression test
 > underneath each one. Not sanitised. That file is the part of the repo I would
 > read first.
 >
@@ -157,7 +157,7 @@ Open source, MIT, with a TypeScript SDK on npm and a CLI.
 > · two tenants collided on one payment
 > · a race inside the code I wrote to fix races
 >
-> 53 entries. None removed for being embarrassing.
+> 55 entries. None removed for being embarrassing.
 
 **5/**
 

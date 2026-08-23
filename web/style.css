@@ -576,6 +576,33 @@ body:not([data-intro="done"]) #glow{visibility:hidden}
 #webshot .w1{stroke-width:1.6}
 #webshot .w2{stroke-width:.7;opacity:.34}
 #webshot .anchor{fill:var(--signal);opacity:0}
+
+/* THE FIRST HALF-SECOND.
+   Every line of this intro is put on screen by the timeline. Until that
+   runs they sit at their CSS defaults, so the very first paint -- before
+   GSAP has loaded, let alone executed -- shows the wordmark, the expansion,
+   the lab line, the byline and all three sentences stacked on top of each
+   other in the same centred box. Then the timeline starts, hides them all,
+   and plays. That flash-then-settle is the "shatter" a visitor sees, and no
+   amount of animation polish fixes it, because it happens BEFORE any script.
+
+   So the start state moves into CSS, where it is true on the first frame.
+   Keyed on the class the inline head script adds, which means a visitor with
+   JavaScript disabled -- who will never get a timeline to reveal any of it --
+   still sees the copy instead of a black rectangle. FAILURES #56. */
+html.intro-locked .intro-mark,
+html.intro-locked .intro-exp,
+html.intro-locked .intro-lab,
+html.intro-locked .intro-by,
+html.intro-locked .intro-aka,
+html.intro-locked .intro-said p{opacity:0}
+
+/* Same failure, one layer down: the ribbon is revealed by animating a dash
+   offset measured in JS from the path's own length. Before that measurement
+   exists the paths render at FULL length -- the finished line, drawn
+   instantly, with no animation. app.js sets data-armed once the dashes are
+   in place. */
+html.intro-locked #webshot:not([data-armed]){visibility:hidden}
 .intro-mid{position:relative;text-align:center;padding:0 24px;max-width:min(900px,92vw)}
 .intro-mark{
   font-family:var(--mono);font-weight:700;

@@ -295,9 +295,12 @@ def test_the_opening_sentences_stay_long_enough_to_read(server, browser):
     words.
 
     This samples opacity over the whole opening and asserts each line holds at
-    full strength for at least 2.8s, and that the pair spans at least 6s. It
-    measures the rendered opacity rather than reading the timeline numbers,
-    because the timeline is what would be edited by accident.
+    full strength for at least 2.0s, that the pair totals at least 4.2s, and
+    that the whole thing stays under 12s. It measures the rendered opacity
+    rather than reading the timeline numbers, because the timeline is what
+    would be edited by accident -- and the prose above the asserts is the
+    other thing that gets edited by accident, which is why it now says the
+    same numbers the asserts do.
     """
     page = browser.new_page(viewport={"width": 1440, "height": 900})
     try:

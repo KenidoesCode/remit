@@ -10,6 +10,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import re
+
 import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -49,7 +51,12 @@ def test_the_opening_cannot_strand_the_product():
     depend on the animation finishing, or on GSAP existing at all."""
     assert "hardStop = setTimeout(done" in APP
     assert 'document.body.dataset.intro = "done"' in APP
-    assert "catch (e) {\n    finish();" in APP
+    # Matched without its indentation. The first version pinned four spaces and
+    # broke the day the body was wrapped in a function to wait for type
+    # metrics -- a real change, correctly made, failing a test that was
+    # asserting whitespace. What matters is that the catch reveals the page.
+    assert re.search(r"catch \(e\) \{\s*finish\(\);", APP), \
+        "the opening's catch no longer ends in finish()"
 
 
 def test_reduced_motion_still_gets_the_branding():
@@ -68,9 +75,17 @@ def test_the_opening_introduces_no_new_colour_or_family():
     for token in ("var(--bg)", "var(--signal)", "var(--ink)", "var(--mono)",
                   "var(--sans)"):
         assert token in block, token
-    assert "#" not in block.replace("#intro", "").replace("#webshot", "") \
-        .replace("#page", "").replace("#gl", "").replace("#glow", ""), \
-        "a raw hex colour appeared in the opening"
+    # Look for a HEX COLOUR, not for the character "#".
+    #
+    # The first version stripped the four selectors it knew about and then
+    # banned every remaining "#". That is a deny-list of ids masquerading as a
+    # colour check: it failed on the comment "FAILURES #56", which is not a
+    # colour, and it would have passed a genuine `#E5352B` the day somebody
+    # added a fifth id to the strip list. Comments are removed and the actual
+    # shape of the thing being banned is matched instead.
+    code = re.sub(r"/\*.*?\*/", "", block, flags=re.S)
+    stray = re.findall(r"#[0-9a-fA-F]{3,8}\b", code)
+    assert not stray, f"a raw hex colour appeared in the opening: {stray}"
 
 
 @pytest.mark.parametrize("path_class", ["w1", "w2", "anchor"])
