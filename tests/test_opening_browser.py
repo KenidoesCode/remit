@@ -142,7 +142,7 @@ def test_the_opening_runs_from_the_top_once_the_tab_is_looked_at(site, browser):
         f"the opening jumped to its end state instead of starting: {start}")
 
     # The hard stop is 9600ms and the teardown gets its own 700ms clock.
-    pg.wait_for_function("document.body.dataset.intro === 'done'", timeout=15000)
+    pg.wait_for_function("document.body.dataset.intro === 'done'", timeout=40000)
     pg.wait_for_timeout(1200)
     assert pg.locator("#intro").count() == 0, "the opening never tore itself down"
     assert pg.locator("#askForm").is_visible(), "the page did not arrive"
@@ -162,7 +162,7 @@ def test_a_tab_that_is_never_looked_at_still_gets_the_page(site, browser):
     ctx.add_init_script(HIDE)                # and never cleared
     pg = ctx.new_page()
     pg.goto(site, wait_until="domcontentloaded")
-    pg.wait_for_function("document.body.dataset.intro === 'done'", timeout=20000)
+    pg.wait_for_function("document.body.dataset.intro === 'done'", timeout=40000)
     pg.wait_for_timeout(1200)
     assert pg.locator("#intro").count() == 0, (
         "a tab that is never looked at is still waiting behind the opening")
@@ -185,8 +185,12 @@ def test_the_hero_offers_the_walkthrough(site, browser):
     ctx = browser.new_context(viewport={"width": 1440, "height": 900})
     pg = ctx.new_page()
     pg.goto(site, wait_until="domcontentloaded")
-    pg.wait_for_function("document.body.dataset.intro === 'done'", timeout=15000)
-    link = pg.locator('.cta-row a[href="#walk"]')
+    pg.wait_for_function("document.body.dataset.intro === 'done'", timeout=40000)
+    # Scoped to the hero rather than to .cta-row: the button row is now the
+    # five destinations the brief requires, and the walkthrough moved to the
+    # quiet second line under it. What matters is that a reviewer landing here
+    # is still offered something to press, not which div it sits in.
+    link = pg.locator('#hero a[href="#walk"]')
     assert link.count() == 1 and link.is_visible()
     assert pg.locator("#walkOut .wstep").count() == 5
     ctx.close()
@@ -230,7 +234,7 @@ def test_the_arena_rows_do_not_collide(site, browser, width):
     ctx = browser.new_context(viewport={"width": width, "height": 900})
     pg = ctx.new_page()
     pg.goto(site, wait_until="domcontentloaded")
-    pg.wait_for_function("document.body.dataset.intro === 'done'", timeout=20000)
+    pg.wait_for_function("document.body.dataset.intro === 'done'", timeout=40000)
     # wait on the count, not on visibility: the leaderboard is fetched, and a
     # cold instance can take longer than a selector's patience.
     pg.wait_for_function(
@@ -258,7 +262,7 @@ def test_every_arena_score_is_readable(site, browser, width):
     ctx = browser.new_context(viewport={"width": width, "height": 900})
     pg = ctx.new_page()
     pg.goto(site, wait_until="domcontentloaded")
-    pg.wait_for_function("document.body.dataset.intro === 'done'", timeout=20000)
+    pg.wait_for_function("document.body.dataset.intro === 'done'", timeout=40000)
     # wait on the count, not on visibility: the leaderboard is fetched, and a
     # cold instance can take longer than a selector's patience.
     pg.wait_for_function(
@@ -282,7 +286,7 @@ def test_the_arena_keeps_every_number_and_the_unflattering_ranking(site, browser
     ctx = browser.new_context(viewport={"width": 1440, "height": 900})
     pg = ctx.new_page()
     pg.goto(site, wait_until="domcontentloaded")
-    pg.wait_for_function("document.body.dataset.intro === 'done'", timeout=20000)
+    pg.wait_for_function("document.body.dataset.intro === 'done'", timeout=40000)
     # wait on the count, not on visibility: the leaderboard is fetched, and a
     # cold instance can take longer than a selector's patience.
     pg.wait_for_function(

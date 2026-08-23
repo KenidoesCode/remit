@@ -125,17 +125,26 @@ function opening() {
   // sentences and a beat between them, which no amount of easing makes fit in
   // three seconds. The backstop moves with it -- and it is still a plain
   // setTimeout, because an intro that can strand the page is not a feature.
-  const hardStop = setTimeout(done, 9600);
+  // 16.1s of timeline + a margin. This was 9600 and the timeline is now longer,
+  // which would have cut the opening off mid-sentence -- the backstop against
+  // a stranded page becoming the reason the page strands the SENTENCE.
+  const hardStop = setTimeout(done, 17600);
   const finish = () => { clearTimeout(hardStop); done(); };
 
   try {
+    // Route BEFORE measuring: the dash animation is driven by
+    // getTotalLength(), so a path re-routed afterwards animates against a
+    // stale length and never fully draws.
+    if (window.__remitRouteSignals) window.__remitRouteSignals();
     const paths = [...el.querySelectorAll("#webshot path")];
     if (REDUCED) {
       gsap.set(".intro-mark, .intro-exp, .intro-lab, .intro-by, .intro-aka",
                { opacity: 1 });
       gsap.set(".intro-said p", { opacity: 1 });
       gsap.set("#webshot .anchor", { opacity: 1 });
-      setTimeout(finish, 2600);
+      // Reduced motion removes the MOTION, not the reading time. Everything is
+      // on screen at once, and it still has to be legible before it goes.
+      setTimeout(finish, 6000);
       return;
     }
     paths.forEach(p => {
@@ -164,25 +173,37 @@ function opening() {
      // the title card clears, and then the two sentences that are the whole
      // reason this thing exists. The gap between them is deliberate: the
      // second line is a different thought and it should arrive as one.
+     // The title card holds long enough to actually be read -- it carries the
+     // expansion of the acronym, the positioning line and the byline, which is
+     // four lines of new information for a first-time visitor.
      .to(".intro-mid", { scale: .97, opacity: 0, duration: .5,
-                         ease: "power2.inOut" }, 3.0)
-     .to(".said-1", { opacity: 1, y: 0, duration: .6, ease: "expo.out" }, 3.35)
-     .to(".said-1", { opacity: .28, duration: .5 }, 5.05)
-     .to(".said-2", { opacity: 1, y: 0, duration: .6, ease: "expo.out" }, 5.15)
-     .to(".said-3", { opacity: 1, y: 0, duration: .5, ease: "expo.out" }, 6.65)
+                         ease: "power2.inOut" }, 4.4)
+     // Then the two sentences the whole project came out of.
+     //
+     // These used to appear at 3.35 and dim 1.7s later, which is roughly the
+     // time it takes to notice a sentence has appeared -- not to read it. A
+     // first-time visitor reads at maybe 3.5 words/second on unfamiliar copy;
+     // "I gave an AI permission to spend money" is eight words and the second
+     // line is twelve. So each one now holds for ~3.4s at full opacity, and
+     // the pair spans about 8 seconds rather than 3.
+     .to(".said-1", { opacity: 1, y: 0, duration: .7, ease: "expo.out" }, 4.8)
+     .to(".said-1", { opacity: .3, duration: .6 }, 8.3)
+     .to(".said-2", { opacity: 1, y: 0, duration: .7, ease: "expo.out" }, 8.5)
+     .to(".said-2", { opacity: .3, duration: .6 }, 12.2)
+     .to(".said-3", { opacity: 1, y: 0, duration: .6, ease: "expo.out" }, 12.4)
      // the thread pulls the mark into the system it made
      .to(paths, { strokeDashoffset: (i, tgt) => -tgt.getTotalLength(),
-                  duration: .6, ease: "power2.inOut" }, 7.1)
-     .to("#webshot .anchor", { opacity: 0, duration: .35 }, 3.05)
-     .to(".intro-said", { opacity: 0, y: -8, duration: .5,
-                          ease: "power2.inOut" }, 7.45);
+                  duration: .7, ease: "power2.inOut" }, 15.2)
+     .to("#webshot .anchor", { opacity: 0, duration: .35 }, 4.45)
+     .to(".intro-said", { opacity: 0, y: -8, duration: .6,
+                          ease: "power2.inOut" }, 15.5);
   } catch (e) {
     finish();
   }
 }
 
 /* ═════════════════════════ hero choreography ═══════════════════════════ */
-const HERO_IN_PLACE = "#nav,.eyebrow,.headline .in,.sub,.cta-row,.st,.tag,#glow";
+const HERO_IN_PLACE = "#nav,.eyebrow,.hero-top .in,.hero-install,.cta-row,.st,.tag,#glow,#heroSignal .sig,#heroSignal .sig-node";
 
 function heroIn() {
   if (REDUCED) {
@@ -209,9 +230,22 @@ function heroIn() {
   gsap.set("#glow", { opacity: 0, scale: 1.06 });
   gsap.set("#nav", { opacity: 0, y: -20, filter: "blur(8px)" });
   gsap.set(".eyebrow", { opacity: 0, y: 14 });
-  gsap.set(".headline .in", { yPercent: 108, filter: "blur(16px)", opacity: 0 });
-  gsap.set(".sub", { opacity: 0, y: 20, filter: "blur(6px)" });
+  gsap.set(".hero-mark .in", { yPercent: 108, filter: "blur(16px)", opacity: 0 });
+  gsap.set(".hero-expand .in,.hero-thesis .in,.hero-by .in,.hero-aka .in",
+           { opacity: 0, y: 16, filter: "blur(6px)" });
+  gsap.set(".hero-install", { opacity: 0, y: 18, filter: "blur(6px)" });
+  gsap.set(".hero-line-1 .in,.hero-line-2 .in", { opacity: 0, y: 14 });
   gsap.set(".cta-row", { opacity: 0, y: 16, scale: .93 });
+  // The signal draws itself in. strokeDasharray is set from the real path
+  // length so it works at any viewport -- a hardcoded dash length is a dash
+  // length that is wrong on a phone.
+  if (window.__remitRouteSignals) window.__remitRouteSignals();
+  const sigs = [...document.querySelectorAll("#heroSignal .sig")];
+  sigs.forEach(pth => {
+    const len = pth.getTotalLength ? pth.getTotalLength() : 2400;
+    gsap.set(pth, { strokeDasharray: len, strokeDashoffset: len, opacity: 1 });
+  });
+  gsap.set("#heroSignal .sig-node", { opacity: 0, scale: 0, transformOrigin: "center" });
   gsap.set(".st", { opacity: 0, y: 22, filter: "blur(7px)" });
   gsap.set(".tag", { opacity: 0, x: 18, filter: "blur(5px)" });
   gsap.set(".scroll-cue", { opacity: 0 });
@@ -222,15 +256,24 @@ function heroIn() {
    .to("#gl", { opacity: 1, duration: 2.2 }, .25)
    .to("#nav", { opacity: 1, y: 0, filter: "blur(0px)", duration: .9 }, .05)
    .to(".eyebrow", { opacity: 1, y: 0, duration: .8 }, .28)
-   .to(".headline .in", {
+   .to(sigs, { strokeDashoffset: 0, duration: 2.1, ease: "power2.inOut", stagger: .1 }, .1)
+   .to("#heroSignal .sig-node", { opacity: 1, scale: 1, duration: .7,
+                                  ease: "back.out(2)" }, 1.15)
+   .to(".hero-mark .in", {
      yPercent: 0, opacity: 1, filter: "blur(0px)",
-     duration: 1.35, stagger: .16,
+     duration: 1.35,
    }, .35)
-   .to(".sub", { opacity: 1, y: 0, filter: "blur(0px)", duration: 1 }, .95)
-   .to(".cta-row", { opacity: 1, y: 0, scale: 1, duration: .9 }, 1.18)
-   .to(".st", { opacity: 1, y: 0, filter: "blur(0px)", duration: .9, stagger: .12 }, 1.4)
-   .to(".tag", { opacity: 1, x: 0, filter: "blur(0px)", duration: .9 }, 1.6)
-   .to(".scroll-cue", { opacity: 1, duration: .6 }, 1.9);
+   .to(".hero-expand .in", { opacity: 1, y: 0, filter: "blur(0px)", duration: .9 }, .95)
+   .to(".hero-thesis .in", { opacity: 1, y: 0, filter: "blur(0px)", duration: .9 }, 1.12)
+   .to(".hero-by .in", { opacity: 1, y: 0, filter: "blur(0px)", duration: .7 }, 1.34)
+   .to(".hero-aka .in", { opacity: 1, y: 0, filter: "blur(0px)", duration: .7 }, 1.46)
+   .to(".hero-install", { opacity: 1, y: 0, filter: "blur(0px)", duration: .85 }, 1.6)
+   .to(".hero-line-1 .in", { opacity: 1, y: 0, duration: .7 }, 1.82)
+   .to(".hero-line-2 .in", { opacity: 1, y: 0, duration: .7 }, 1.96)
+   .to(".cta-row", { opacity: 1, y: 0, scale: 1, duration: .9 }, 2.1)
+   .to(".st", { opacity: 1, y: 0, filter: "blur(0px)", duration: .9, stagger: .12 }, 2.3)
+   .to(".tag", { opacity: 1, x: 0, filter: "blur(0px)", duration: .9 }, 2.45)
+   .to(".scroll-cue", { opacity: 1, duration: .6 }, 2.7);
   return t;
 }
 
@@ -1761,6 +1804,211 @@ document.addEventListener("DOMContentLoaded", async () => {
     e.preventDefault();
     ask($("#utterance").value.trim() || $("#utterance").placeholder);
   });
+  // ── routing the red signal around the typography ───────────────────────
+  //
+  // The ribbon used to be fixed `d` attributes in a 1600x900 viewBox. That
+  // cannot work: the text block reflows at every breakpoint, so geometry that
+  // clears the wordmark at 1440 runs straight through it at 390. The first
+  // version of tests/test_hero_signal.py failed at all seven widths.
+  //
+  // So the curve is COMPUTED from where the text actually is. It threads the
+  // real gap between the wordmark and the line under it, and when that gap is
+  // too small to thread -- narrow viewports, where the type stacks tight -- it
+  // routes above the whole block instead. The text is never consulted about
+  // moving.
+  function routeSignal(svgSel, hostSel, aboveSel, belowSel, nodeSel, mode) {
+    const svg = document.querySelector(svgSel);
+    const host = document.querySelector(hostSel);
+    const above = document.querySelector(aboveSel);
+    const below = document.querySelector(belowSel);
+    if (!svg || !host || !above || !below) return;
+
+    const hostRect = host.getBoundingClientRect();
+    const W = Math.max(320, hostRect.width);
+    const H = Math.max(320, hostRect.height);
+    // 1:1 with CSS pixels, so everything below is measured in the same units
+    // the DOM reports. No scaling, and therefore no scaling bug.
+    svg.setAttribute("viewBox", `0 0 ${Math.round(W)} ${Math.round(H)}`);
+    svg.setAttribute("preserveAspectRatio", "none");
+
+    const rel = (el) => {
+      const r = el.getBoundingClientRect();
+      return { top: r.top - hostRect.top, bottom: r.bottom - hostRect.top,
+               left: r.left - hostRect.left, right: r.right - hostRect.left };
+    };
+    const a = rel(above), b = rel(below);
+
+    // Everything the ribbon must not touch, in host-relative pixels.
+    const guardedRects = [];
+    host.querySelectorAll(
+      ".hero-mark,.hero-expand,.hero-thesis,.hero-by,.hero-aka,.hero-install," +
+      // .intro-said p, not .intro-said: the container is a full-viewport
+      // centring wrapper, so protecting IT protects the entire screen, leaves
+      // no lane anywhere, and the router correctly gives up and hides the
+      // ribbon. Protect the words, not the box they are centred in.
+      ".hero-line-1,.hero-line-2,.cta-row,.eyebrow,.intro-mid,.intro-said p"
+    ).forEach((el) => {
+      const r = el.getBoundingClientRect();
+      if (r.width <= 0 || r.height <= 0) return;
+      guardedRects.push({ top: r.top - hostRect.top, bottom: r.bottom - hostRect.top,
+                          left: r.left - hostRect.left, right: r.right - hostRect.left });
+    });
+
+    // Pick a LANE: a horizontal band with no protected content in it.
+    //
+    // The first version threaded one named gap and, when that gap was too
+    // small, routed "above the block" -- straight through the eyebrow, which
+    // sits above the block. Naming two elements and hoping is not a routing
+    // algorithm. This looks at every protected rect, sorts them, and takes the
+    // largest empty band: above the first, between any two, or below the last.
+    const MIN_GAP = 26;
+    const bands = [];
+    const sorted = [...guardedRects].sort((p1, p2) => p1.top - p2.top);
+    if (sorted.length) {
+      bands.push({ from: 0, to: sorted[0].top, why: "above everything" });
+      for (let i = 0; i < sorted.length - 1; i++) {
+        // bottom of the deepest rect so far, not just the previous one:
+        // rects can overlap vertically.
+        let bottom = sorted[i].bottom;
+        for (let k = 0; k <= i; k++) bottom = Math.max(bottom, sorted[k].bottom);
+        bands.push({ from: bottom, to: sorted[i + 1].top, why: "between" });
+      }
+      const last = sorted.reduce((m, r) => Math.max(m, r.bottom), 0);
+      bands.push({ from: last, to: H, why: "below everything" });
+    } else {
+      bands.push({ from: 0, to: H, why: "empty hero" });
+    }
+
+    // Prefer the band just under the wordmark when it is usable -- that is the
+    // composition the design asks for -- otherwise the roomiest one.
+    const usable = bands.filter((bd) => bd.to - bd.from >= MIN_GAP);
+    if (!usable.length) { svg.style.display = "none"; return; }
+    svg.style.display = "";
+    // The intro's two text blocks occupy the SAME centred region at different
+    // moments -- the title card fades out as the sentences fade in -- so
+    // "the band between them" is a few pixels of coincidence, not a lane. For
+    // that layer the only honest answer is the roomiest band, which is the
+    // empty space below everything.
+    const preferred = mode === "largest" ? null : usable.find(
+      (bd) => a.bottom >= bd.from - 2 && a.bottom <= bd.to + 2 && bd.why === "between");
+    const lane = preferred
+      || usable.reduce((m, bd) => (bd.to - bd.from > m.to - m.from ? bd : m), usable[0]);
+    const yDip = (lane.from + lane.to) / 2;
+    const laneH = lane.to - lane.from;
+    const framing = lane.why;
+
+    const pad = 26;
+    let left = W, right = 0, topMost = H;
+    guardedRects.forEach((r) => {
+      left = Math.min(left, r.left);
+      right = Math.max(right, r.right);
+      topMost = Math.min(topMost, r.top);
+    });
+    left = Math.max(0, left - pad);
+    right = Math.min(W, right + pad);
+    const cx = (left + right) / 2;
+
+    // Is there a lane down either side to sweep in from? On a phone the copy
+    // is nearly full-bleed and there is not. Rather than squeezing a sweep
+    // through a gap that does not exist, the ribbon becomes a single flat
+    // stroke lying in the gap it already threads -- which is safe for every x,
+    // because at that height the hero is a centred column and nothing else is
+    // there. Subtler on small screens, which is also what it should be.
+    const sideRoom = left > 56 && (W - right) > 56 && topMost > 46;
+
+    const belly = Math.min(10, Math.max(0, laneH / 2 - 12));
+
+    const y0 = Math.max(14, Math.min(H * 0.12, topMost - 30));
+    const y1 = Math.max(20, Math.min(H * 0.2, topMost - 18));
+
+    const flat = (dy) =>
+      `M ${-60} ${(yDip + dy).toFixed(1)} ` +
+      `C ${(W * 0.3).toFixed(1)} ${(yDip + dy + belly).toFixed(1)}, ` +
+      `${(W * 0.7).toFixed(1)} ${(yDip + dy + belly).toFixed(1)}, ` +
+      `${(W + 60).toFixed(1)} ${(yDip + dy).toFixed(1)}`;
+
+    const sweep = (dy) => [
+      `M ${-60} ${(y0 + dy).toFixed(1)}`,
+      `C ${(left * 0.42).toFixed(1)} ${(y1 + dy).toFixed(1)},`,
+      `${(left - 10).toFixed(1)} ${(yDip + dy).toFixed(1)},`,
+      `${left.toFixed(1)} ${(yDip + dy).toFixed(1)}`,
+      `C ${cx.toFixed(1)} ${(yDip + dy + belly).toFixed(1)},`,
+      `${cx.toFixed(1)} ${(yDip + dy + belly).toFixed(1)},`,
+      `${right.toFixed(1)} ${(yDip + dy).toFixed(1)}`,
+      `C ${(right + (W - right) * 0.5).toFixed(1)} ${(yDip + dy).toFixed(1)},`,
+      `${(W - 40).toFixed(1)} ${(y1 + dy - 24).toFixed(1)},`,
+      `${(W + 60).toFixed(1)} ${(y0 + dy - 34).toFixed(1)}`,
+    ].join(" ");
+
+    const curve = sideRoom ? sweep : flat;
+
+    const paths = svg.querySelectorAll("path");
+    const offsets = sideRoom ? [0, -9, 9, -17] : [0, -5, 5, -9];
+    paths.forEach((pth, i) => {
+      pth.setAttribute("d", curve(offsets[i % offsets.length]));
+    });
+
+    const node = nodeSel ? svg.querySelector(nodeSel) : null;
+    if (node) {
+      node.setAttribute("cx", cx.toFixed(1));
+      node.setAttribute("cy", (yDip + belly * 0.5).toFixed(1));
+    }
+    svg.dataset.framing = framing;
+  }
+
+  let signalRaf = 0;
+  function routeAllSignals() {
+    signalRaf = 0;
+    routeSignal("#heroSignal", "#hero", ".hero-mark", ".hero-expand", ".sig-node");
+    routeSignal("#webshot", "#intro", ".intro-mid", ".intro-said", ".anchor", "largest");
+  }
+  function scheduleSignals() {
+    if (signalRaf) return;
+    signalRaf = requestAnimationFrame(routeAllSignals);
+  }
+  addEventListener("resize", scheduleSignals, { passive: true });
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(scheduleSignals);
+  routeAllSignals();
+  // Type metrics settle late; re-route once things have stopped moving.
+  setTimeout(routeAllSignals, 400);
+  setTimeout(routeAllSignals, 1400);
+  window.__remitRouteSignals = routeAllSignals;
+
+  // ── mobile navigation drawer ──────────────────────────────────────────
+  // Eleven destinations do not fit on a phone, and hiding some of them would
+  // quietly remove pages. So they move into a drawer instead of wrapping.
+  (function () {
+    const toggle = document.getElementById("navToggle");
+    const links = document.getElementById("navLinks");
+    const nav = document.getElementById("nav");
+    if (!toggle || !links || !nav) return;
+
+    // The drawer hangs off the bottom of the nav, so it needs the nav's real
+    // height rather than a guessed one -- the bar is a different height at
+    // every breakpoint.
+    const setNavHeight = () =>
+      nav.style.setProperty("--navh", nav.getBoundingClientRect().height + "px");
+    setNavHeight();
+    addEventListener("resize", setNavHeight, { passive: true });
+
+    const close = () => {
+      links.removeAttribute("data-open");
+      toggle.setAttribute("aria-expanded", "false");
+    };
+    toggle.addEventListener("click", () => {
+      const open = links.getAttribute("data-open") === "1";
+      if (open) return close();
+      setNavHeight();
+      links.setAttribute("data-open", "1");
+      toggle.setAttribute("aria-expanded", "true");
+    });
+    // Picking a destination should get you there, not leave the drawer over it.
+    links.addEventListener("click", (e) => {
+      if (e.target.closest("a")) close();
+    });
+    addEventListener("keydown", (e) => { if (e.key === "Escape") close(); });
+  })();
+
   // ── protected content zones ───────────────────────────────────────────
   //
   // The decorative field is told, every frame's worth of layout, exactly where

@@ -19,6 +19,11 @@
   --sans:"Instrument Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
   --pad:clamp(20px,5vw,64px);
   --maxw:1320px;
+  /* The drawer hangs off the bottom of the nav. JS overwrites this with the
+     bar's measured height; the default is here so the drawer is not
+     mispositioned in the frames before the script runs -- and so the token is
+     defined rather than only assigned at runtime. */
+  --navh:62px;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
@@ -1216,3 +1221,253 @@ button.atk.broke .atk-r{color:var(--ink)}
   .oss-star{min-width:0;width:100%}
   .oss-actions .sdk-btn{width:100%;text-align:center}
 }
+
+/* ══════════════════════════ HERO · the title card ══════════════════════════
+   Centred, cinematic, and quiet. The red signal is atmosphere; the typography
+   is the message. Nothing here introduces a colour that is not already in the
+   palette: --ink, --signal, --line, on --bg. */
+
+#hero{
+  position:relative;
+  min-height:100svh;
+  display:flex;flex-direction:column;justify-content:center;
+  padding:clamp(96px,12vh,150px) 0 clamp(28px,5vh,56px);
+  overflow:hidden;
+}
+
+/* the signal layer — decorative, never interactive, always behind content */
+#heroSignal{
+  position:absolute;inset:0;width:100%;height:100%;
+  pointer-events:none;z-index:0;
+  opacity:.9;
+}
+#heroSignal .sig{
+  fill:none;stroke-linecap:round;
+  stroke:url(#sig1);
+}
+#heroSignal .sig-a{stroke-width:2.6;opacity:.95}
+#heroSignal .sig-b{stroke-width:1.5;opacity:.62;stroke:url(#sig2)}
+#heroSignal .sig-c{stroke-width:1.1;opacity:.42;stroke:url(#sig2)}
+#heroSignal .sig-d{stroke-width:.9;opacity:.5;stroke:url(#sig2)}
+#heroSignal .sig-node{
+  fill:var(--stop);
+  filter:drop-shadow(0 0 14px rgba(255,59,47,.85))
+         drop-shadow(0 0 34px rgba(229,53,43,.45));
+}
+
+/* content sits above the signal, always */
+#hero .hero-top,#hero .hero-bottom,#hero .scroll-cue{position:relative;z-index:2}
+
+#hero .hero-top{
+  display:flex;flex-direction:column;align-items:center;text-align:center;
+  gap:0;
+  /* The older rule caps this at 980px and leaves it flush left inside a wider
+     container, which centred the type inside a box that was itself off-centre.
+     The title card is the composition; it centres on the PAGE. */
+  max-width:none;width:100%;margin-inline:auto;
+}
+
+#hero .eyebrow{margin-bottom:clamp(26px,4.4vh,54px)}
+
+.hero-mark{
+  margin:0;
+  font-family:var(--mono);
+  font-weight:500;
+  font-size:clamp(46px,9.2vw,132px);
+  line-height:1;
+  letter-spacing:clamp(.10em,1.4vw,.20em);
+  /* the tracking is on the right side only, so the block stays optically centred */
+  text-indent:clamp(.10em,1.4vw,.20em);
+  color:var(--ink);
+}
+
+.hero-expand{
+  /* the lane the red signal threads. Under ~26px there is nothing to
+     thread and the ribbon has to route somewhere else entirely. */
+  margin:clamp(34px,5vh,58px) 0 0;
+  max-width:none;
+  font-size:clamp(12px,1.25vw,14px);
+  line-height:1.6;
+  letter-spacing:.02em;
+  opacity:.42;
+}
+
+.hero-thesis{
+  margin:clamp(14px,2vh,22px) 0 0;
+  font-family:var(--mono);
+  font-size:clamp(11.5px,1.35vw,15.5px);
+  line-height:1.75;
+  letter-spacing:.22em;
+  text-transform:uppercase;
+  opacity:.9;
+}
+
+.hero-by{
+  margin:clamp(18px,2.4vh,26px) 0 0;
+  font-family:var(--mono);
+  font-size:clamp(11px,1.15vw,13.5px);
+  letter-spacing:.24em;text-transform:uppercase;
+  color:var(--signal);
+}
+.hero-aka{
+  margin:6px 0 0;
+  font-family:var(--mono);
+  font-size:clamp(10px,1.05vw,12px);
+  letter-spacing:.2em;text-transform:uppercase;
+  opacity:.36;
+}
+
+.hero-install{
+  width:min(560px,92vw);
+  margin:clamp(26px,4vh,44px) auto 0;
+}
+.hero-cmd{
+  background:rgba(255,255,255,.025);
+  padding:15px 15px 15px 18px;
+}
+.hero-cmd code{font-size:clamp(13px,1.5vw,16px)}
+
+.hero-line-1,.hero-line-2{margin:0;max-width:min(46ch,92vw)}
+.hero-line-1{
+  margin-top:clamp(24px,3.4vh,38px);
+  font-size:clamp(15px,1.75vw,20px);
+  opacity:.44;
+}
+.hero-line-2{
+  margin-top:7px;
+  font-size:clamp(16px,2vw,23px);
+  color:var(--ink);
+  letter-spacing:-.01em;
+}
+
+.hero-actions{
+  margin-top:clamp(26px,3.8vh,42px);
+  display:flex;flex-wrap:wrap;justify-content:center;gap:10px;
+}
+.hero-btn{
+  display:inline-flex;align-items:center;gap:8px;
+  font-family:var(--mono);font-size:11.5px;letter-spacing:.14em;
+  text-transform:uppercase;text-decoration:none;color:var(--ink);
+  background:rgba(255,255,255,.02);
+  border:1px solid var(--line);
+  padding:13px 18px;
+  transition:border-color .18s ease,background .18s ease;
+}
+.hero-btn:hover,.hero-btn:focus-visible{
+  border-color:var(--signal);background:rgba(229,53,43,.06);
+}
+.hero-btn:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.hero-btn-star span{color:var(--signal)}
+
+#hero .hero-bottom{margin-top:clamp(34px,6vh,72px)}
+
+@media (max-width:760px){
+  /* narrower viewports leave no clean gap between the wordmark and the
+     tagline, so the ribbon amplitude comes down rather than the text moving */
+  #heroSignal{opacity:.55}
+  .hero-line-1,.hero-line-2{max-width:26ch}
+}
+@media (max-width:480px){
+  .hero-actions{gap:8px}
+  .hero-btn{padding:11px 14px;font-size:10.5px;letter-spacing:.1em}
+}
+@media (prefers-reduced-motion:reduce){
+  #heroSignal{opacity:.4}
+}
+
+/* ══════════════════════ NAV · eleven items, no overflow ═══════════════════
+   All eleven destinations stay visible on desktop. They compress by tracking
+   and gap before anything is hidden, and below 1180px they move into a drawer
+   rather than wrapping into two ragged rows. */
+#nav .links{min-width:0}
+#nav .links a{white-space:nowrap}
+
+.navright{display:flex;align-items:center;gap:clamp(8px,1vw,14px);flex:none}
+.nav-icon{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:30px;height:30px;color:var(--ink);opacity:.6;
+  border:1px solid transparent;transition:opacity .18s ease,border-color .18s ease;
+}
+.nav-icon:hover,.nav-icon:focus-visible{opacity:1;border-color:var(--line)}
+.nav-npm{
+  font-family:var(--mono);font-size:11px;letter-spacing:.12em;
+  text-transform:uppercase;text-decoration:none;color:var(--ink);opacity:.6;
+  border-bottom:1px solid transparent;padding-bottom:2px;
+  transition:opacity .18s ease,border-color .18s ease;
+}
+.nav-npm:hover,.nav-npm:focus-visible{opacity:1;border-bottom-color:var(--signal)}
+.nav-star{
+  display:inline-flex;align-items:center;gap:6px;
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.13em;
+  text-transform:uppercase;text-decoration:none;
+  color:var(--bg);background:var(--signal);
+  padding:8px 13px;transition:opacity .18s ease;
+}
+.nav-star:hover{opacity:.86}
+.nav-star:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+
+#navToggle{display:none}
+
+@media (max-width:1320px){
+  #nav .links{gap:clamp(10px,1.1vw,18px)}
+  #nav .links a{font-size:12px}
+}
+@media (max-width:1180px){
+  /* Drawer. Wrapping eleven labels into two rows looks like a mistake, and
+     hiding some of them silently removes destinations the brief requires. */
+  #navToggle{
+    display:flex;flex-direction:column;justify-content:center;gap:5px;
+    width:38px;height:34px;padding:0 8px;flex:none;
+    background:none;border:1px solid var(--line);cursor:pointer;
+    order:3;
+  }
+  #navToggle span{display:block;height:1px;width:100%;background:var(--ink);opacity:.8;
+    transition:transform .22s ease,opacity .22s ease}
+  #navToggle[aria-expanded="true"] span:first-child{transform:translateY(3px) rotate(45deg)}
+  #navToggle[aria-expanded="true"] span:last-child{transform:translateY(-3px) rotate(-45deg)}
+
+  #nav .links{
+    position:fixed;left:0;right:0;top:var(--navh,62px);
+    display:grid;grid-template-columns:1fr 1fr;gap:0;
+    background:rgba(8,7,6,.97);
+    border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+    max-height:0;overflow:hidden;
+    transition:max-height .3s cubic-bezier(.22,1,.36,1);
+    z-index:60;
+  }
+  #nav .links[data-open="1"]{max-height:70svh;overflow:auto}
+  #nav .links a{
+    padding:15px clamp(16px,4vw,28px);font-size:12.5px;
+    border-bottom:1px solid var(--line);
+  }
+  .navright #buildMode{display:none}
+}
+@media (max-width:560px){
+  #nav .links{grid-template-columns:1fr}
+  .nav-npm{display:none}
+}
+@media (prefers-reduced-motion:reduce){
+  #nav .links{transition:none}
+  #navToggle span{transition:none}
+}
+
+/* the install bar is a terminal line, so it reads left-to-right even though
+   the composition around it is centred */
+.hero-cmd{text-align:left}
+.hero-cmd code{text-align:left}
+
+/* primary action carries the signal colour, as in the reference; the rest stay
+   quiet outlines so there is exactly one thing to click first */
+#hero .cta{
+  background:var(--signal);color:var(--bg);border-color:var(--signal);
+}
+#hero .cta:hover{opacity:.88;background:var(--signal)}
+#hero .cta svg{color:var(--bg)}
+
+.hero-secondary{
+  margin-top:clamp(16px,2.2vh,24px);
+  display:flex;align-items:center;justify-content:center;gap:12px;
+  font-size:13px;opacity:.5;
+}
+.hero-secondary a{color:var(--ink)}
+.hero-secondary span{opacity:.4}

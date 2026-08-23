@@ -20,10 +20,16 @@
      path animated by the GSAP that is already on the page. -->
 <div id="intro" role="group" aria-label="REMIT, model-independent authorization for autonomous commerce. Revocable, Explainable Mandates for Intent-driven Transactions, by techuilaguy, also known as Pranauv Shrinaath. I gave an AI permission to spend money, then tried to work out how much I could trust it.">
   <svg id="webshot" viewBox="0 0 1000 620" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
-    <path class="w2" d="M -120 40 Q 240 110 497 292"/>
-    <path class="w2" d="M 1120 70 Q 760 140 503 292"/>
-    <path class="w1" d="M -140 -30 Q 180 50 499 290"/>
-    <circle class="anchor" cx="500" cy="291" r="3.2"/>
+    <!-- Routed to FRAME the title card, not to converge into it. The old
+         geometry all terminated at (500,291) -- dead centre, which is exactly
+         where REMIT, the expansion and the byline sit, so three red threads
+         ran through the typography. The lines now sweep in from the left,
+         pass BELOW the block, and exit right; the anchor sits in the gap
+         under the text rather than inside it. Text never moved. -->
+    <path class="w2" d="M -120 90  C 180 210 340 470 520 486"/>
+    <path class="w2" d="M 1120 120 C 830 230 700 468 540 486"/>
+    <path class="w1" d="M -140 20  C 220 170 320 452 518 484"/>
+    <circle class="anchor" cx="530" cy="486" r="3.2"/>
   </svg>
   <div class="intro-mid">
     <h1 class="intro-mark">REMIT</h1>
@@ -60,7 +66,12 @@
     <span class="wordmark">REMIT</span>
   </a>
 
-  <div class="links">
+  <button id="navToggle" type="button" aria-expanded="false" aria-controls="navLinks"
+          aria-label="Open navigation">
+    <span aria-hidden="true"></span><span aria-hidden="true"></span>
+  </button>
+
+  <div class="links" id="navLinks">
     <a href="#exec" data-act="exec">summary</a>
     <a href="#sdk" data-act="sdk">build</a>
     <a href="#act1" data-act="act1">commerce</a>
@@ -75,35 +86,113 @@
   </div>
 
   <div class="navright">
-    <span class="sq" aria-hidden="true"></span>
+    <a class="nav-icon" href="https://github.com/KenidoesCode/remit" target="_blank"
+       rel="noopener" aria-label="REMIT on GitHub" title="GitHub">
+      <svg viewBox="0 0 16 16" aria-hidden="true" width="16" height="16"><path fill="currentColor"
+        d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38
+        0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01
+        1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95
+        0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.4 7.4 0 0 1 2-.27c.68 0
+        1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0
+        3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01
+        8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
+    </a>
+    <a class="nav-npm" href="https://www.npmjs.com/package/remit-sdk" target="_blank"
+       rel="noopener">npm</a>
+    <a class="nav-star" href="https://github.com/KenidoesCode/remit" target="_blank"
+       rel="noopener"><span aria-hidden="true">&#9733;</span> Star</a>
     <button id="buildMode" type="button">build mode</button>
   </div>
 </nav>
 
 <!-- ══════════════════════════ hero ══════════════════════════ -->
 <header id="hero">
+  <!-- The red signal. Decorative, aria-hidden, and geometrically routed to
+       FRAME the typography rather than cross it: it enters upper-left, dips
+       through the gap between the wordmark and the tagline, and exits right.
+       tests/test_hero_signal.py asserts it never intersects hero text at any
+       supported width. If the ribbon and a letter ever want the same pixel,
+       the ribbon moves. -->
+  <svg id="heroSignal" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice"
+       aria-hidden="true" focusable="false">
+    <defs>
+      <linearGradient id="sig1" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0"   stop-color="#E5352B" stop-opacity="0"/>
+        <stop offset=".22" stop-color="#E5352B" stop-opacity=".85"/>
+        <stop offset=".55" stop-color="#FF3B2F" stop-opacity="1"/>
+        <stop offset=".85" stop-color="#E5352B" stop-opacity=".5"/>
+        <stop offset="1"   stop-color="#E5352B" stop-opacity="0"/>
+      </linearGradient>
+      <linearGradient id="sig2" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0"   stop-color="#E5352B" stop-opacity="0"/>
+        <stop offset=".35" stop-color="#E5352B" stop-opacity=".45"/>
+        <stop offset=".75" stop-color="#E5352B" stop-opacity=".28"/>
+        <stop offset="1"   stop-color="#E5352B" stop-opacity="0"/>
+      </linearGradient>
+      <filter id="sigGlow" x="-20%" y="-60%" width="140%" height="220%">
+        <feGaussianBlur stdDeviation="9" result="b"/>
+        <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+    </defs>
+
+    <g filter="url(#sigGlow)">
+      <path class="sig sig-a" d="M -80 120 C 300 190 520 400 840 432 C 1160 464 1420 330 1700 236"/>
+      <path class="sig sig-b" d="M -80 60  C 340 150 560 392 840 420 C 1140 450 1440 300 1700 190"/>
+      <path class="sig sig-c" d="M -80 190 C 280 250 500 414 840 446 C 1180 478 1460 372 1700 292"/>
+    </g>
+    <path class="sig sig-d" d="M -80 20 C 380 120 600 384 840 408 C 1120 436 1460 268 1700 150"/>
+    <circle class="sig-node" cx="840" cy="428" r="11"/>
+  </svg>
+
   <div class="hero-top">
     <div class="eyebrow" id="eyebrow">
       <span class="pip"></span><span id="health">connecting…</span>
     </div>
 
-    <h1 class="headline">
-      <span class="ln"><span class="in">An agent can spend.</span></span>
-      <span class="ln"><span class="in">This is where it <em>stops</em>.</span></span>
-    </h1>
+    <h1 class="hero-mark"><span class="in">REMIT</span></h1>
 
-    <p class="sub">REMIT is an AI buyer and a merchant revenue engine that share one
-      boundary: every rupee it moves has to still match what a human actually
-      authorised — and it can prove it, in microseconds, without asking a model.</p>
+    <p class="hero-expand"><span class="in">Revocable, Explainable Mandates for Intent-driven Transactions</span></p>
 
-    <div class="cta-row">
+    <p class="hero-thesis"><span class="in">Model-independent authorization<br>for autonomous commerce</span></p>
+
+    <p class="hero-by"><span class="in">by techuilaguy</span></p>
+    <p class="hero-aka"><span class="in">a.k.a. Pranauv Shrinaath</span></p>
+
+    <div class="hero-install">
+      <div class="sdk-cmd hero-cmd">
+        <span class="sdk-prompt" aria-hidden="true">$</span>
+        <code>npm install remit-sdk</code>
+        <button class="sdk-copy" type="button" data-copy="npm install remit-sdk"
+                aria-label="Copy npm install remit-sdk">copy</button>
+      </div>
+    </div>
+
+    <p class="hero-line-1"><span class="in">AI can decide what to propose.</span></p>
+    <p class="hero-line-2"><span class="in">REMIT decides what it is actually allowed to do.</span></p>
+
+    <div class="cta-row hero-actions">
       <button class="cta" id="heroCta" type="button">
-        Run the agent
+        Live demo
         <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 8h11M9 4l4 4-4 4"
           fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
           stroke-linejoin="round"/></svg>
       </button>
+      <a class="hero-btn" href="https://github.com/KenidoesCode/remit/tree/main/docs/sdk"
+         target="_blank" rel="noopener">Docs</a>
+      <a class="hero-btn" href="https://www.npmjs.com/package/remit-sdk"
+         target="_blank" rel="noopener">npm</a>
+      <a class="hero-btn" href="https://github.com/KenidoesCode/remit"
+         target="_blank" rel="noopener">GitHub</a>
+      <a class="hero-btn hero-btn-star" href="https://github.com/KenidoesCode/remit"
+         target="_blank" rel="noopener"><span aria-hidden="true">&#9733;</span> Star</a>
+    </div>
+
+    <!-- The quiet second row. The five buttons above are destinations; these
+         two are the first things worth PRESSING, and a reviewer who lands here
+         with eleven rooms in the nav and no suggestion presses nothing. -->
+    <div class="hero-secondary">
       <a class="ghost" href="#walk">walk the approval</a>
+      <span aria-hidden="true">·</span>
       <a class="ghost" href="#act4">or try to break it</a>
     </div>
   </div>

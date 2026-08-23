@@ -5,7 +5,7 @@ this environment. `PARTIAL` names the specific missing thing. `EXTERNAL` means
 the code is complete and verification needs something this environment cannot
 provide — and is never counted as a pass.*
 
-**At:** 23 August 2026 · 719 tests · 32/32 attacks · 260/260 matrix ·
+**At:** 23 August 2026 · 745 tests · 32/32 attacks · 260/260 matrix ·
 ₹0 unauthorised · `remit-sdk@0.1.0` live on npm
 
 Regenerate the numbers: `python verify.py`
