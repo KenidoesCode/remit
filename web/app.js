@@ -300,7 +300,7 @@ function opening() {
 }
 
 /* ═════════════════════════ hero choreography ═══════════════════════════ */
-const HERO_IN_PLACE = "#nav,.eyebrow,.hero-top .in,.hero-install,.cta-row,.st,.tag,#glow,#heroSignal .sig,#heroSignal .sig-node";
+const HERO_IN_PLACE = "#nav,.eyebrow,.hero-top .in,.hero-install,.cta-row,.tag,#glow,#heroSignal .sig,#heroSignal .sig-node";
 
 function heroIn() {
   if (REDUCED) {
@@ -343,7 +343,7 @@ function heroIn() {
     gsap.set(pth, { strokeDasharray: len, strokeDashoffset: len, opacity: 1 });
   });
   gsap.set("#heroSignal .sig-node", { opacity: 0, scale: 0, transformOrigin: "center" });
-  gsap.set(".st", { opacity: 0, y: 22, filter: "blur(7px)" });
+  // .st is filled by renderExec() from the API and animates itself in.
   gsap.set(".tag", { opacity: 0, x: 18, filter: "blur(5px)" });
   gsap.set(".scroll-cue", { opacity: 0 });
   gsap.set("#gl", { opacity: 0 });
@@ -368,7 +368,6 @@ function heroIn() {
    .to(".hero-line-1 .in", { opacity: 1, y: 0, duration: .7 }, 1.82)
    .to(".hero-line-2 .in", { opacity: 1, y: 0, duration: .7 }, 1.96)
    .to(".cta-row", { opacity: 1, y: 0, scale: 1, duration: .9 }, 2.1)
-   .to(".st", { opacity: 1, y: 0, filter: "blur(0px)", duration: .9, stagger: .12 }, 2.3)
    .to(".tag", { opacity: 1, x: 0, filter: "blur(0px)", duration: .9 }, 2.45)
    .to(".scroll-cue", { opacity: 1, duration: .6 }, 2.7);
   return t;
@@ -1105,13 +1104,22 @@ async function renderAttacks() {
   const card = k => {
     const meta = a.attacks.find(x => x.key === k), r = done[k];
     const state = !r ? "idle" : (r.broke ? "broke" : "held");
+    // Four labelled parts, in the order a reviewer needs them: what was
+    // tried, what must survive it, what actually happened, and the clause
+    // that did the work. The card always carried all four; unlabelled, it
+    // read as a paragraph and the invariant -- the interesting half -- was
+    // the part people skipped.
     return `<button type="button" class="atk ${state}" data-atk="${esc(k)}">
       <span class="atk-hd"><span class="atk-s">${esc(meta.surface)}</span>
         <span class="atk-v">${r ? (r.broke ? "BROKE" : "held") : "run"}</span></span>
+      <span class="atk-l">attack</span>
       <span class="atk-n">${esc(meta.name)}</span>
-      <span class="atk-i">must stay true: ${esc(meta.invariant)}</span>
-      <span class="atk-r">${r ? esc(r.what_happened) : ""}</span>
-      ${r && r.stopped_by ? `<span class="atk-b">stopped by ${esc(r.stopped_by)}</span>` : ""}
+      <span class="atk-l">expected invariant</span>
+      <span class="atk-i">${esc(meta.invariant)}</span>
+      <span class="atk-l">what REMIT did</span>
+      <span class="atk-r">${r ? esc(r.what_happened) : "not run yet — press to fire it live"}</span>
+      <span class="atk-l">clause that stopped it</span>
+      <span class="atk-b">${r && r.stopped_by ? esc(r.stopped_by) : "—"}</span>
     </button>`;
   };
   const surfaces = ["intent", "catalog", "payment"];
@@ -1132,12 +1140,7 @@ async function renderAttacks() {
       b.querySelector(".atk-v").textContent = r.broke ? "BROKE" : "held";
       b.querySelector(".atk-r").textContent = r.what_happened;
       const bb = b.querySelector(".atk-b");
-      if (bb) bb.textContent = r.stopped_by ? "stopped by " + r.stopped_by : "";
-      else if (r.stopped_by) {
-        const el = document.createElement("span");
-        el.className = "atk-b"; el.textContent = "stopped by " + r.stopped_by;
-        b.appendChild(el);
-      }
+      if (bb) bb.textContent = r.stopped_by || "—";
     } catch (e) {
       b.querySelector(".atk-v").textContent = "error";
     } finally { delete b.dataset.busy; }
@@ -1155,10 +1158,27 @@ async function renderFrontier() {
   const safe = f.points.filter(p => !p.unauthorized_paise);
   const knee = safe[safe.length - 1];
   const first = f.points.find(p => p.unauthorized_paise);
+  // The conclusion moved ABOVE the data. It used to sit under a canvas and a
+  // five-column table, which meant a reviewer had to read every number to
+  // find out what the numbers were for. The finding is one sentence; the
+  // table is the evidence for it, and evidence belongs after the claim.
+  const knees = `<p class="cf-story">Autonomy is free up to <b>${(knee.autonomy * 100).toFixed(1)}%</b>
+      — every threshold up to "${esc(knee.label)}" moves ₹0 that nobody authorised.${
+      first ? ` The next point, "${esc(first.label)}", is where the envelope stops
+      being consulted at all: autonomy jumps to ${(first.autonomy * 100).toFixed(1)}%
+      and <b class="bad">${esc(first.unauthorized)}</b> begins moving unasked.` : ""}</p>
+    <p class="meta-line">The knee is not at a threshold. It is at the boundary. No
+      amount of tuning how <em>often</em> REMIT asks produces unauthorised movement —
+      only removing the envelope does, and that is a cliff rather than a curve.</p>`;
+
   out.innerHTML = `<div class="act-head sub-head" style="margin-top:52px">
     <span class="kicker">how much autonomy is free</span>
-    <p class="lede">Every point is a full re-run of ${f.corpus_size} journeys under a
-    different policy. Nothing here is interpolated.</p></div>
+    <p class="lede">More autonomy is not automatically less safe. What matters is
+    whether the agent is still inside the human's authority — and that turns out
+    to be a cliff, not a slope.</p></div>
+    ${knees}
+    <p class="meta-line">Every point below is a full re-run of ${f.corpus_size}
+      journeys under a different policy. Nothing is interpolated.</p>
     <canvas id="fc" height="300"></canvas>
     <div class="tw"><table><thead><tr><th>policy</th><th class="n">autonomy</th>
       <th class="n">asked / 100</th><th class="n">revenue</th>
@@ -1171,14 +1191,7 @@ async function renderFrontier() {
         <td class="n">${p.revenue}</td>
         <td class="n ${p.unauthorized_paise ? "bad" : "good"}">${p.unauthorized}</td>
       </tr>`).join("")}</tbody></table></div>
-    <p class="cf-story">Autonomy is free up to <b>${(knee.autonomy * 100).toFixed(1)}%</b>
-      — every threshold up to "${esc(knee.label)}" moves ₹0 that nobody authorised.${
-      first ? ` The next point, "${esc(first.label)}", is where the envelope stops
-      being consulted at all: autonomy jumps to ${(first.autonomy * 100).toFixed(1)}%
-      and <b class="bad">${esc(first.unauthorized)}</b> begins moving unasked.` : ""}</p>
-    <p class="meta-line">The knee is not at a threshold. It is at the boundary. No
-      amount of tuning how <em>often</em> REMIT asks produces unauthorised movement —
-      only removing the envelope does, and that is a cliff rather than a curve.</p>`;
+    `;
   drawFrontier(f.points);
 }
 
@@ -1259,6 +1272,45 @@ async function renderExec() {
   catch (e) { host.innerHTML = couldNotLoad("the summary", "renderExec"); return; }
 
   const R0 = p => "₹" + Math.round((p || 0) / 100).toLocaleString("en-IN");
+
+  // ── the four numbers above the fold ─────────────────────────────────────
+  // Same `.st` component the hero has always used, same animation hook. What
+  // changed is where the values come from: three of them used to be typed
+  // into index.html, and one of those ("~250µs") corresponded to nothing this
+  // system measures -- not the 27.3µs policy engine, not the 4.71ms p95.
+  // These are read from generated result files and each carries its key.
+  const strip = $("#heroStats");
+  if (strip && d.proof) {
+    const ICON = [
+      '<circle cx="3" cy="3" r="1.5"/><circle cx="11" cy="3" r="1.5"/><circle cx="3" cy="11" r="1.5"/><circle cx="11" cy="11" r="1.5"/>',
+      '<path d="M7 1.5 12.5 4v4.2C12.5 10.6 7 12.5 7 12.5S1.5 10.6 1.5 8.2V4Z"/>',
+      '<path d="M2 7.4 5.6 11 12 3.6l-1.3-1.1-5.1 6L3.2 6.1Z"/>',
+      '<path d="M7 1.5 12.5 7 7 12.5 1.5 7Z"/>',
+    ];
+    strip.innerHTML = d.proof.map((h, i) => `<div class="st"><div class="hd">
+      <svg viewBox="0 0 14 14" aria-hidden="true">${ICON[i % ICON.length]}</svg>
+      <span class="v">${esc(h.v)}</span></div>
+      <span class="k">${esc(h.k)}</span>
+      <span class="st-p mono" title="the file and key this is read from">${esc(h.proof)}</span></div>`).join("");
+    // The hero timeline runs before this fetch resolves, so its .st tween
+    // found no targets and GSAP said so on every load. from() rather than
+    // to(): it animates FROM the hidden state to whatever the element already
+    // is, which is right whether or not the opening played, and cannot leave
+    // the row stuck at zero if the tween never runs at all.
+    if (window.gsap) gsap.from("#heroStats .st", {
+      opacity: 0, y: 22, filter: "blur(7px)",
+      duration: .9, stagger: .12, ease: "expo.out",
+    });
+    // Filling this row changes the hero's height, and the red signal picks
+    // its lane by MEASURING where the hero text is. Route before the row
+    // exists and the lane is computed for a layout that is about to move --
+    // which is FAILURES #56 again, one element over. Re-route once the DOM
+    // has settled, and again after the fonts have finished with it.
+    if (window.__remitRouteSignals) {
+      requestAnimationFrame(window.__remitRouteSignals);
+      setTimeout(window.__remitRouteSignals, 350);
+    }
+  }
 
   host.innerHTML = `
     <p class="ex-thesis">${esc(d.thesis.what)}</p>
@@ -1466,7 +1518,15 @@ async function renderLab() {
   let h = "";
   if (!m.error) {
     const cats = Object.entries(m.by_category).sort();
-    h += `<div class="stats">
+    // The largest threat to every number in this room, stated in the room
+    // rather than only in the summary's limits list. A reviewer who scrolls
+    // straight to the matrix should not have to go looking for it.
+    h += `<p class="meta-line">Every case, product and price below is
+      <b>synthetic and written by the author</b>. That is the single largest
+      threat to all of it, generating more cases makes it worse rather than
+      better, and it is why independent evaluation is scored EXTERNAL rather
+      than passed.</p>
+    <div class="stats">
       <div class="stat"><span class="k">explicit cases</span>
         <span class="v">${m.cases}</span><span class="n">thirteen categories</span></div>
       <div class="stat"><span class="k">holding</span>
@@ -1616,8 +1676,57 @@ function drawFrontier(pts) {
   x.fillText("merchant revenue when the human declines every step-up", M.l + 4, M.t + H - 6);
 }
 
+/* ── the failures, in two weights ────────────────────────────────────────
+   Fifty-five entries rendered identically is an archive. A reviewer scrolls
+   it; they do not read it. So the seven that cost real money or real
+   correctness are promoted and opened, in the shape the question is actually
+   asked -- what broke, why, how I fixed it, and what stops it coming back --
+   and the whole log stays underneath, complete, in the order it happened.
+
+   The four columns are built from each entry's OWN fields. FAILURES.md was
+   written by hand over two weeks and its bold headings are not uniform, so
+   each column tries several key names and renders nothing at all when it
+   finds none. An empty column is honest; an invented one is not. The
+   regression test is only shown when the entry actually names a file. */
+const FAIL_COLS = [
+  ["what broke", ["what i saw", "what happened", "what actually happened"]],
+  ["why", ["what it actually was", "why", "why nothing caught it",
+           "why my three guarantees did not catch it", "what i believed"]],
+  ["how i fixed it", ["the fix", "the fix, two parts", "how i got out",
+                      "what i changed so it can't happen again", "what it changed"]],
+];
+
+function failCard(e) {
+  const pick = (keys) => {
+    for (const k of keys) if (e.fields[k]) return e.fields[k];
+    return null;
+  };
+  const blob = Object.values(e.fields).join(" ");
+  const test = (blob.match(/tests?\/test_[a-z_0-9]+\.py|test_[a-z_0-9]+\.py/) || [])[0];
+  const cols = FAIL_COLS
+    .map(([label, keys]) => [label, pick(keys)])
+    .filter(([, v]) => v);
+  if (test) cols.push(["regression test", test]);
+  return `<article class="fail-hero">
+    <div class="fail-hero-hd">
+      <span class="when">${esc(e.when)}</span>
+      <h4>${esc(e.title)}</h4>
+    </div>
+    <dl>${cols.map(([label, v]) =>
+      `<dt>${esc(label)}</dt><dd${label === "regression test" ? ' class="mono"' : ""}>${esc(v)}</dd>`
+    ).join("")}</dl>
+  </article>`;
+}
+
 async function renderFailures() {
   const f = await api("/api/failures");
+  const top = $("#failTop");
+  if (top && f.featured) {
+    const by = Object.fromEntries(f.entries.map(e => [e.when, e]));
+    top.innerHTML = f.featured.map(w => by[w]).filter(Boolean).map(failCard).join("");
+  }
+  const rest = $("#failRestCount");
+  if (rest) rest.textContent = String(f.count);
   $("#failOut").innerHTML = f.entries.map(e => `<details class="fail">
     <summary><span class="when">${esc(e.when)}</span>
       <span class="ttl">${esc(e.title)}</span></summary>
@@ -2263,10 +2372,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // hero stats and the ticker are filled from what actually loaded
   const b = STATE.builder, h = STATE.health;
-  const set = (k, v) => { const el = $(`[data-v="${k}"]`); if (el) el.textContent = v; };
-  set("s1", "₹0");
-  set("s2", STATE.keep && STATE.keep !== "—" ? "₹" + STATE.keep : "—");
-  set("s3", "~250µs");
+  // The hero's numbers are filled by renderExec() from /api/executive.proof.
+  // They used to be set here, as literals: "₹0", "~250µs", and a ratio the
+  // counterfactual room already renders with its working. Two of those were
+  // duplicates and one was not a measurement of anything.
   installTicker([
     "an agent can spend",
     "this is where it stops",

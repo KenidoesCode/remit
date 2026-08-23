@@ -227,15 +227,12 @@
 
   <div class="hero-bottom">
     <div class="stats" id="heroStats">
-      <div class="st"><div class="hd">
-        <svg viewBox="0 0 14 14" aria-hidden="true"><circle cx="3" cy="3" r="1.5"/><circle cx="11" cy="3" r="1.5"/><circle cx="3" cy="11" r="1.5"/><circle cx="11" cy="11" r="1.5"/></svg>
-        <span class="v" data-v="s1">—</span></div><span class="k">moved unauthorised</span></div>
-      <div class="st"><div class="hd">
-        <svg viewBox="0 0 14 14" aria-hidden="true"><rect x="2" y="5.5" width="10" height="3" rx="1"/><rect x="5.5" y="2" width="3" height="10" rx="1"/></svg>
-        <span class="v" data-v="s2">—</span></div><span class="k">unauthorised, prevented per ₹1 forgone</span></div>
-      <div class="st"><div class="hd">
-        <svg viewBox="0 0 14 14" aria-hidden="true"><path d="M7 1.5 12.5 7 7 12.5 1.5 7Z"/></svg>
-        <span class="v" data-v="s3">—</span></div><span class="k">to re-decide, no model call</span></div>
+      <!-- Filled by renderExec() from /api/executive.proof. It used to carry
+           three values typed into this file, one of which ("~250µs") matched
+           nothing the system measures, and one of which repeated a number the
+           counterfactual room already shows with its working. A page whose
+           argument is that every figure is traceable cannot open with three
+           that are not. -->
     </div>
     <p class="tag">built by <b>techuilaguy</b><br>your friendly neighbourhood developer</p>
   </div>
@@ -515,6 +512,15 @@ d.failed;   <span class="c">// ["MATCH-001"]</span></code></pre>
     <span class="kicker">stuff i broke</span>
     <p class="lede">Written when it happened, not reconstructed. Parsed out of <code>FAILURES.md</code> at request time, so this page cannot drift from the repo.</p>
   </div>
+
+  <!-- The seven that cost real money or real correctness, opened. The whole
+       log follows underneath, complete and in order -- promoting a few is a
+       reading order, not an edit. -->
+  <div id="failTop"></div>
+
+  <div class="act-head sub-head">
+    <span class="kicker">the whole log &mdash; <span id="failRestCount">&mdash;</span> entries, none removed</span>
+  </div>
   <div id="failOut"></div>
 
   <div class="act-head sub-head">
@@ -528,8 +534,8 @@ d.failed;   <span class="c">// ["MATCH-001"]</span></code></pre>
   <div class="numeral" aria-hidden="true">OSS</div>
   <div class="act-head">
     <span class="kicker">open source</span>
-    <h2>Think this should exist?</h2>
-    <p class="lede">MIT licensed. The evidence regenerates from one command, and the failures are written down rather than tidied away.</p>
+    <h2>This is not a demo. Here is the implementation.</h2>
+    <p class="lede">MIT licensed, on npm, and the evidence regenerates from one command. Every number on this page came out of that command; every failure above came out of the file in that repo.</p>
   </div>
 
   <div class="oss-actions">

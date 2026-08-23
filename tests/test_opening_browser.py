@@ -331,9 +331,24 @@ def test_the_executive_room_fits_and_traces_every_number(site, browser, width):
         .map(c => ({v: c.querySelector('.ex-v').textContent.trim(),
                     k: c.querySelector('.ex-k').textContent.trim(),
                     p: c.querySelector('.ex-p').textContent.trim()}))""")
-    assert cards[0]["v"] == "\u20b90.00"
-    assert "unauthorised" in cards[0]["k"]
     assert all(c["p"] for c in cards), "a number with no provenance"
+
+    # The load-bearing number, found ANYWHERE on the page rather than pinned to
+    # a slot. It used to be asserted as `#execOut` card zero, which broke the
+    # day it moved into the hero strip -- a test failing because a number got
+    # MORE prominent is a test asserting layout while claiming to protect
+    # substance. What must be true is that the page states it, and states
+    # where it was read from. FAILURES #55 is the same lesson.
+    everywhere = pg.evaluate("""[...document.querySelectorAll('.ex-card, .st')]
+        .map(c => ({v: (c.querySelector('.ex-v, .v') || {}).textContent || '',
+                    k: (c.querySelector('.ex-k, .k') || {}).textContent || '',
+                    p: (c.querySelector('.ex-p, .st-p') || {}).textContent || ''}))""")
+    zero = [c for c in everywhere
+            if c["v"].strip() == "\u20b90.00" and "unauthorised" in c["k"]]
+    assert zero, ("the page no longer states \u20b90.00 unauthorised movement; "
+                  f"saw {[c['v'] for c in everywhere]}")
+    assert all(c["p"].strip() for c in zero), \
+        "\u20b90.00 is stated with no provenance"
 
     collisions = pg.evaluate(OVERLAPS % "'#execOut .ex-grid, #execOut .ex-two'")
     assert collisions == [], f"at {width}px: {collisions[:3]}"

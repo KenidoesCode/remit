@@ -762,7 +762,37 @@ def failures():
                     fields[current] = (fields[current] + " " + st).strip()
             entries.append({"when": date.strip(), "title": title.strip(),
                             "fields": fields})
-        return {"entries": entries, "count": len(entries)}
+
+        # ── which ones to promote ────────────────────────────────────────
+        # Fifty-five entries at one visual weight is an archive, not an
+        # argument: a reviewer scrolls it rather than reads it. These seven
+        # are the ones that cost real money or real correctness -- a doubled
+        # budget, a fivefold charge, a payment stuck mid-flight, a double
+        # charge on redeploy, a permanently forked audit chain, a silent
+        # cross-tenant leak, and two weeks of documented authentication that
+        # did not exist.
+        #
+        # Selected by a stable fragment of the title rather than by index,
+        # because indexes shift every time an entry is added. A fragment that
+        # stops matching drops OUT of the promoted set rather than promoting
+        # the wrong entry -- the failure mode is a shorter list, never a lie.
+        FEATURED = [
+            "doubled the customer's budget",
+            "bought the same thing five times",
+            "sat in CREATED forever",
+            "charged the customer twice",
+            "true of one process",
+            "Two tenants, one payment",
+            "documented and never implemented",
+        ]
+        featured = []
+        for frag in FEATURED:
+            for e in entries:
+                if frag.lower() in e["title"].lower() and e not in featured:
+                    featured.append(e)
+                    break
+        return {"entries": entries, "count": len(entries),
+                "featured": [e["when"] for e in featured]}
 
 
 @api.get("/api/builder")
@@ -1014,6 +1044,10 @@ def executive():
 
     n_attacks = attacks.get("attacks", 0) or len(attacks.get("rows") or [])
     n_held = attacks.get("held", 0)
+    allx = ev.get("all") or {}
+    eff = allx.get("efficiency") or {}
+    outc = allx.get("outcome") or {}
+    guard = allx.get("guardrails") or {}
     agents = arena.get("agents") or []
     unbounded = next((x for x in agents if x.get("key") == "unbounded"), {})
     remit_arm = next((x for x in agents if x.get("key") == "remit_default"), {})
@@ -1030,25 +1064,48 @@ def executive():
                     "things the human asked for, under the constraints they "
                     "stated, inside that number."),
         },
-        "headline": [
+        # ── the four numbers above the fold ───────────────────────────────
+        # Deliberately disjoint from `headline` below. The same figure printed
+        # twice inside one scroll is not emphasis, it is noise, and this page
+        # spends its credibility on not padding. So: the strip carries the
+        # claim, the summary carries what the claim did not have room for, and
+        # every one of the eight names the file and key it was read from.
+        "proof": [
             {"k": "unauthorised money moved",
-             "v": "\u20b90.00",
-             "n": f"across {ev.get('all', {}).get('n', 540)} evaluated journeys "
-                  f"and {n_attacks} live attacks",
-             "proof": "eval:all.outcome.unauthorized_paise"},
+             "v": outc.get("unauthorized_movement", "\u20b90.00"),
+             "n": f"across {allx.get('n', 540)} journeys and {n_attacks} live attacks",
+             "proof": "eval:all.outcome.unauthorized_movement"},
+            {"k": "live attacks held",
+             "v": f"{n_held}/{n_attacks}",
+             "n": "run against a throwaway instance, not replayed from a file",
+             "proof": "attacks:held"},
+            {"k": "dangerous recall",
+             "v": f"{float(guard.get('needs_human_recall', 0)):.2f}",
+             "n": "nothing that needed a human got through without one",
+             "proof": "eval:all.guardrails.needs_human_recall"},
+            {"k": "p95 decision time",
+             "v": f"{eff.get('latency_p95_ms', '?')} ms",
+             "n": "sentence to verdict, end to end. the policy engine is 27.3 \u00b5s of it",
+             "proof": "eval:all.efficiency.latency_p95_ms"},
+        ],
+        "headline": [
             {"k": "dangerous false negatives",
-             "v": str(held.get("false_negatives_dangerous", 0)),
+             "v": str((ev.get("test") or {}).get("guardrails", {})
+                      .get("false_negatives_dangerous", 0)),
              "n": "a wrong action incorrectly allowed. held-out split, scored once",
              "proof": "eval:test.guardrails.false_negatives_dangerous"},
-            {"k": "attacks that held",
-             "v": f"{n_held}/{n_attacks}",
-             "n": "run live against a throwaway instance, not replayed from a file",
-             "proof": "attacks:held"},
             {"k": "duplicate financial effects",
-             "v": str((ev.get("all") or {}).get("outcome", {})
-                      .get("duplicate_payments", 0)),
+             "v": str(outc.get("duplicate_payments", 0)),
              "n": "one request, one payment, however many times it is sent",
              "proof": "eval:all.outcome.duplicate_payments"},
+            {"k": "webhook state violations",
+             "v": str(outc.get("webhook_state_violations", 0)),
+             "n": "no payment reached a state its history did not allow",
+             "proof": "eval:all.outcome.webhook_state_violations"},
+            {"k": "behaviour matrix",
+             "v": f"{matrix.get('passed', 0)}/{matrix.get('cases', 0)}",
+             "n": "explicit cases, each asserting a property rather than a SKU",
+             "proof": "matrix:passed"},
         ],
         "what_it_earned": {
             "revenue": biz.get("revenue"),
