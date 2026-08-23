@@ -561,6 +561,13 @@ footer{max-width:var(--maxw);margin:0 auto;padding:clamp(70px,11vh,130px) var(--
 /* The page and its background layers stay dark until the intro says so.
    If this stylesheet fails to load, the homepage simply renders normally --
    the fallback is the product, never a blank screen. */
+/* The scroll lock also lives in CSS, so it survives a JS failure: if the
+   opening never runs, the page is still not scrollable behind an overlay that
+   is still on screen. done() sets data-intro and both releases fire. */
+html.intro-locked,html.intro-locked body,
+body:not([data-intro="done"]){
+  overflow:hidden;height:100%;overscroll-behavior:none;
+}
 body:not([data-intro="done"]) #page,
 body:not([data-intro="done"]) #gl,
 body:not([data-intro="done"]) #glow{visibility:hidden}

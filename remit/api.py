@@ -64,6 +64,42 @@ api = FastAPI(title="REMIT", version="0.1.0")
 # and REMIT does not claim otherwise. See THREAT_MODEL.md.
 # --------------------------------------------------------------------------
 
+# --------------------------------------------------------------------------
+# Cross-origin, only when it is configured, and only for origins named exactly.
+#
+# The default above -- no CORS middleware at all -- is still the default. This
+# turns on ONLY when REMIT_ALLOWED_ORIGINS is set, which is how a CDN-hosted
+# front end (Vercel) is allowed to talk to this API while nothing else is.
+#
+# Two things are deliberate:
+#
+#   * The list is exact origins. No wildcard, and a wildcard is not compatible
+#     with credentials anyway -- browsers refuse the combination, which is the
+#     one place the platform saves you from yourself.
+#
+#   * allow_credentials=True means the session cookie rides along, and that
+#     requires SameSite=None. That trades one protection for another: CSRF is
+#     no longer prevented by the cookie policy, it is prevented by CORS. It
+#     holds here because every state-changing route takes a JSON body, and a
+#     cross-origin JSON POST triggers a preflight that an unlisted origin fails.
+#     A form-encoded endpoint would NOT be safe under this configuration, so if
+#     one is ever added, this comment is the thing that was wrong.
+ALLOWED_ORIGINS = [o.strip() for o in
+                   os.environ.get("REMIT_ALLOWED_ORIGINS", "").split(",") if o.strip()]
+CROSS_ORIGIN = bool(ALLOWED_ORIGINS)
+
+if CROSS_ORIGIN:
+    from fastapi.middleware.cors import CORSMiddleware
+
+    api.add_middleware(
+        CORSMiddleware,
+        allow_origins=ALLOWED_ORIGINS,
+        allow_credentials=True,
+        allow_methods=["GET", "POST", "OPTIONS"],
+        allow_headers=["content-type", "authorization", "x-request-id"],
+        max_age=600,
+    )
+
 _SESSION = {"secret": session_secret(os.environ.get("REMIT_LIVE") == "1")}
 
 MAX_BODY_BYTES = 16 * 1024
@@ -154,11 +190,20 @@ async def _guard(request: Request, call_next):
     if issued is not None:
         response.set_cookie(
             COOKIE, issued, max_age=MAX_AGE_SECONDS, httponly=True,
-            samesite="lax",
+            # Lax is correct when this service also serves the page. It is
+            # WRONG the moment a CDN does: the cookie is simply not sent on a
+            # cross-site XHR, so every call mints a fresh principal and
+            # exposure, revocation and audit scoping all quietly stop working.
+            samesite="none" if CROSS_ORIGIN else "lax",
             # Secure only where the deployment actually terminates TLS -- a
             # Secure cookie on plain http is a cookie that never arrives, and
             # a session that never arrives is a new identity every request.
-            secure=os.environ.get("REMIT_LIVE") == "1", path="/")
+            # SameSite=None is only honoured on a Secure cookie, so
+            # cross-origin mode implies https. On Render it is; locally it is
+            # not, which is why cross-origin mode is opt-in via an env var
+            # rather than inferred.
+            secure=(os.environ.get("REMIT_LIVE") == "1") or CROSS_ORIGIN,
+            path="/")
     return response
 
 

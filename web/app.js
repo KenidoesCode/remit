@@ -28,8 +28,31 @@ class NoEngine extends Error {}
    and the request models have no identity field to put one in.
    FAILURES #32. */
 
+/* The engine's origin, and how a request reaches it.
+ *
+ * When the Python service serves this page they are the same origin and this
+ * is a no-op. When a CDN serves it, every call has to cross to the API --
+ * which means credentials:"include", or the session cookie is not sent and the
+ * caller is handed a brand new principal on every request. That is not a
+ * hypothetical: it is exactly FAILURES #51, one layer out. */
+const API_BASE = (typeof window !== "undefined" && window.REMIT_API_BASE) || "";
+const CROSS_ORIGIN = API_BASE !== "";
+
+function apiUrl(path) {
+  return /^https?:\/\//.test(path) ? path : API_BASE + path;
+}
+
+function apiFetch(path, init) {
+  const opts = init ? Object.assign({}, init) : {};
+  // same-origin is the browser default; include is required to carry the
+  // session across origins, and the server only allows it for an origin it
+  // has been configured with.
+  opts.credentials = CROSS_ORIGIN ? "include" : "same-origin";
+  return fetch(apiUrl(path), opts);
+}
+
 async function api(path, body) {
-  const r = await fetch(path, body ? {
+  const r = await apiFetch(path, body ? {
     method: "POST", headers: { "content-type": "application/json" },
     body: JSON.stringify(body),
   } : undefined);
@@ -68,7 +91,24 @@ const STATE = { journey: null, ceiling: 0, replay: null, fired: {}, health: null
      * reduced motion still gets the branding, just without the travel. */
 function opening() {
   const el = document.getElementById("intro");
+
+  // Scroll is locked while the opening plays. Without this the document still
+  // scrolls behind a full-screen overlay, so a visitor who flicks the wheel
+  // arrives at the hero already halfway down the page with the animation still
+  // running over the top of it. Locking the overflow is what actually stops
+  // it; the wheel/touch handlers below stop the rubber-banding that overflow
+  // alone leaves on iOS.
+  const lock = (on) => {
+    // Dropping the class the head script added is the release; the CSS rule
+    // keyed on data-intro releases itself when done() sets it.
+    document.documentElement.classList.toggle("intro-locked", on);
+  };
+  const swallow = (e) => { e.preventDefault(); };
+
   const done = () => {
+    lock(false);
+    removeEventListener("wheel", swallow);
+    removeEventListener("touchmove", swallow);
     document.body.dataset.intro = "done";
     if (!el) return;
     el.style.pointerEvents = "none";
@@ -80,11 +120,17 @@ function opening() {
     // two paths cannot fight. FAILURES #15.
     setTimeout(() => el.remove(), 700);
     try {
-      gsap.to(el, { opacity: 0, duration: .45, ease: "power2.inOut",
+      gsap.to(el, { opacity: 0, duration: .3, ease: "power2.inOut",
                     onComplete: () => el.remove() });
     } catch (e) { el.remove(); }
   };
-  if (!el) { document.body.dataset.intro = "done"; return; }
+  if (!el) { document.body.dataset.intro = "done"; lock(false); return; }
+  lock(true);
+  // passive:false, or preventDefault is ignored and the page scrolls anyway.
+  addEventListener("wheel", swallow, { passive: false });
+  addEventListener("touchmove", swallow, { passive: false });
+  // Belt and braces: if anything below throws before the timeline is built,
+  // done() still runs and still unlocks. Scroll must never be left locked.
   // Opening in a background tab is the common case for a link someone was
   // sent: the tab loads while they are still reading something else. rAF is
   // throttled there, so the timeline would crawl and they would arrive at a
@@ -125,10 +171,9 @@ function opening() {
   // sentences and a beat between them, which no amount of easing makes fit in
   // three seconds. The backstop moves with it -- and it is still a plain
   // setTimeout, because an intro that can strand the page is not a feature.
-  // 16.1s of timeline + a margin. This was 9600 and the timeline is now longer,
-  // which would have cut the opening off mid-sentence -- the backstop against
-  // a stranded page becoming the reason the page strands the SENTENCE.
-  const hardStop = setTimeout(done, 17600);
+  // 8.65s of timeline plus a margin. It has to clear the timeline (or it cuts
+  // the opening off mid-sentence) without being a second gate of its own.
+  const hardStop = setTimeout(done, 9400);
   const finish = () => { clearTimeout(hardStop); done(); };
 
   try {
@@ -143,8 +188,9 @@ function opening() {
       gsap.set(".intro-said p", { opacity: 1 });
       gsap.set("#webshot .anchor", { opacity: 1 });
       // Reduced motion removes the MOTION, not the reading time. Everything is
-      // on screen at once, and it still has to be legible before it goes.
-      setTimeout(finish, 6000);
+      // on screen at once, so it needs less than the animated path but still
+      // enough to read three lines.
+      setTimeout(finish, 4200);
       return;
     }
     paths.forEach(p => {
@@ -173,30 +219,37 @@ function opening() {
      // the title card clears, and then the two sentences that are the whole
      // reason this thing exists. The gap between them is deliberate: the
      // second line is a different thought and it should arrive as one.
-     // The title card holds long enough to actually be read -- it carries the
-     // expansion of the acronym, the positioning line and the byline, which is
-     // four lines of new information for a first-time visitor.
-     .to(".intro-mid", { scale: .97, opacity: 0, duration: .5,
-                         ease: "power2.inOut" }, 4.4)
-     // Then the two sentences the whole project came out of.
+     // ~8.6s end to end, and every number here is a trade between two real
+     // failure modes.
      //
-     // These used to appear at 3.35 and dim 1.7s later, which is roughly the
-     // time it takes to notice a sentence has appeared -- not to read it. A
-     // first-time visitor reads at maybe 3.5 words/second on unfamiliar copy;
-     // "I gave an AI permission to spend money" is eight words and the second
-     // line is twelve. So each one now holds for ~3.4s at full opacity, and
-     // the pair spans about 8 seconds rather than 3.
-     .to(".said-1", { opacity: 1, y: 0, duration: .7, ease: "expo.out" }, 4.8)
-     .to(".said-1", { opacity: .3, duration: .6 }, 8.3)
-     .to(".said-2", { opacity: 1, y: 0, duration: .7, ease: "expo.out" }, 8.5)
-     .to(".said-2", { opacity: .3, duration: .6 }, 12.2)
-     .to(".said-3", { opacity: 1, y: 0, duration: .6, ease: "expo.out" }, 12.4)
+     // The first version ran the two sentences in 1.7s each, which is about
+     // the time it takes to NOTICE a sentence rather than read one. The
+     // correction over-shot: 16 seconds is not a title sequence, it is a
+     // toll gate on the front door, and a visitor who has to wait that long
+     // to reach the product mostly leaves.
+     //
+     // So: the title card gets 2.4s (it is four lines, but they are short and
+     // largely typographic), and each sentence holds ~2.2s at full strength --
+     // eight and twelve words, which reads comfortably at ~4 words/second and
+     // is above the 3.5s-combined floor the copy needs.
+     .to(".intro-mid", { scale: .97, opacity: 0, duration: .4,
+                         ease: "power2.inOut" }, 2.05)
+     // The fade-in is counted, not ignored: a line is not readable until it is
+     // actually opaque, so a 0.55s ease and a 2.2s window leave only ~1.8s of
+     // legible text. The test measures RENDERED opacity and caught exactly
+     // that. Shorter fades, and the dim points moved out to match.
+     .to(".said-1", { opacity: 1, y: 0, duration: .4, ease: "expo.out" }, 2.2)
+     .to(".said-1", { opacity: .3, duration: .35 }, 4.55)
+     .to(".said-2", { opacity: 1, y: 0, duration: .4, ease: "expo.out" }, 4.7)
+     .to(".said-2", { opacity: .3, duration: .35 }, 7.05)
+     // the payoff line, which is also the line on the hero
+     .to(".said-3", { opacity: 1, y: 0, duration: .45, ease: "expo.out" }, 7.15)
      // the thread pulls the mark into the system it made
      .to(paths, { strokeDashoffset: (i, tgt) => -tgt.getTotalLength(),
-                  duration: .7, ease: "power2.inOut" }, 15.2)
-     .to("#webshot .anchor", { opacity: 0, duration: .35 }, 4.45)
-     .to(".intro-said", { opacity: 0, y: -8, duration: .6,
-                          ease: "power2.inOut" }, 15.5);
+                  duration: .55, ease: "power2.inOut" }, 7.45)
+     .to("#webshot .anchor", { opacity: 0, duration: .3 }, 2.1)
+     .to(".intro-said", { opacity: 0, y: -8, duration: .45,
+                          ease: "power2.inOut" }, 7.6);
   } catch (e) {
     finish();
   }
@@ -587,7 +640,7 @@ const WALK_STEPS = [
       attack REMIT failed against itself until yesterday.`,
     expect: "APPROVAL_REJECTED · wrong_actor",
     run: async () => {
-      const r = await fetch("/api/shop", {
+      const r = await apiFetch("/api/shop", {
         method: "POST", credentials: "omit",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -692,7 +745,7 @@ async function pay(correlationId) {
   const say = t => { if (note) note.textContent = t; };
   btn.disabled = true;
   try {
-    const r = await fetch(`/api/checkout/${encodeURIComponent(correlationId)}`);
+    const r = await apiFetch(`/api/checkout/${encodeURIComponent(correlationId)}`);
     const cfg = await r.json();
     if (!r.ok) { say(cfg.note || cfg.error); btn.disabled = false; return; }
     await loadCheckout();
@@ -889,7 +942,7 @@ async function fireWebhook(kind) {
   if (!pid) return "run a journey that pays first";
   const body = JSON.stringify({ id: "evt_" + kind + "_" + Date.now(),
     event: "payment.captured", payload: { payment_id: pid } });
-  const send = async (b, sig) => (await fetch("/api/webhook", {
+  const send = async (b, sig) => (await apiFetch("/api/webhook", {
     method: "POST", headers: { "content-type": "application/json",
       "x-razorpay-signature": sig }, body: b })).json();
   if (kind === "forge") {

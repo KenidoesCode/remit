@@ -331,10 +331,63 @@ def test_the_opening_sentences_stay_long_enough_to_read(server, browser):
             return 0.0 if first is None else last - first
 
         one, two = held(0), held(1)
-        assert one >= 2800, f"'I gave an AI permission…' held only {one:.0f}ms"
-        assert two >= 2800, f"'Then I tried to work out…' held only {two:.0f}ms"
+        # 2.0s each is the floor, not the target: the timeline gives each line
+        # ~2.2s. The thresholds moved DOWN from 2.8s deliberately -- the first
+        # correction to a too-fast opening produced a 16-second one, which is
+        # not a title sequence, it is a toll gate on the front door. This
+        # asserts the copy is readable; it is not a licence to make the opening
+        # longer again.
+        assert one >= 2000, f"'I gave an AI permission…' held only {one:.0f}ms"
+        assert two >= 2000, f"'Then I tried to work out…' held only {two:.0f}ms"
+        assert one + two >= 4200, f"the two sentences totalled {one + two:.0f}ms"
 
         span = samples[-1][0] - samples[0][0]
-        assert span >= 6000, f"the whole opening lasted {span:.0f}ms"
+        assert span >= 4500, f"the whole opening lasted {span:.0f}ms"
+        # And the ceiling, which is the half nobody writes and then regrets.
+        assert span <= 12000, (
+            f"the opening lasted {span:.0f}ms -- it is a title sequence, "
+            f"not a gate")
+    finally:
+        page.close()
+
+
+def test_the_page_cannot_be_scrolled_while_the_opening_plays(server, browser):
+    """Scroll is locked until the opening is done.
+
+    A full-screen overlay does not stop the document scrolling underneath it,
+    so a visitor who flicks the wheel lands on the hero already halfway down
+    the page with the animation still running over the top. The overlay hides
+    the evidence, which is what makes it worth a test rather than a look.
+    """
+    page = browser.new_page(viewport={"width": 1440, "height": 900})
+    try:
+        page.goto(server, wait_until="domcontentloaded")
+        page.wait_for_function("() => !!document.getElementById('intro')", timeout=10000)
+
+        # Try hard to scroll: the wheel, the keyboard, and the API.
+        page.mouse.wheel(0, 2400)
+        page.keyboard.press("End")
+        page.evaluate("() => window.scrollTo(0, 3000)")
+        page.wait_for_timeout(400)
+
+        during = page.evaluate("() => window.scrollY")
+        still_playing = page.evaluate("() => !!document.getElementById('intro')")
+        if still_playing:
+            assert during == 0, f"the page scrolled to {during} during the opening"
+            assert page.evaluate(
+                "() => getComputedStyle(document.body).overflow") == "hidden"
+
+        # And it must be released afterwards, or the whole site is frozen.
+        page.wait_for_function("() => !document.getElementById('intro')", timeout=30000)
+        page.wait_for_timeout(500)
+        assert page.evaluate("() => getComputedStyle(document.body).overflow") != "hidden"
+        # behavior:"instant" on purpose. The site sets html{scroll-behavior:smooth},
+        # so a plain scrollTo animates and 300ms later is still near zero -- which
+        # reads identically to "the lock was never released". The first version of
+        # this assertion failed for that reason and the page was fine.
+        page.evaluate("() => window.scrollTo({ top: 1200, behavior: 'instant' })")
+        page.wait_for_timeout(600)
+        after = page.evaluate("() => window.scrollY")
+        assert after > 0, "scroll was never unlocked -- the page is stuck"
     finally:
         page.close()

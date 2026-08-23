@@ -10,6 +10,34 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap">
 <link rel="stylesheet" href="/style.css">
+<script>
+  /* Scroll lock, applied at parse time.
+     opening() locks scrolling too, but it runs at DOMContentLoaded -- and on a
+     slow load that is hundreds of milliseconds after the document becomes
+     scrollable. A visitor who flicks the wheel in that window lands partway
+     down the page with the overlay still covering it. Under CI load the gap
+     was big enough that the test scrolled to 426px before the lock arrived.
+     This closes it: the document is unscrollable from the first paint, and
+     opening()'s done() is what releases it. */
+  /* A class, not an inline overflow. Setting overflow:hidden on the root
+     alone is not a reliable scroll lock: the body can remain the scrolling
+     element, and window.scrollTo still moves it -- under CI load the page
+     reached 426px, then 222px, with the "lock" in place. Locking BOTH
+     elements and pinning their height is the technique that actually holds. */
+  document.documentElement.classList.add("intro-locked");
+
+  /* Where the engine lives.
+     REMIT can be served two ways: by the Python service itself (Render), or as
+     static files from a CDN (Vercel) talking to that service across origins.
+     Same-origin is the default and needs no configuration; anything else
+     points at the deployed API explicitly rather than guessing. */
+  window.REMIT_API_BASE = (function () {
+    var h = location.hostname;
+    if (!h || h === "localhost" || h === "127.0.0.1" || h === "[::1]") return "";
+    if (h.indexOf(".onrender.com") !== -1) return "";
+    return "https://remit-vvug.onrender.com";
+  })();
+</script>
 </head>
 <body>
 

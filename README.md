@@ -220,7 +220,7 @@ python verify.py
 
 | | |
 |---|---|
-| Tests | **745** |
+| Tests | **753** |
 | Attack suite | **32 / 32 held** (run 3× — a 1-in-3 flake has happened here) |
 | Behaviour matrix | **260 / 260** |
 | Unauthorised money moved | **₹0.00** across 540 journeys |
@@ -318,7 +318,7 @@ remit --url http://127.0.0.1:8099 doctor
 | [`packages/sdk/`](packages/sdk/) | the TypeScript SDK and `remit` CLI |
 | [`policy/`](policy/) | the 21 clauses, as data |
 | [`eval/`](eval/) | attacks, matrix, corpus, scale ladder |
-| [`tests/`](tests/) | 745 tests |
+| [`tests/`](tests/) | 753 tests |
 | [`docs/`](docs/) | protocol, security, threat model, readiness |
 | [`web/`](web/) | the site |
 | [`FAILURES.md`](FAILURES.md) | every real defect, and its regression test |
