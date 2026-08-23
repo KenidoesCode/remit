@@ -172,10 +172,10 @@ function opening() {
   // sentences and a beat between them, which no amount of easing makes fit in
   // three seconds. The backstop moves with it -- and it is still a plain
   // setTimeout, because an intro that can strand the page is not a feature.
-  // ~8.3s of timeline, plus the capped wait for type metrics below it, plus a
+  // ~7.5s of timeline, plus the capped wait for type metrics below it, plus a
   // margin. It has to clear both (or it cuts the opening off mid-sentence)
   // without becoming a second gate of its own.
-  const hardStop = setTimeout(done, 9700);
+  const hardStop = setTimeout(done, 8800);
   const finish = () => { clearTimeout(hardStop); done(); };
 
   // ── wait for the type to stop moving, THEN route, THEN measure ────────
@@ -190,7 +190,8 @@ function opening() {
   // bugs are the same mistake: measuring something before it stopped moving.
   //
   // So: settle, route, measure, play, and never touch it again. The wait is
-  // capped, because document.fonts.ready can hang on a slow network and an
+  // capped at 400ms, because document.fonts.ready can hang on a slow network
+  // and every millisecond of it is a black screen at the front door. An
   // opening that waits forever is worse than one that plays in a fallback
   // face. FAILURES #56.
   const play = () => {
@@ -230,23 +231,29 @@ function opening() {
       gsap.set(".intro-said p", { opacity: 0, y: 10 });
       gsap.set(".intro-mark", { letterSpacing: "0.5em" });
 
-      // ── the opening, retimed ────────────────────────────────────────────
-      // Three revisions got here, and the arithmetic is the point.
-      //
-      // The two sentences CANNOT be shortened. They are eight and twelve words,
-      // a first-time reader takes unfamiliar copy at roughly four words a
-      // second, and tests/test_hero_signal.py samples RENDERED opacity and
-      // refuses anything under 2.0s a line. Cutting them to feel snappier is
-      // not a faster opening, it is an unreadable one, and the test is there
-      // precisely so that trade cannot be made by accident.
-      //
-      // So the time comes from everywhere else instead: the title card is
-      // compressed from 2.05s to 1.34s, the gaps between lines are tightened,
-      // and the tail no longer dawdles. That pays for the one-second hold on
-      // the payoff line -- which is the last thing on screen and had none --
-      // and still lands at ~8.3s against the old 8.6s, with a second of it now
-    // spent holding the payoff line instead of hurrying past it.
-      const t = gsap.timeline({ onComplete: finish });
+      // ── the opening, retimed, four times now ────────────────────────────
+    // Every number here is a trade between two failure modes, and the balance
+    // point moved when the person who wrote the copy watched it play.
+    //
+    // I argued -- in this comment, and in a test -- that the two sentences
+    // needed 2.0s each because they are eight and twelve words and an
+    // unfamiliar reader takes about four words a second. That reasoning has a
+    // hole in it: BOTH SENTENCES ARE ON SCREEN AT ONCE. The first dims, it
+    // does not leave, so the reading budget is the whole span and not the
+    // per-line hold I was defending. 2.0s a line was buying time nobody
+    // needed and charging it at the front door.
+    //
+    // So the sentences hold ~1.5s each on the author's instruction, and
+    // test_hero_signal.py's floor moved with them -- deliberately, and written
+    // down there rather than quietly. This is a design threshold, not a
+    // safety invariant; it is allowed to change when the designer says so.
+    //
+    // The title card went the other way. It is the wordmark, the expansion,
+    // the thesis and the byline, and 1.34s was long enough to read none of
+    // them, so it holds 2.34s. The payoff line keeps its full second.
+    //
+    // Net: ~7.5s, against 8.6s before any of this and 16s at the worst point.
+    const t = gsap.timeline({ onComplete: finish });
       t.to(paths[2], { strokeDashoffset: 0, duration: .44, ease: "power3.in" }, .10)
        .to([paths[0], paths[1]], { strokeDashoffset: 0, duration: .42,
                                    ease: "power2.in", stagger: .04 }, .20)
@@ -261,33 +268,33 @@ function opening() {
        .to(".intro-aka", { opacity: 1, y: 0, duration: .38, ease: "expo.out" }, 1.14)
        // the title card clears, and the two sentences the project came out of
        .to(".intro-mid", { scale: .97, opacity: 0, duration: .34,
-                           ease: "power2.inOut" }, 1.34)
-       .to("#webshot .anchor", { opacity: 0, duration: .28 }, 1.38)
+                           ease: "power2.inOut" }, 2.34)
+       .to("#webshot .anchor", { opacity: 0, duration: .28 }, 2.38)
        // Each holds ~2.35s of MEASURED full opacity. 2.07s was the estimate; the
        // test came back with 1983ms, which is the entire reason it samples the
        // rendered value rather than trusting the numbers on these lines. The
        // sampler also varies by ~100ms between runs, so the margin is real.
-       .to(".said-1", { opacity: 1, y: 0, duration: .34, ease: "expo.out" }, 1.48)
-       .to(".said-1", { opacity: .3, duration: .3 }, 4.00)
-       .to(".said-2", { opacity: 1, y: 0, duration: .34, ease: "expo.out" }, 4.10)
-       .to(".said-2", { opacity: .3, duration: .3 }, 6.62)
+       .to(".said-1", { opacity: 1, y: 0, duration: .34, ease: "expo.out" }, 2.48)
+       .to(".said-1", { opacity: .3, duration: .3 }, 4.10)
+       .to(".said-2", { opacity: 1, y: 0, duration: .34, ease: "expo.out" }, 4.18)
+       .to(".said-2", { opacity: .3, duration: .3 }, 5.80)
        // The payoff, and the last thing on screen before the product. It gets a
        // full second to itself -- it had none, and a line that arrives and is
        // immediately swept away reads as a transition rather than a statement.
-       .to(".said-3", { opacity: 1, y: 0, duration: .4, ease: "expo.out" }, 6.72)
+       .to(".said-3", { opacity: 1, y: 0, duration: .4, ease: "expo.out" }, 5.90)
        // ... one second of nothing happening, deliberately ...
        // the thread pulls the mark into the system it made
        .to(paths, { strokeDashoffset: (i, tgt) => -tgt.getTotalLength(),
-                    duration: .5, ease: "power2.inOut" }, 7.82)
+                    duration: .5, ease: "power2.inOut" }, 7.00)
        .to(".intro-said", { opacity: 0, y: -8, duration: .38,
-                            ease: "power2.inOut" }, 7.90);
+                            ease: "power2.inOut" }, 7.08);
     } catch (e) {
       finish();
     }
   };
   const settled = (document.fonts && document.fonts.ready)
     ? Promise.race([document.fonts.ready,
-                    new Promise((r) => setTimeout(r, 600))])
+                    new Promise((r) => setTimeout(r, 400))])
     : Promise.resolve();
   settled.then(play, play);
 }

@@ -294,13 +294,31 @@ def test_the_opening_sentences_stay_long_enough_to_read(server, browser):
     unfamiliar copy at roughly 3.5 words per second; these are eight and twelve
     words.
 
-    This samples opacity over the whole opening and asserts each line holds at
-    full strength for at least 2.0s, that the pair totals at least 4.2s, and
-    that the whole thing stays under 12s. It measures the rendered opacity
-    rather than reading the timeline numbers, because the timeline is what
-    would be edited by accident -- and the prose above the asserts is the
-    other thing that gets edited by accident, which is why it now says the
-    same numbers the asserts do.
+    THE FLOOR MOVED DOWN, ON PURPOSE, AND HERE IS THE ARGUMENT.
+
+    It was 2.8s a line, then 2.0s, and it is now 1.35s. Each drop is worth
+    being suspicious of -- a threshold that only ever loosens is a threshold
+    being negotiated away one commit at a time -- so the reason lives here
+    rather than in a commit message nobody reads twice.
+
+    The 2.0s figure came from word count: eight and twelve words at roughly
+    four words a second. That reasoning has a hole in it I did not notice
+    while defending it. BOTH SENTENCES ARE ON SCREEN AT THE SAME TIME. The
+    first dims to 0.3; it does not leave. So the reading budget is the whole
+    span the pair occupies, not the interval each spends at full strength --
+    and this test was measuring the second thing while claiming to protect
+    the first.
+
+    The author, watching it play, said it was too slow. He is right, and this
+    is a design threshold rather than a safety invariant, so it moves when he
+    says so. What the test still refuses is a line that flashes: 1.35s is well
+    above the ~0.8s it takes to merely NOTICE a sentence, the pair must still
+    total 2.8s, and the ceiling came DOWN from 12s to 10s in the same edit --
+    because the failure that actually happened here, twice, was the opening
+    getting longer.
+
+    Measured from rendered opacity, never from the timeline numbers, because
+    the timeline is what gets edited by accident.
     """
     page = browser.new_page(viewport={"width": 1440, "height": 900})
     try:
@@ -334,20 +352,22 @@ def test_the_opening_sentences_stay_long_enough_to_read(server, browser):
             return 0.0 if first is None else last - first
 
         one, two = held(0), held(1)
-        # 2.0s each is the floor, not the target: the timeline gives each line
-        # ~2.2s. The thresholds moved DOWN from 2.8s deliberately -- the first
-        # correction to a too-fast opening produced a 16-second one, which is
-        # not a title sequence, it is a toll gate on the front door. This
-        # asserts the copy is readable; it is not a licence to make the opening
-        # longer again.
-        assert one >= 2000, f"'I gave an AI permission…' held only {one:.0f}ms"
-        assert two >= 2000, f"'Then I tried to work out…' held only {two:.0f}ms"
-        assert one + two >= 4200, f"the two sentences totalled {one + two:.0f}ms"
+        # The timeline gives each line ~1.5s; the sampler varies by ~100ms
+        # between runs, so 1.35s is the floor. See the docstring for why this
+        # is lower than it was -- the short version is that both sentences are
+        # on screen together, so the pair total is the number that actually
+        # protects readability.
+        assert one >= 1350, f"'I gave an AI permission...' held only {one:.0f}ms"
+        assert two >= 1350, f"'Then I tried to work out...' held only {two:.0f}ms"
+        assert one + two >= 2800, f"the two sentences totalled {one + two:.0f}ms"
 
         span = samples[-1][0] - samples[0][0]
-        assert span >= 4500, f"the whole opening lasted {span:.0f}ms"
+        assert span >= 3500, f"the whole opening lasted {span:.0f}ms"
         # And the ceiling, which is the half nobody writes and then regrets.
-        assert span <= 12000, (
+        # Tightened from 12s to 10s: the opening is ~7.5s, the failure that
+        # actually happened twice was it GROWING, and a ceiling with three
+        # seconds of slack in it is not a ceiling.
+        assert span <= 10000, (
             f"the opening lasted {span:.0f}ms -- it is a title sequence, "
             f"not a gate")
     finally:
