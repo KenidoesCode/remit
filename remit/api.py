@@ -1253,6 +1253,22 @@ def ledger(correlation_id: str | None = None, limit: int = 120):
                             "payload": json.loads(p), "hash": h}
                            for s, t, k, c, p, h in rows]}
 
+@api.get("/api/receipt/{correlation_id}")
+def receipt(correlation_id: str, request: Request):
+    """The authorization receipt for the website's audit view. Same projection
+    the /v1 protocol serves (remit/receipt.py), scoped to the session principal.
+    Reads only; creates no state."""
+    from .receipt import build_receipt
+    with LOCK:
+        a = get_app()
+        who = principal(request)
+        r = build_receipt(a, correlation_id, who)
+        if r is None:
+            return JSONResponse({"error": "no such correlation id"},
+                                status_code=404)
+        return r
+
+
 @api.get("/api/graph")
 def graph(intent_id: str):
     with LOCK:
@@ -1470,6 +1486,26 @@ def vendorjs(name: str):
 @api.get("/style.css")
 def css():
     return _static("style.css", "text/css")
+
+
+@api.get("/favicon.svg")
+def favicon():
+    """The mark, standalone. A tab with a blank page icon is the first thing a
+    reviewer sees and the last thing anybody remembers to serve."""
+    return _static("favicon.svg", "image/svg+xml")
+
+
+@api.get("/brand/{name}")
+def brand(name: str):
+    """Brand assets, whitelisted rather than path-joined -- same reasoning as
+    /vendor above. A path parameter that reaches the filesystem is a traversal
+    waiting to happen, and "it is only an SVG" is how that argument starts."""
+    allowed = {"remit-mark.svg": "image/svg+xml",
+               "remit-lockup.svg": "image/svg+xml",
+               "og.png": "image/png"}
+    if name not in allowed:
+        return JSONResponse({"error": "not found"}, status_code=404)
+    return _static(f"brand/{name}", allowed[name])
 
 
 # Registered last, so it only fires when nothing above matched. A 404 that says

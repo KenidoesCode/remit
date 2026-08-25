@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="REMIT">
+  <title>REMIT</title>
+  <!-- The field an agent may act in: bounded, centred on a stated intent. -->
+  <circle cx="13.6" cy="16" r="9.8" fill="none" stroke="currentColor" stroke-width="1.8"/>
+  <circle cx="13.6" cy="16" r="3.1" fill="currentColor"/>
+  <!-- The boundary. The field stops short of it; nothing crosses. -->
+  <rect x="26.2" y="3.2" width="2.6" height="25.6" fill="#E5352B"/>
+</svg>

@@ -7,8 +7,9 @@ Everything REMIT claims, and where the evidence for it lives.
 | | |
 |---|---|
 | [Why REMIT](WHY_REMIT.md) | compared against the five things that already exist |
-| [Protocol](REMIT_PROTOCOL.md) | six nouns, ten routes, and why `/v1` has no engine of its own |
-| [Architecture](../ARCHITECTURE.md) | how a sentence becomes a payment |
+| [Protocol](REMIT_PROTOCOL.md) | six nouns, eleven routes, and why `/v1` has no engine of its own |
+| [Architecture](ARCHITECTURE.md) | how a sentence becomes a payment |
+| [Track 01 mapping](TRACK_01.md) | requirement → code, for the submission reviewer |
 | [Demo script](DEMO_SCRIPT.md) | the five-minute walk, timed |
 
 ## SDK
@@ -33,7 +34,7 @@ Everything REMIT claims, and where the evidence for it lives.
 | [Security model](sdk/security-model.md) | what is trusted, and what is not |
 | [SDK threat model](sdk/threat-model.md) | each threat, and the layer that handles it |
 | [Security report](SECURITY_REPORT.md) | 32 attacks, and the six that worked during development |
-| [System threat model](../THREAT_MODEL.md) | the engine's own |
+| [System threat model](THREAT_MODEL.md) | the engine's own |
 | [Production gaps](PRODUCTION_GAPS.md) | what is missing before this is real |
 
 ## Evidence
@@ -55,7 +56,7 @@ Everything REMIT claims, and where the evidence for it lives.
 | [Reviewer simulation](REVIEWER_SIMULATION.md) | five hostile readings |
 | [Final scorecard](FINAL_SCORECARD.md) | dated snapshot |
 | [Hardening audit](HARDENING_AUDIT.md) | dated snapshot |
-| [Decisions](../DECISIONS.md) | ADRs, including what was deliberately not built |
+| [Decisions](DECISIONS.md) | ADRs, including what was deliberately not built |
 
 ## Contributing
 

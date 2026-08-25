@@ -4,8 +4,27 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>REMIT — an agent can spend. this is where it stops.</title>
-<meta name="description" content="An AI buyer and merchant growth engine that optimises revenue while proving the final transaction still matches what the human authorised. Built by techuilaguy.">
+<!-- The description a search result and a shared link actually show. It used
+     to say "an AI buyer and merchant growth engine that optimises revenue",
+     which described an earlier version of this project: REMIT is the
+     authorization boundary, and the buyer is the thing being bounded. -->
+<meta name="description" content="Model-independent authorization for autonomous commerce. An agent proposes; a deterministic policy engine decides whether the action is still inside what a human authorised; only then does money move. Open source, MIT, by techuilaguy.">
 <meta name="theme-color" content="#0B0908">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="mask-icon" href="/favicon.svg" color="#E5352B">
+<link rel="apple-touch-icon" href="/brand/og.png">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="REMIT">
+<meta property="og:title" content="REMIT — model-independent authorization for autonomous commerce">
+<meta property="og:description" content="AI can be probabilistic. Authorization cannot. An agent proposes; a deterministic policy engine decides whether it is still inside what a human authorised.">
+<meta property="og:image" content="https://remit-vvug.onrender.com/brand/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="REMIT — model-independent authorization for autonomous commerce">
+<meta name="twitter:description" content="AI can be probabilistic. Authorization cannot.">
+<meta name="twitter:image" content="https://remit-vvug.onrender.com/brand/og.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap">
@@ -83,13 +102,13 @@
 <!-- ══════════════════════════ nav ══════════════════════════ -->
 <nav id="nav" aria-label="Primary">
   <a class="brand" href="#hero" aria-label="REMIT, home">
+    <!-- The bounded field, and the boundary it stops at. Same three shapes as
+         /favicon.svg and web/brand/, so the tab, the nav bar, the README and a
+         shared link are one mark rather than four drawings of one idea. -->
     <svg class="mark" viewBox="0 0 32 32" aria-hidden="true">
-      <circle cx="16" cy="16" r="13.2" fill="none" stroke="currentColor" stroke-width="1.1" opacity=".35"/>
-      <circle cx="16" cy="16" r="8.4"  fill="none" stroke="currentColor" stroke-width="1.1" opacity=".55"/>
-      <circle cx="16" cy="16" r="3.6"  fill="none" stroke="currentColor" stroke-width="1.1" opacity=".85"/>
-      <path d="M16 2.8V29.2M2.8 16H29.2M6.6 6.6l18.8 18.8M25.4 6.6L6.6 25.4"
-            stroke="currentColor" stroke-width=".85" opacity=".38"/>
-      <path d="M25.6 3.2V28.8" stroke="var(--signal)" stroke-width="1.6"/>
+      <circle cx="13.6" cy="16" r="9.8" fill="none" stroke="currentColor" stroke-width="1.8"/>
+      <circle cx="13.6" cy="16" r="3.1" fill="currentColor"/>
+      <rect x="26.2" y="3.2" width="2.6" height="25.6" fill="var(--signal)"/>
     </svg>
     <span class="wordmark">REMIT</span>
   </a>
@@ -272,6 +291,20 @@
       <a href="#sdk">VIEW SDK</a>
       <a href="https://github.com/KenidoesCode/remit" target="_blank" rel="noopener">VIEW SOURCE</a>
       <a href="https://www.npmjs.com/package/remit-sdk" target="_blank" rel="noopener">NPM</a>
+    </div>
+  </div>
+
+  <!-- A small proof line, not a second hero. Every money-moving decision on
+       this instance leaves a receipt; the link drops the reader into the audit
+       room where they can open one. -->
+  <div class="sdk-mini receipt-mini">
+    <div class="sdk-mini-label">
+      <span class="pip" aria-hidden="true"></span>AUTHORIZATION RECEIPTS
+    </div>
+    <p class="receipt-mini-say">Every money-moving decision leaves a verifiable
+      explanation — authority, decision, execution and audit, in one view.</p>
+    <div class="sdk-mini-links">
+      <a href="#audit" data-act="audit">VIEW A RECEIPT</a>
     </div>
   </div>
 </section>

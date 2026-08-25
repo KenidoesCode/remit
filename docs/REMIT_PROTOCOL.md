@@ -68,6 +68,7 @@ original sentence.
 | `POST` | `/v1/revoke` | cancel an authority, forward only |
 | `GET` | `/v1/authorization/{intent_id}` | current state and its history |
 | `GET` | `/v1/audit/{correlation_id}` | why this happened |
+| `GET` | `/v1/receipt/{correlation_id}` | the authorization receipt: authority, decision, execution and audit, in one view |
 
 ### Identity
 

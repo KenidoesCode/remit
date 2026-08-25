@@ -1595,16 +1595,84 @@ async function renderAudit() {
   }
   if (Array.isArray(d) && d.length) {
     h += `<div class="act-head sub-head" style="margin-top:44px">
-      <span class="kicker">decisions taken on this instance</span></div>
+      <span class="kicker">decisions taken on this instance</span>
+      <p class="lede">Click any decision for its authorization receipt: authority,
+      decision, execution and audit, in one view.</p></div>
       <div class="tw"><table><thead><tr><th>verdict</th><th class="n">drift</th>
-      <th>policy</th><th>when</th></tr></thead><tbody>
-      ${d.slice(0, 16).map(x => `<tr><td><span class="badge ${esc(x.verdict)}">${esc(x.verdict)}</span></td>
+      <th>policy</th><th>when</th><th></th></tr></thead><tbody>
+      ${d.slice(0, 16).map(x => `<tr class="dec-row" data-cid="${esc(x.correlation_id || "")}" tabindex="0" role="button">
+        <td><span class="badge ${esc(x.verdict)}">${esc(x.verdict)}</span></td>
         <td class="n">${(x.drift && x.drift.score) ?? "—"}</td>
         <td class="mono">${esc(x.policy_version || "")}</td>
-        <td class="mono">${esc(String(x.ts || "").slice(11, 19))}</td></tr>`).join("")}
-      </tbody></table></div>`;
+        <td class="mono">${esc(String(x.ts || "").slice(11, 19))}</td>
+        <td class="mono dec-open">receipt →</td></tr>`).join("")}
+      </tbody></table></div>
+      <div id="receiptPanel" hidden></div>`;
   }
   out.innerHTML = h || '<p class="meta-line">nothing has been decided on this instance yet — run something in room 01</p>';
+
+  // Each decision opens its receipt. The panel is the existing card system; the
+  // receipt is /api/receipt, which is a projection over the same records this
+  // table already read -- not a second source of truth. FAILURES-style honesty:
+  // it shows "no money moved" for a DENY or STEP_UP rather than hiding the row.
+  const openReceipt = async (cid) => {
+    const panel = $("#receiptPanel");
+    if (!panel || !cid) return;
+    panel.hidden = false;
+    panel.innerHTML = '<p class="meta-line">loading receipt…</p>';
+    panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    let r;
+    try { r = await api("/api/receipt/" + encodeURIComponent(cid)); }
+    catch (e) { panel.innerHTML = couldNotLoad("the receipt", "renderAudit"); return; }
+    panel.innerHTML = receiptCard(r);
+  };
+  out.querySelectorAll(".dec-row").forEach((row) => {
+    const go = () => openReceipt(row.dataset.cid);
+    row.addEventListener("click", go);
+    row.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(); }
+    });
+  });
+}
+
+/* The receipt card: the whole Track 01 story for one decision -- what was
+   authorised, what was decided and why, whether money moved, and how to verify
+   it. Rendered from /api/receipt, which reads existing records only. */
+function receiptCard(r) {
+  const d = r.decision, ex = r.execution, au = r.authority;
+  const cls = d.verdict === "AUTO" ? "ok" : (d.verdict === "DENY" ? "stop" : "");
+  const clause = (c) => `<span class="rc-clause ${c.passed ? "" : "bad"}">${esc(c.clause_id || "")}</span>`;
+  return `<div class="receipt">
+    <div class="rc-head">
+      <span class="kicker">authorization receipt</span>
+      <span class="mono rc-id">${esc(r.receipt_id)}</span>
+    </div>
+    <p class="rc-intent">${r.intent.text ? esc('"' + r.intent.text + '"') : "—"}</p>
+    <div class="rc-grid">
+      <div><span class="rc-k">authority</span>
+        <span class="rc-v">${au.ceiling ? esc(au.ceiling.display) + " max" : "—"}${
+          au.category ? " · " + esc(au.category) : ""}</span></div>
+      <div><span class="rc-k">decision</span>
+        <span class="rc-v"><span class="badge ${esc(d.verdict)}">${esc(d.verdict)}</span></span></div>
+      <div><span class="rc-k">execution</span>
+        <span class="rc-v ${ex.money_moved ? "" : "muted"}">${
+          ex.money_moved ? "₹ order " + esc(String(ex.order_id || "").slice(0, 20))
+                         : "no money moved (" + esc(ex.state) + ")"}</span></div>
+      <div><span class="rc-k">authority state</span>
+        <span class="rc-v">${esc(au.state || "—")}${r.revocation.revoked ? " · REVOKED" : ""}</span></div>
+    </div>
+    ${d.reason ? `<p class="rc-why">${esc(d.reason)}</p>` : ""}
+    ${d.failed_clauses && d.failed_clauses.length
+      ? `<p class="rc-failed">stopped by ${d.failed_clauses.map(esc).join(", ")}</p>` : ""}
+    ${d.requires_human ? `<p class="rc-failed">a human must decide — an agent may not approve this</p>` : ""}
+    <div class="rc-audit">
+      <span class="rc-chain ${r.self_reported_chain === "intact" ? "" : "bad"}">audit chain ${esc(r.self_reported_chain)}</span>
+      <span class="rc-n">${r.audit.event_count} events · ${d.clauses.length} clauses evaluated</span>
+      <span class="rc-verify mono">${esc(r.audit.verify.cli)}</span>
+    </div>
+    <p class="rc-note">Reports the chain's own integrity. To verify without trust,
+      recompute the hashes: <code>remit receipt verify ${esc(r.correlation_id)}</code>.</p>
+  </div>`;
 }
 
 function css(v) { return getComputedStyle(document.body).getPropertyValue(v).trim(); }

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="REMIT">
+  <title>REMIT</title>
+  <!-- Standalone: a favicon has no CSS context and sits on a tab strip that
+       may be light or dark, so the plate is explicit rather than inherited. -->
+  <rect width="32" height="32" rx="6" fill="#0A0A0A"/>
+  <circle cx="13.2" cy="16" r="7.6" fill="none" stroke="#FFFFFF" stroke-width="2.1"/>
+  <circle cx="13.2" cy="16" r="2.6" fill="#FFFFFF"/>
+  <rect x="24.4" y="6" width="2.6" height="20" fill="#E5352B"/>
+</svg>

@@ -128,6 +128,59 @@ export interface AuditEvent {
   hash: string;
 }
 
+/**
+ * The authorization receipt: authority, decision, execution and audit for one
+ * money-moving decision, in one object. A server-side projection over records
+ * that already exist — not a second source of truth. `self_reported_chain` is
+ * the chain's own view; to actually verify, call `receipts.verify()`, which
+ * recomputes every hash locally rather than trusting this flag.
+ */
+export interface AuthorizationReceipt {
+  receipt_id: string;
+  correlation_id: string;
+  intent_id: string;
+  principal: string;
+  tenant_id: string | null;
+  intent: { text: string | null; category: string | null };
+  authority: {
+    ceiling: { paise: number; display: string } | null;
+    currency: string;
+    category: string | null;
+    expires_at: string | null;
+    state: string | null;
+    history: Record<string, unknown>[];
+  };
+  decision: {
+    verdict: string;
+    reason: string | null;
+    failed_clauses: string[];
+    clauses: Record<string, unknown>[];
+    policy_version: string | null;
+    catalog_version: number;
+    requires_human: boolean;
+    blocked_value: { paise: number; display: string } | null;
+    at: string;
+  };
+  execution: {
+    money_moved: boolean;
+    state: string;
+    order_id: string | null;
+    amount: { paise: number; display: string } | null;
+    mode: string | null;
+    at: string | null;
+  };
+  revocation: { revoked: boolean; revoked_at: string | null; scope: string | null };
+  audit: {
+    event_count: number;
+    chain_intact: boolean;
+    first_bad_seq: number | null;
+    events: AuditEvent[];
+    verify: { cli: string; how: string };
+  };
+  self_reported_chain: "intact" | "BROKEN";
+  protocol_version?: string;
+}
+
 export interface Revocation {
   scope: "intent" | "principal";
   target?: string;

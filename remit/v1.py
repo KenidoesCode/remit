@@ -189,6 +189,7 @@ def install(api, *, get_app, principal, LOCK, utcnow, exposure_for, key_id):
         "POST /v1/revoke": "cancel an authority, forward only",
         "GET /v1/authorization/{intent_id}": "current authority state",
         "GET /v1/audit/{correlation_id}": "why this happened",
+        "GET /v1/receipt/{correlation_id}": "the authorization receipt: authority, decision, execution and audit, in one view",
     }
 
     def _served() -> list[str]:
@@ -498,6 +499,26 @@ def install(api, *, get_app, principal, LOCK, utcnow, exposure_for, key_id):
                                    if a.authority else []),
                 chain_intact=ok, first_bad_seq=bad).model_dump() | {
                 "protocol_version": PROTOCOL_VERSION}
+
+    @v1.get("/receipt/{correlation_id}")
+    def receipt(correlation_id: str, request: Request):
+        """The authorization receipt: authority, decision, execution and audit
+        for one money-moving decision, assembled from records that already
+        exist. A projection, not a second source of truth -- see remit/receipt.py.
+
+        Scoped to the caller, like the audit trail it draws on. Reports the
+        chain's own integrity result; it does not claim the receipt is
+        'verified' -- that is what `GET /v1/audit` gives a client the bytes to
+        check for itself."""
+        from .receipt import build_receipt
+        with LOCK:
+            a = get_app()
+            who = principal(request)
+            r = build_receipt(a, correlation_id, who)
+            if r is None:
+                return JSONResponse({"error": "no such correlation id"},
+                                    status_code=404)
+            return r | {"protocol_version": PROTOCOL_VERSION}
 
     api.include_router(v1)
     return v1

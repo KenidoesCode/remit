@@ -5,7 +5,7 @@ evidence actually shows. `PASS` requires evidence that exists. `PARTIAL` names
 what remains. `EXTERNAL` means the code is complete and verification needs
 something this environment cannot provide — and it is never counted as PASS.*
 
-**At:** 23 August 2026 · 754 test cases · 260/260 matrix · 32/32 attacks ·
+**At:** 23 August 2026 · 828 test cases · 260/260 matrix · 32/32 attacks ·
 ₹0 unauthorised · precision 0.6346 held-out · recall 1.0 · 0 dangerous FN
 
 ---

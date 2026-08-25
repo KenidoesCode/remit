@@ -69,6 +69,7 @@ ${bold("COMMANDS")}
   execute <text>            do it, if the policy allows
   revoke [--intent <id>]    cancel authority. forward only
   audit <correlation-id>    the record for one decision
+  receipt show <cid>        the authorization receipt in one view
   receipt verify <cid>      recompute every event hash and report
 
 ${bold("OPTIONS")}
@@ -331,6 +332,41 @@ async function cmdAudit(args: Args): Promise<number> {
   return 0;
 }
 
+async function cmdReceiptShow(args: Args): Promise<number> {
+  const cid = args._[2];
+  if (!cid) return usageError("remit receipt show <correlation-id>");
+  const r = await client(args).receipts.get(cid);
+  if (args.flags["json"] === true) {
+    printJson(r);
+    return 0;
+  }
+  out(heading("REMIT AUTHORIZATION RECEIPT"));
+  out(`  intent      ${r.intent.text ? `"${r.intent.text}"` : dim("—")}`);
+  out(`  authority   ${r.authority.ceiling ? r.authority.ceiling.display + " max" : dim("—")}`
+      + (r.authority.category ? `, ${r.authority.category}` : "")
+      + `  · state ${r.authority.state ?? dim("—")}`);
+  out(`  principal   ${r.principal}`);
+  out("");
+  out(`  decision    ${bold(r.decision.verdict)}`);
+  if (r.decision.reason) out(`  because     ${r.decision.reason}`);
+  if (r.decision.failed_clauses.length) out(`  failed      ${r.decision.failed_clauses.join(", ")}`);
+  if (r.decision.requires_human) out(dim("  a human must decide — an agent may not approve this"));
+  out("");
+  if (r.execution.money_moved) {
+    out(`  execution   Razorpay test-mode order ${r.execution.order_id}`);
+    if (r.execution.amount) out(`  amount      ${r.execution.amount.display}`);
+  } else {
+    out(`  execution   ${bold("no money moved")} (${r.execution.state})`);
+  }
+  out("");
+  out(`  audit       chain ${r.self_reported_chain}, ${r.audit.event_count} events`);
+  if (r.revocation.revoked) out(`  revoked     ${r.revocation.revoked_at}`);
+  out("");
+  out(dim(`  verify:  ${r.audit.verify.cli}`));
+  out(dim("  This prints the record. `remit receipt verify` re-checks the hashes."));
+  return 0;
+}
+
 async function cmdReceiptVerify(args: Args): Promise<number> {
   const cid = args._[2];
   if (!cid) return usageError("remit receipt verify <correlation-id>");
@@ -456,7 +492,8 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
         return await cmdAudit(args);
       case "receipt":
         if (args._[1] === "verify") return await cmdReceiptVerify(args);
-        return usageError("remit receipt verify <correlation-id>");
+        if (args._[1] === "show") return await cmdReceiptShow(args);
+        return usageError("remit receipt <show|verify> <correlation-id>");
       default:
         fail(`unknown command: ${cmd}`);
         fail(`try: remit --help`);

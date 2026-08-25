@@ -25,7 +25,7 @@
 import { RawNumber, parsePreservingNumbers, toPlain } from "./canonical.js";
 import { RemitValidationError } from "./errors.js";
 import type { RequestOptions, Transport } from "./http.js";
-import type { AuditEvent, Evidence, ReceiptVerification, Verdict } from "./types.js";
+import type { AuthorizationReceipt, AuditEvent, Evidence, ReceiptVerification, Verdict } from "./types.js";
 
 /**
  * Python's `json.dumps(obj, sort_keys=True, separators=(",", ":"))`, which is
@@ -165,10 +165,38 @@ export class Audit {
     );
     return res.data;
   }
+
+  /**
+   * The authorization receipt for one correlation id: authority, decision,
+   * execution and audit in one object. A projection the server assembles from
+   * existing records — it does not verify anything. To check the audit chain,
+   * use `receipts.verify()`, which recomputes the hashes locally.
+   */
+  async getReceipt(correlationId: string, options?: RequestOptions): Promise<AuthorizationReceipt> {
+    if (!correlationId) {
+      throw new RemitValidationError("audit.getReceipt needs a correlation id", { code: "invalid_argument" });
+    }
+    const res = await this.http.request<AuthorizationReceipt>(
+      "GET",
+      `/v1/receipt/${encodeURIComponent(correlationId)}`,
+      undefined,
+      options,
+    );
+    return res.data;
+  }
 }
 
 export class Receipts {
   constructor(private readonly audit: Audit) {}
+
+  /**
+   * Fetch the authorization receipt for one correlation id — authority,
+   * decision, execution and audit in one object. This is the record; to check
+   * it rather than trust it, use `verify()`.
+   */
+  async get(correlationId: string, options?: RequestOptions): Promise<AuthorizationReceipt> {
+    return this.audit.getReceipt(correlationId, options);
+  }
 
   /**
    * Fetch the evidence and check it, rather than trusting it.

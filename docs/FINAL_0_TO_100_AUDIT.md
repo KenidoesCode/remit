@@ -5,7 +5,7 @@ this environment. `PARTIAL` names the specific missing thing. `EXTERNAL` means
 the code is complete and verification needs something this environment cannot
 provide — and is never counted as a pass.*
 
-**At:** 23 August 2026 · 754 tests · 32/32 attacks · 260/260 matrix ·
+**At:** 23 August 2026 · 828 tests · 32/32 attacks · 260/260 matrix ·
 ₹0 unauthorised · `remit-sdk@0.1.0` live on npm
 
 Regenerate the numbers: `python verify.py`
@@ -68,7 +68,7 @@ it. What the remaining nine are is stated below rather than averaged away.
 
 | # | Requirement | Status | Evidence |
 |---|---|---|---|
-| 28 | Protocol `/v1` | **PASS** | 10 routes, version checked, index derived from the router (FAILURES #49) |
+| 28 | Protocol `/v1` | **PASS** | 11 routes, version checked, index derived from the router (FAILURES #49) |
 | 29 | External agent | **PASS** | stdlib only; a test asserts it imports nothing from this repo |
 | 30 | SDK | **PASS** | TypeScript, ESM + CJS + types, **zero runtime dependencies**, 19 unit + 14 integration tests |
 | 31 | npm package | **PASS** | **`remit-sdk@0.1.0` live on the public registry.** `npm view remit-sdk` |

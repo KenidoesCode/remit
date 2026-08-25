@@ -1,5 +1,31 @@
 # Audit and receipts
 
+## The authorization receipt
+
+One view of a decision — authority, decision, execution and audit — assembled
+from records that already exist. It is the fastest way to answer "what was
+authorised, what happened, and can I check it" for a single transaction.
+
+```ts
+const r = await remit.receipts.get(correlationId);
+
+r.intent.text;              // "buy a laptop under 50000"
+r.authority.ceiling;        // { paise: 5000000, display: "₹50,000.00" }
+r.decision.verdict;         // "AUTO" | "STEP_UP" | "DENY"
+r.decision.failed_clauses;  // e.g. ["MATCH-001"] on a step-up
+r.execution.money_moved;    // false for a step-up or a denial
+r.execution.order_id;       // the real Razorpay test-mode order, or null
+r.self_reported_chain;      // "intact" — the chain's own view
+```
+
+A denial or a step-up produces a receipt too, and it says `money_moved: false`
+and names the clause that stopped it. That is the failure case, explained —
+nothing was hidden because nothing moved.
+
+The receipt **reports** the chain's integrity; it does not prove it. To prove
+it, verify:
+
+
 ## Getting the record
 
 ```ts
